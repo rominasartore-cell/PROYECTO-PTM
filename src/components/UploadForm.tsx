@@ -51,12 +51,12 @@ export function UploadForm() {
     setError('');
 
     if (!formData.name || !formData.email || !formData.plate || !file || !consent) {
-      setError('Por favor completa todos los campos y acepta los tÃ©rminos.');
+      setError('Por favor completa todos los campos y acepta los términos.');
       return;
     }
 
     if (!file.type.includes('pdf')) {
-      setError('Por favor carga un archivo PDF vÃ¡lido.');
+      setError('Por favor carga un archivo PDF válido.');
       return;
     }
 
@@ -114,14 +114,14 @@ export function UploadForm() {
               <label htmlFor="file-input" className="cursor-pointer block">
                 {file ? (
                   <>
-                    <span className="text-2xl mb-2 block">âœ…</span>
+                    <span className="text-2xl mb-2 block">✅</span>
                     <p className="text-gray-900 font-semibold">{file.name}</p>
                     <p className="text-gray-500 text-sm">Click para cambiar</p>
                   </>
                 ) : (
                   <>
-                    <span className="text-4xl mb-2 block">ðŸ“„</span>
-                    <p className="text-gray-900 font-semibold mb-1">Arrastra tu PDF aquÃ­ o haz click</p>
+                    <span className="text-4xl mb-2 block">📄</span>
+                    <p className="text-gray-900 font-semibold mb-1">Arrastra tu PDF aquí o haz click</p>
                     <p className="text-gray-500">Carga tu certificado RMNP en formato PDF</p>
                   </>
                 )}
@@ -168,7 +168,7 @@ export function UploadForm() {
               />
               <label htmlFor="consent" className="text-sm text-gray-700">
                 Entiendo que este es un análisis informativo y no constituye asesoramiento legal. Acepto los
-                tÃ©rminos de privacidad.
+                términos de privacidad.
               </label>
             </div>
 
@@ -193,4 +193,3 @@ export function UploadForm() {
     </section>
   );
 }
-

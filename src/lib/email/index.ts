@@ -42,7 +42,7 @@ function generateHtmlEmail(subject: string, body: string): string {
       ${body}
     </div>
     <div class="footer">
-      <p>Â© 2026 Prescribe Tu Multa. Todos los derechos reservados.</p>
+      <p>© 2026 Prescribe Tu Multa. Todos los derechos reservados.</p>
       <p>Contacto: soporte@prescribetumulta.cl</p>
     </div>
   </div>
@@ -59,10 +59,10 @@ export async function sendClientAnalysisReceipt(data: {
   const html = generateHtmlEmail(
     'Certificado de Recibimiento - Prescribe Tu Multa',
     `
-    <p>Â¡Hola ${data.name}!</p>
-    <p>Recibimos tu certificado de multas de trÃ¡nsito con Ã©xito.</p>
+    <p>¡Hola ${data.name}!</p>
+    <p>Recibimos tu certificado de multas de tránsito con éxito.</p>
     <p><strong>Referencia de solicitud:</strong> ${data.requestId}</p>
-    <p>Nuestro sistema estÃ¡ analizando tu certificado. Te enviaremos los resultados preliminares en pocos momentos.</p>
+    <p>Nuestro sistema está analizando tu certificado. Te enviaremos los resultados preliminares en pocos momentos.</p>
     <p>Saludos,<br/>El equipo de Prescribe Tu Multa</p>
     `
   );
@@ -101,14 +101,14 @@ export async function sendClientAnalysisResults(data: {
   const html = generateHtmlEmail(
     'Resultados Preliminares - Prescribe Tu Multa',
     `
-    <p>Â¡Hola ${data.name}!</p>
-    <p>Tu anÃ¡lisis ha sido completado. AquÃ­ estÃ¡n los resultados preliminares:</p>
+    <p>¡Hola ${data.name}!</p>
+    <p>Tu análisis ha sido completado. Aquí están los resultados preliminares:</p>
     <ul>
       <li><strong>Total de multas:</strong> ${data.totalCount}</li>
       <li><strong>Multas posiblemente prescritas:</strong> ${data.prescribedCount}</li>
     </ul>
     ${data.prescribedCount > 0 ? `
-    <p>Â¡Buenas noticias! Encontramos ${data.prescribedCount} multa(s) que podrÃ­an estar prescrita(s).</p>
+    <p>¡Buenas noticias! Encontramos ${data.prescribedCount} multa(s) que podrían estar prescrita(s).</p>
     <p>Puedes comprar un informe completo con documentos listos para presentar en tribunal.</p>
     ` : `
     <p>No encontramos multas prescritas en tu certificado.</p>
@@ -151,10 +151,10 @@ export async function sendClientPaymentConfirmed(data: {
   const html = generateHtmlEmail(
     'Pago Confirmado - Prescribe Tu Multa',
     `
-    <p>Â¡Hola ${data.name}!</p>
+    <p>¡Hola ${data.name}!</p>
     <p>Hemos recibido tu pago de $${data.amount.toLocaleString('es-CL')} exitosamente.</p>
     <p><strong>Referencia de solicitud:</strong> ${data.requestId}</p>
-    <p>Estamos generando tus documentos. Los recibirÃ¡s en pocos momentos.</p>
+    <p>Estamos generando tus documentos. Los recibirás en pocos momentos.</p>
     <p>Saludos,<br/>El equipo de Prescribe Tu Multa</p>
     `
   );
@@ -192,13 +192,13 @@ export async function sendClientResultsReady(data: {
   const html = generateHtmlEmail(
     'Documentos Listos - Prescribe Tu Multa',
     `
-    <p>Â¡Hola ${data.name}!</p>
-    <p>Tus documentos estÃ¡n listos para descargar.</p>
+    <p>¡Hola ${data.name}!</p>
+    <p>Tus documentos están listos para descargar.</p>
     <p><strong>Referencia de solicitud:</strong> ${data.requestId}</p>
     <p><a href="https://prescribetumulta.cl${data.downloadUrl}" style="background-color: #1e3a5f; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Descargar Documentos</a></p>
     <p>Incluye:</p>
     <ul>
-      <li>Informe de prescripciÃ³n detallado</li>
+      <li>Informe de prescripción detallado</li>
       <li>Solicitudes por tribunal</li>
     </ul>
     <p><strong>Importante:</strong> Consulta con un abogado antes de presentar las solicitudes.</p>
@@ -240,9 +240,9 @@ export async function sendAdminNotification(data: {
 }) {
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@prescribetumulta.cl';
   const html = generateHtmlEmail(
-    'Nueva Solicitud de AnÃ¡lisis',
+    'Nueva Solicitud de Análisis',
     `
-    <p>Nueva solicitud de anÃ¡lisis recibida:</p>
+    <p>Nueva solicitud de análisis recibida:</p>
     <ul>
       <li><strong>ID:</strong> ${data.requestId}</li>
       <li><strong>Cliente:</strong> ${data.name} (${data.email})</li>

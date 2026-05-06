@@ -2,8 +2,8 @@
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Prescribe Tu Multa - AnÃ¡lisis de PrescripciÃ³n de Multas de TrÃ¡nsito',
-  description: 'Analiza tu certificado RMNP y descubre cuÃ¡les de tus multas podrÃ­an estar prescritas.',
+  title: 'Prescribe Tu Multa - Análisis de Prescripción de Multas de Tránsito',
+  description: 'Analiza tu certificado RMNP y descubre cuáles de tus multas podrían estar prescritas.',
 };
 
 export default function RootLayout({

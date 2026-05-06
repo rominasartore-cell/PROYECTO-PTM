@@ -11,7 +11,7 @@ export function Footer() {
           <div>
             <h3 className="text-white font-bold mb-4">Prescribe Tu Multa</h3>
             <p className="text-sm text-gray-400">
-              Herramienta para analizar la prescripciÃ³n de multas de trÃ¡nsito en Chile.
+              Herramienta para analizar la prescripción de multas de tránsito en Chile.
             </p>
           </div>
 
@@ -26,12 +26,12 @@ export function Footer() {
               </li>
               <li>
                 <a href="/privacidad" className="text-gray-400 hover:text-white transition">
-                  PolÃ­tica de Privacidad
+                  Política de Privacidad
                 </a>
               </li>
               <li>
                 <a href="/terminos" className="text-gray-400 hover:text-white transition">
-                  TÃ©rminos de Servicio
+                  Términos de Servicio
                 </a>
               </li>
             </ul>
@@ -70,7 +70,7 @@ export function Footer() {
 
         <div className="border-t border-gray-800 pt-8">
           <p className="text-sm text-gray-400 text-center">
-            Â© {currentYear} Prescribe Tu Multa. Este anÃ¡lisis es informativo y no constituye asesoramiento legal.
+            © {currentYear} Prescribe Tu Multa. Este análisis es informativo y no constituye asesoramiento legal.
           </p>
         </div>
       </div>

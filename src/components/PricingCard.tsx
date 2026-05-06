@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 export function PricingCard() {
   return (
@@ -8,27 +8,27 @@ export function PricingCard() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
           {/* Free Tier */}
           <div className="card">
-            <h3 className="text-2xl font-bold mb-4">AnÃ¡lisis Preliminar</h3>
+            <h3 className="text-2xl font-bold mb-4">Análisis Preliminar</h3>
             <div className="text-4xl font-bold text-blue-600 mb-6">Gratis</div>
             <ul className="space-y-3 mb-8 text-gray-700">
               <li className="flex items-start gap-3">
-                <span>âœ…</span>
-                <span>AnÃ¡lisis automÃ¡tico de prescripciÃ³n</span>
+                <span>✅</span>
+                <span>Análisis automático de prescripción</span>
               </li>
               <li className="flex items-start gap-3">
-                <span>âœ…</span>
+                <span>✅</span>
                 <span>Resultados preliminares</span>
               </li>
               <li className="flex items-start gap-3">
-                <span>âœ…</span>
+                <span>✅</span>
                 <span>Resumen de multas prescritas</span>
               </li>
               <li className="flex items-start gap-3">
-                <span>âŒ</span>
+                <span>❌</span>
                 <span className="text-gray-500">Documentos legales</span>
               </li>
             </ul>
-            <button className="w-full button-secondary">Comenzar AnÃ¡lisis</button>
+            <button className="w-full button-secondary">Comenzar Análisis</button>
           </div>
 
           {/* Paid Tier */}
@@ -38,26 +38,26 @@ export function PricingCard() {
             </div>
             <h3 className="text-2xl font-bold mb-4 mt-4">Informe Completo</h3>
             <div className="text-4xl font-bold text-blue-600 mb-2">$49,900</div>
-            <p className="text-gray-600 mb-6 text-sm">Ãšnico pago</p>
+            <p className="text-gray-600 mb-6 text-sm">Único pago</p>
             <ul className="space-y-3 mb-8 text-gray-700">
               <li className="flex items-start gap-3">
-                <span>âœ…</span>
-                <span>AnÃ¡lisis automÃ¡tico de prescripciÃ³n</span>
+                <span>✅</span>
+                <span>Análisis automático de prescripción</span>
               </li>
               <li className="flex items-start gap-3">
-                <span>âœ…</span>
+                <span>✅</span>
                 <span>Resultados preliminares</span>
               </li>
               <li className="flex items-start gap-3">
-                <span>âœ…</span>
+                <span>✅</span>
                 <span>Informe detallado en PDF</span>
               </li>
               <li className="flex items-start gap-3">
-                <span>âœ…</span>
+                <span>✅</span>
                 <span>Solicitudes por tribunal</span>
               </li>
               <li className="flex items-start gap-3">
-                <span>âœ…</span>
+                <span>✅</span>
                 <span>Listo para presentar</span>
               </li>
             </ul>
@@ -68,4 +68,3 @@ export function PricingCard() {
     </section>
   );
 }
-

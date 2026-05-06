@@ -4,28 +4,28 @@ import { useState } from 'react';
 
 const faqs = [
   {
-    question: 'Â¿QuÃ© es la prescripciÃ³n de una multa?',
-    answer: 'La prescripciÃ³n es un mecanismo legal que extingue la obligaciÃ³n de pago despuÃ©s de cierto tiempo. En Chile, las multas de trÃ¡nsito prescriben despuÃ©s de 3 aÃ±os desde su ingreso al Registro de Multas No Pagadas (RMNP).',
+    question: '¿Qué es la prescripción de una multa?',
+    answer: 'La prescripción es un mecanismo legal que extingue la obligación de pago después de cierto tiempo. En Chile, las multas de tránsito prescriben después de 3 años desde su ingreso al Registro de Multas No Pagadas (RMNP).',
   },
   {
-    question: 'Â¿CÃ³mo obtengo mi certificado RMNP?',
-    answer: 'Puedes obtener tu certificado en el Registro Civil o a travÃ©s del portal ChileAtiende. Busca "Certificado de Multas de TrÃ¡nsito No Pagadas" y sigue el proceso online.',
+    question: '¿Cómo obtengo mi certificado RMNP?',
+    answer: 'Puedes obtener tu certificado en el Registro Civil o a través del portal ChileAtiende. Busca "Certificado de Multas de Tránsito No Pagadas" y sigue el proceso online.',
   },
   {
-    question: 'Â¿Es este anÃ¡lisis vinculante?',
-    answer: 'No. Este anÃ¡lisis es informativo y preliminar. La decisiÃ³n final sobre prescripciÃ³n corresponde exclusivamente al tribunal. Te recomendamos consultar con un abogado antes de presentar cualquier solicitud.',
+    question: '¿Es este análisis vinculante?',
+    answer: 'No. Este análisis es informativo y preliminar. La decisión final sobre prescripción corresponde exclusivamente al tribunal. Te recomendamos consultar con un abogado antes de presentar cualquier solicitud.',
   },
   {
-    question: 'Â¿CuÃ¡nto cuesta el informe completo?',
-    answer: 'El informe completo cuesta $49,900 (pago Ãºnico). Incluye documentos legales listos para presentar en tribunal segÃºn las multas prescritas que encuentres.',
+    question: '¿Cuánto cuesta el informe completo?',
+    answer: 'El informe completo cuesta $49,900 (pago único). Incluye documentos legales listos para presentar en tribunal según las multas prescritas que encuentres.',
   },
   {
-    question: 'Â¿QuÃ© incluye el informe completo?',
-    answer: 'El informe incluye: anÃ¡lisis detallado en HTML/PDF, solicitudes de prescripciÃ³n personalizadas por tribunal, y toda la documentaciÃ³n necesaria para presentar en juzgados.',
+    question: '¿Qué incluye el informe completo?',
+    answer: 'El informe incluye: análisis detallado en HTML/PDF, solicitudes de prescripción personalizadas por tribunal, y toda la documentación necesaria para presentar en juzgados.',
   },
   {
-    question: 'Â¿Es seguro compartir mi certificado?',
-    answer: 'SÃ­. Tu certificado se procesa localmente y se elimina despuÃ©s del anÃ¡lisis. No compartimos datos con terceros. Consulta nuestra polÃ­tica de privacidad para mÃ¡s detalles.',
+    question: '¿Es seguro compartir mi certificado?',
+    answer: 'Sí. Tu certificado se procesa localmente y se elimina después del análisis. No compartimos datos con terceros. Consulta nuestra política de privacidad para más detalles.',
   },
 ];
 
@@ -45,7 +45,7 @@ export function FAQ() {
               >
                 {faq.question}
                 <span className={`transform transition ${openIndex === index ? 'rotate-180' : ''}`}>
-                  â–¼
+                  ▼
                 </span>
               </button>
               {openIndex === index && (
