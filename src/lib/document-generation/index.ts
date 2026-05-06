@@ -1,4 +1,4 @@
-﻿import { AnalysisResult, Fine } from '@/lib/prescripcion-rmnp';
+import { AnalysisResult, Fine } from '@/lib/prescripcion-rmnp';
 
 export function generatePrescriptionReport(analysis: AnalysisResult): string {
   const html = `
@@ -6,7 +6,7 @@ export function generatePrescriptionReport(analysis: AnalysisResult): string {
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Informe de PrescripciÃ³n - ${analysis.certificate.vehiclePlateNormalized}</title>
+  <title>Informe de Prescripción - ${analysis.certificate.vehiclePlateNormalized}</title>
   <style>
     body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
     .header { border-bottom: 3px solid #1e3a5f; padding-bottom: 20px; margin-bottom: 30px; }
@@ -26,26 +26,26 @@ export function generatePrescriptionReport(analysis: AnalysisResult): string {
 </head>
 <body>
   <div class="header">
-    <h1>âš–ï¸ Informe de PrescripciÃ³n de Multas de TrÃ¡nsito</h1>
+    <h1>⚖️ Informe de Prescripción de Multas de Tránsito</h1>
     <p><strong>Patente:</strong> ${analysis.certificate.vehiclePlateNormalized}</p>
-    <p><strong>Fecha de EmisiÃ³n del Certificado:</strong> ${analysis.certificate.issueDate}</p>
+    <p><strong>Fecha de Emisión del Certificado:</strong> ${analysis.certificate.issueDate}</p>
     <p><strong>Referencia de Solicitud:</strong> ${analysis.requestId}</p>
-    <p><strong>Fecha de AnÃ¡lisis:</strong> ${new Date(analysis.extractedAt).toLocaleDateString('es-CL')}</p>
+    <p><strong>Fecha de Análisis:</strong> ${new Date(analysis.extractedAt).toLocaleDateString('es-CL')}</p>
   </div>
 
   <div class="section summary-box">
-    <h2>ðŸ“Š Resumen</h2>
+    <h2>📊 Resumen</h2>
     <p><strong>Total de multas detectadas:</strong> ${analysis.summary.totalFines}</p>
     <p><strong>Multas potencialmente prescritas:</strong> <span style="color: #059669; font-weight: bold;">${analysis.summary.prescribedCount}</span></p>
     <p><strong>Multas no prescritas:</strong> <span style="color: #dc2626; font-weight: bold;">${analysis.summary.notPrescribedCount}</span></p>
-    <p><strong>Multas que requieren revisiÃ³n:</strong> <span style="color: #d97706; font-weight: bold;">${analysis.summary.reviewCount}</span></p>
+    <p><strong>Multas que requieren revisión:</strong> <span style="color: #d97706; font-weight: bold;">${analysis.summary.reviewCount}</span></p>
     <p><strong>Monto total:</strong> ${analysis.summary.totalAmount !== null ? `$${analysis.summary.totalAmount.toLocaleString('es-CL')}` : 'N/A'}</p>
     <p><strong>Monto potencialmente prescrito:</strong> <span style="color: #059669; font-weight: bold;">${analysis.summary.prescribedAmount !== null ? `$${analysis.summary.prescribedAmount.toLocaleString('es-CL')}` : 'N/A'}</span></p>
   </div>
 
   ${analysis.warnings.length > 0 ? `
   <div class="section disclaimer">
-    <h3>âš ï¸ Advertencias</h3>
+    <h3>Advertencias</h3>
     <ul>
       ${analysis.warnings.map(w => `<li>${w}</li>`).join('')}
     </ul>
@@ -53,16 +53,16 @@ export function generatePrescriptionReport(analysis: AnalysisResult): string {
   ` : ''}
 
   <div class="section">
-    <h2>ðŸ“‹ Detalle de Multas</h2>
+    <h2>📋 Detalle de Multas</h2>
     <table>
       <thead>
         <tr>
           <th>ID Multa</th>
-          <th>InfracciÃ³n</th>
+          <th>Infracción</th>
           <th>Tribunal</th>
-          <th>AÃ±o ROL</th>
+          <th>Año ROL</th>
           <th>Fecha Ingreso RMNP</th>
-          <th>AÃ±os Transcurridos</th>
+          <th>Años Transcurridos</th>
           <th>Estado</th>
         </tr>
       </thead>
@@ -75,7 +75,7 @@ export function generatePrescriptionReport(analysis: AnalysisResult): string {
             <td>${fine.rolYear}</td>
             <td>${fine.rmnpEntryDate || '-'}</td>
             <td>${fine.yearsElapsed ? fine.yearsElapsed.toFixed(2) : '-'}</td>
-            <td><strong>${fine.prescriptionStatus === 'PRESCRITA' ? 'âœ… PRESCRITA' : fine.prescriptionStatus === 'NO_PRESCRITA' ? 'âŒ NO PRESCRITA' : 'âš ï¸ REVISIÃ“N'}</strong></td>
+            <td><strong>${fine.prescriptionStatus === 'PRESCRITA' ? '✅ PRESCRITA' : fine.prescriptionStatus === 'NO_PRESCRITA' ? '❌ NO PRESCRITA' : 'REVISIÓN'}</strong></td>
           </tr>
         `).join('')}
       </tbody>
@@ -83,25 +83,25 @@ export function generatePrescriptionReport(analysis: AnalysisResult): string {
   </div>
 
   <div class="section">
-    <h2>ðŸ“Œ MetodologÃ­a</h2>
-    <p>Este anÃ¡lisis se basa en la normativa de prescripciÃ³n de multas de trÃ¡nsito en Chile, donde una multa se considera prescrita si han transcurrido <strong>3 aÃ±os o mÃ¡s</strong> desde su ingreso al Registro de Multas de TrÃ¡nsito No Pagadas (RMNP).</p>
-    <p>La prescripciÃ³n es un mecanismo legal que extingue la obligaciÃ³n de pago despuÃ©s de cierto tiempo sin ejercicio del derecho.</p>
+    <h2>📌 Metodología</h2>
+    <p>Este análisis se basa en la normativa de prescripción de multas de tránsito en Chile, donde una multa se considera prescrita si han transcurrido <strong>3 años o más</strong> desde su ingreso al Registro de Multas de Tránsito No Pagadas (RMNP).</p>
+    <p>La prescripción es un mecanismo legal que extingue la obligación de pago después de cierto tiempo sin ejercicio del derecho.</p>
   </div>
 
   <div class="section disclaimer">
-    <h3>âš ï¸ Importante - ExenciÃ³n de Responsabilidad</h3>
-    <p>Este informe es de carÃ¡cter informativo y preliminar. <strong>No constituye asesoramiento legal</strong>. La decisiÃ³n final sobre la prescripciÃ³n de una multa corresponde exclusivamente al tribunal competente.</p>
+    <h3>Importante - Exención de Responsabilidad</h3>
+    <p>Este informe es de carácter informativo y preliminar. <strong>No constituye asesoramiento legal</strong>. La decisión final sobre la prescripción de una multa corresponde exclusivamente al tribunal competente.</p>
     <p>Se recomienda:</p>
     <ul>
       <li>Consultar con un abogado especializado antes de presentar cualquier solicitud</li>
-      <li>Verificar la informaciÃ³n con los documentos originales</li>
-      <li>Considerar los plazos de presentaciÃ³n segÃºn cada tribunal</li>
+      <li>Verificar la información con los documentos originales</li>
+      <li>Considerar los plazos de presentación según cada tribunal</li>
     </ul>
   </div>
 
   <div class="footer">
     <p>Informe generado por Prescribe Tu Multa - ${new Date().toLocaleDateString('es-CL')}</p>
-    <p>Â© 2026 Prescribe Tu Multa. Todos los derechos reservados.</p>
+    <p>© 2026 Prescribe Tu Multa. Todos los derechos reservados.</p>
   </div>
 </body>
 </html>
@@ -127,13 +127,13 @@ export function generatePrescriptionRequestDrafts(analysis: AnalysisResult): Rec
 
   prescribedByCourtMap.forEach((fines, court) => {
     const rolesStr = fines.map(f => `${f.rol}/${f.rolYear}`).join(', ');
-    const multas = fines.map(f => `â€¢ ${f.infraction} (Rol: ${f.rol}/${f.rolYear})`).join('\n');
+    const multas = fines.map(f => `• ${f.infraction} (Rol: ${f.rol}/${f.rolYear})`).join('\n');
 
     const draft = `
-JUZGADO DE POLICÃA LOCAL
+JUZGADO DE POLICÍA LOCAL
 ${court}
 
-SOLICITUD DE PRESCRIPCIÃ“N DE MULTA(S)
+SOLICITUD DE PRESCRIPCIÓN DE MULTA(S)
 
 Patente: ${analysis.certificate.vehiclePlateNormalized}
 Propietario: ${analysis.certificate.ownerName || '[Nombre del propietario]'}
@@ -141,26 +141,26 @@ R.U.N.: ${analysis.certificate.ownerRun || '[RUN del propietario]'}
 
 ANTECEDENTES:
 
-He tenido constancia de que en mi contra existen registro(s) de multa(s) de trÃ¡nsito en el Registro de Multas de TrÃ¡nsito No Pagadas (RMNP). EspecÃ­ficamente, las siguientes:
+He tenido constancia de que en mi contra existen registro(s) de multa(s) de tránsito en el Registro de Multas de Tránsito No Pagadas (RMNP). Específicamente, las siguientes:
 
 ${multas}
 
 HECHOS:
 
-Conforme a los antecedentes que acompaÃ±an, estas multas fueron ingresadas al RMNP hace mÃ¡s de tres (3) aÃ±os, por lo que se encuentran prescritas conforme a lo establecido en la normativa vigente.
+Conforme a los antecedentes que acompañan, estas multas fueron ingresadas al RMNP hace más de tres (3) años, por lo que se encuentran prescritas conforme a lo establecido en la normativa vigente.
 
 DERECHO:
 
-La prescripciÃ³n es un mecanismo legal que extingue la obligaciÃ³n de pago despuÃ©s de cierto tiempo sin ejercicio del derecho. En el caso de las multas de trÃ¡nsito, el plazo de prescripciÃ³n es de tres (3) aÃ±os contados desde el ingreso a RMNP.
+La prescripción es un mecanismo legal que extingue la obligación de pago después de cierto tiempo sin ejercicio del derecho. En el caso de las multas de tránsito, el plazo de prescripción es de tres (3) años contados desde el ingreso a RMNP.
 
-Conforme a los documentos acompaÃ±ados, las multas identificadas cumplen con este requisito.
+Conforme a los documentos acompañados, las multas identificadas cumplen con este requisito.
 
 PETITORIO:
 
 Por lo anterior, solicitito a S.S. tenga por prescrita(s) la(s) siguiente(s) multa(s):
-${fines.map(f => `- Rol: ${f.rol}/${f.rolYear} (InfracciÃ³n: ${f.infraction})`).join('\n')}
+${fines.map(f => `- Rol: ${f.rol}/${f.rolYear} (Infracción: ${f.infraction})`).join('\n')}
 
-Se acompaÃ±a certificado de multas no pagadas como respaldo de lo solicitado.
+Se acompaña certificado de multas no pagadas como respaldo de lo solicitado.
 
 Respetuosamente,
 
@@ -174,7 +174,7 @@ Fecha: ${new Date().toLocaleDateString('es-CL')}
   });
 
   if (Object.keys(drafts).length === 0) {
-    drafts['_info.txt'] = 'No hay multas prescritas en este anÃ¡lisis. Las solicitudes de prescripciÃ³n se generan solo para multas con estado PRESCRITA.';
+    drafts['_info.txt'] = 'No hay multas prescritas en este análisis. Las solicitudes de prescripción se generan solo para multas con estado PRESCRITA.';
   }
 
   return drafts;
