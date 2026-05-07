@@ -20,7 +20,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       );
     }
 
-    const { data, error } = await supabaseAdminAdmin
+    const { data, error } = await supabaseAdmin
       .from('admin_notes')
       .insert([
         {

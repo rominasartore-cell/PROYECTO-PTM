@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    const { data, error } = await supabaseAdminAdminAdminAdmin
+    const { data, error } = await supabaseAdmin
       .from('analysis_requests')
       .select('status, payment_status');
 
