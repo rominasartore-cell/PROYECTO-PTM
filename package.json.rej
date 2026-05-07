@@ -1,0 +1,9 @@
+diff a/package.json b/package.json	(rejected hunks)
+@@ -11,6 +11,7 @@
+     "test:analyze-pdf": "node scripts/test-analyze-pdf.js"
+   },
+   "dependencies": {
++    "@supabase/supabase-js": "^2.105.3",
+     "clsx": "^2.1.0",
+     "mercadopago": "^2.12.0",
+     "next": "^15.0.0",
