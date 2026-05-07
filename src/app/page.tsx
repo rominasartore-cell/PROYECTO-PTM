@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
 type AnalysisResult = {
@@ -299,14 +300,15 @@ function Header() {
   return (
     <header className="sticky top-0 z-40 border-b border-slate-100 bg-white/90 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
-        <a href="#" className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-600/20">
-            {"\u2713"}
-          </div>
-          <div className="leading-tight">
-            <p className="text-sm font-black text-slate-950">Prescribe tu Multa</p>
-            <p className="text-xs font-bold text-slate-500">Informe documental online</p>
-          </div>
+        <a href="#" className="flex items-center">
+          <Image
+            src="/logo-prescribe-tu-multa.png"
+            alt="Prescribe tu Multa"
+            width={260}
+            height={99}
+            priority
+            className="h-12 w-auto object-contain sm:h-14"
+          />
         </a>
 
         <nav className="hidden items-center gap-8 md:flex">
