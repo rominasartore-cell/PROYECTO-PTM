@@ -1,0 +1,10 @@
+{
+  "name": "Cliente Prueba",
+  "email": "cliente@correo.cl",
+  "plate": "ABCD-12",
+  "totalMultas": 14,
+  "multasSusceptibles": 7,
+  "montoPotencial": 670586,
+  "montoPotencialUtm": 9.5,
+  "valorUtm": 70588
+}

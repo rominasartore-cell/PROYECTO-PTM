@@ -378,7 +378,7 @@ function AnalysisForm({
 }: {
   result: AnalysisResult | null;
   setResult: (result: AnalysisResult | null) => void;
-  resultRef: React.RefObject<HTMLDivElement>;
+  resultRef: React.RefObject<HTMLDivElement | null>;
 }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -534,7 +534,7 @@ function PreliminaryResult({
   name: string;
   email: string;
   plate: string;
-  resultRef: React.RefObject<HTMLDivElement>;
+  resultRef: React.RefObject<HTMLDivElement | null>;
 }) {
   const title = result.eligible ? "Tienes multas que podrian estar prescritas" : "No se detectaron multas susceptibles";
   const subtitle = result.eligible
@@ -782,7 +782,7 @@ function Footer() {
 
 export default function Page() {
   const [result, setResult] = useState<AnalysisResult | null>(null);
-  const resultRef = useRef<HTMLDivElement>(null);
+  const resultRef = useRef<HTMLDivElement | null>(null);
 
   return (
     <main className="min-h-screen bg-white text-slate-950">
