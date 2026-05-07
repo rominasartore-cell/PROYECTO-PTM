@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +11,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
   try {
     const { requestId } = await context.params;
 
-    const { data: request_data, error: requestError } = await supabase
+    const { data: request_data, error: requestError } = await supabaseAdminAdmin
       .from('analysis_requests')
       .select('*')
       .eq('request_id', requestId)
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       );
     }
 
-    const { data: notes, error: notesError } = await supabase
+    const { data: notes, error: notesError } = await supabaseAdminAdmin
       .from('admin_notes')
       .select('*')
       .eq('request_id', requestId)
@@ -61,7 +61,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       updateData.internal_notes = internal_notes;
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdminAdmin
       .from('analysis_requests')
       .update(updateData)
       .eq('request_id', requestId)
