@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import pdfParse from "pdf-parse";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -507,10 +508,7 @@ function parserScore(logs: FineLog[]): number {
 
 async function extractPdfText(buffer: Buffer): Promise<string> {
   try {
-    const req = eval("require");
-    const pdfParse = req("pdf-parse");
     const data = await pdfParse(buffer);
-
     return data?.text || "";
   } catch (error) {
     console.error("PDF_PARSE_ERROR", error);
