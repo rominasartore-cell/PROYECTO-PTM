@@ -55,6 +55,41 @@ function getAccessToken(): string | null {
   );
 }
 
+function isTruthyEnv(value: string | undefined): boolean {
+  return ["true", "1", "yes", "si", "sí"].includes((value || "").toLowerCase().trim());
+}
+
+function shouldUseSandbox(accessToken: string): boolean {
+  return accessToken.trim().startsWith("TEST-") || isTruthyEnv(process.env.MERCADO_PAGO_USE_SANDBOX);
+}
+
+function pickCheckoutUrl(mpData: any, accessToken: string): string | null {
+  const sandbox = shouldUseSandbox(accessToken);
+
+  if (sandbox) {
+    return mpData?.sandbox_init_point || mpData?.init_point || null;
+  }
+
+  return mpData?.init_point || mpData?.sandbox_init_point || null;
+}
+
+function formatMercadoPagoError(mpData: any): string {
+  const parts: string[] = [];
+
+  if (typeof mpData?.message === "string") parts.push(mpData.message);
+  if (typeof mpData?.error === "string") parts.push(mpData.error);
+
+  if (Array.isArray(mpData?.cause)) {
+    for (const cause of mpData.cause) {
+      const code = cause?.code ? `[${cause.code}] ` : "";
+      const description = cause?.description || cause?.message;
+      if (description) parts.push(`${code}${description}`);
+    }
+  }
+
+  return parts.filter(Boolean).join(" | ");
+}
+
 function sanitizeText(value: unknown, fallback = ""): string {
   if (typeof value !== "string") return fallback;
 
@@ -166,7 +201,7 @@ export async function POST(request: Request) {
       items: [
         {
           id: "informe-prescripcion-tag",
-          title: "Informe de prescripción de multas TAG",
+          title: "Informe de prescripción de multas de tránsito",
           description: `Informe completo para patente ${plate}`,
           quantity: 1,
           currency_id: "CLP",
@@ -214,11 +249,28 @@ export async function POST(request: Request) {
     const mpData = await mpResponse.json().catch(() => ({}));
 
     if (!mpResponse.ok) {
+      const mpError = formatMercadoPagoError(mpData);
+
       return Response.json(
         {
           ok: false,
-          error: "Mercado Pago rechazó la creación de la preferencia.",
+          error: mpError
+            ? `Mercado Pago rechazó la creación de la preferencia: ${mpError}`
+            : "Mercado Pago rechazó la creación de la preferencia.",
           status: mpResponse.status,
+          mercadoPago: mpData,
+        },
+        { status: 502 }
+      );
+    }
+
+    const checkoutUrl = pickCheckoutUrl(mpData, accessToken);
+
+    if (!checkoutUrl) {
+      return Response.json(
+        {
+          ok: false,
+          error: "Mercado Pago creó la preferencia, pero no devolvió link de checkout.",
           mercadoPago: mpData,
         },
         { status: 502 }
@@ -228,10 +280,11 @@ export async function POST(request: Request) {
     return Response.json({
       ok: true,
       mock: false,
+      sandbox: shouldUseSandbox(accessToken),
       status: "PAYMENT_CREATED",
       requestId,
       preferenceId: mpData.id,
-      checkoutUrl: mpData.init_point || mpData.sandbox_init_point,
+      checkoutUrl,
       init_point: mpData.init_point,
       sandbox_init_point: mpData.sandbox_init_point,
       external_reference: requestId,
