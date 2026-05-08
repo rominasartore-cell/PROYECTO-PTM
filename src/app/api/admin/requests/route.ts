@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     const limit = 10;
     const offset = (page - 1) * limit;
 
-    let query = supabase
+    let query = supabaseAdmin
       .from('analysis_requests')
       .select('*', { count: 'exact' });
 

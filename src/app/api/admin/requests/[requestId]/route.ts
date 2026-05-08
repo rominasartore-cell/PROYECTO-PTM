@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 
-export const dynamic = 'force-dynamic';
-
 type RouteContext = {
   params: Promise<{ requestId: string }>;
 };
@@ -11,13 +9,28 @@ export async function GET(request: NextRequest, context: RouteContext) {
   try {
     const { requestId } = await context.params;
 
-    const { data: request_data, error: requestError } = await supabaseAdmin
+    if (!requestId) {
+      return NextResponse.json(
+        { ok: false, error: 'Missing requestId' },
+        { status: 400 }
+      );
+    }
+
+    const { data: requestData, error: requestError } = await supabaseAdmin
       .from('analysis_requests')
       .select('*')
       .eq('request_id', requestId)
-      .single();
+      .maybeSingle();
 
-    if (requestError || !request_data) {
+    if (requestError) {
+      console.error('[api/admin/requests/[requestId]] Request error:', requestError);
+      return NextResponse.json(
+        { ok: false, error: requestError.message },
+        { status: 500 }
+      );
+    }
+
+    if (!requestData) {
       return NextResponse.json(
         { ok: false, error: 'Request not found' },
         { status: 404 }
@@ -30,13 +43,19 @@ export async function GET(request: NextRequest, context: RouteContext) {
       .eq('request_id', requestId)
       .order('created_at', { ascending: false });
 
+    if (notesError) {
+      console.error('[api/admin/requests/[requestId]] Notes error:', notesError);
+    }
+
     return NextResponse.json({
       ok: true,
-      data: request_data,
+      request: requestData,
+      data: requestData,
       notes: notes || [],
     });
   } catch (error: any) {
     console.error('[api/admin/requests/[requestId]] Error:', error);
+
     return NextResponse.json(
       { ok: false, error: error?.message || 'Error fetching request' },
       { status: 500 }
@@ -49,38 +68,59 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const { requestId } = await context.params;
     const body = await request.json();
 
-    const { status, internal_notes } = body;
-
-    const updateData: any = { updated_at: new Date().toISOString() };
-
-    if (status) {
-      updateData.status = status;
+    if (!requestId) {
+      return NextResponse.json(
+        { ok: false, error: 'Missing requestId' },
+        { status: 400 }
+      );
     }
 
-    if (internal_notes !== undefined) {
-      updateData.internal_notes = internal_notes;
+    const updateData: Record<string, any> = {
+      updated_at: new Date().toISOString(),
+    };
+
+    if (typeof body.status === 'string') {
+      updateData.status = body.status;
     }
 
-    const { data, error } = await supabaseAdmin
+    if (typeof body.payment_status === 'string') {
+      updateData.payment_status = body.payment_status;
+    }
+
+    if (typeof body.internal_notes === 'string') {
+      updateData.internal_notes = body.internal_notes;
+    }
+
+    const { data: updatedRequest, error } = await supabaseAdmin
       .from('analysis_requests')
       .update(updateData)
       .eq('request_id', requestId)
-      .select()
-      .single();
+      .select('*')
+      .maybeSingle();
 
     if (error) {
+      console.error('[api/admin/requests/[requestId] PATCH] Error:', error);
       return NextResponse.json(
         { ok: false, error: error.message },
         { status: 500 }
       );
     }
 
+    if (!updatedRequest) {
+      return NextResponse.json(
+        { ok: false, error: 'Request not found' },
+        { status: 404 }
+      );
+    }
+
     return NextResponse.json({
       ok: true,
-      data,
+      request: updatedRequest,
+      data: updatedRequest,
     });
   } catch (error: any) {
     console.error('[api/admin/requests/[requestId] PATCH] Error:', error);
+
     return NextResponse.json(
       { ok: false, error: error?.message || 'Error updating request' },
       { status: 500 }
