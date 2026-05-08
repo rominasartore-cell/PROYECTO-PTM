@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import pdfParse from "pdf-parse";
 
 export const runtime = "nodejs";
@@ -722,20 +723,160 @@ export async function POST(request: NextRequest) {
 
     const logs = useParallelParser ? parallelLogs : blockLogs;
 
-    return NextResponse.json(
-      buildResponse(logs, {
-        parserUsado: useParallelParser
-          ? "parallel-fields"
-          : "blocks-by-id-multa",
-        bloquesDetectados: fineBlocks.length,
-        blockScore,
-        parallelScore,
-        idsDetectados: collectIds(text).length,
-        fechasIngresoDetectadas: collectDates(text).length,
-        montosUtmDetectados: collectAmounts(text).length,
-        textoPreview: text.slice(0, 1200),
-      })
+    const analysisResponse = buildResponse(logs, {
+      parserUsado: useParallelParser
+        ? "parallel-fields"
+        : "blocks-by-id-multa",
+      bloquesDetectados: fineBlocks.length,
+      blockScore,
+      parallelScore,
+      idsDetectados: collectIds(text).length,
+      fechasIngresoDetectadas: collectDates(text).length,
+      montosUtmDetectados: collectAmounts(text).length,
+      textoPreview: text.slice(0, 1200),
+    });
+
+    const responseAny = analysisResponse as any;
+    const resultAny =
+      responseAny.result ||
+      responseAny.analysis ||
+      responseAny.analysisResult ||
+      responseAny.preliminaryResult ||
+      responseAny.data ||
+      responseAny;
+
+    const customerName = String(
+      formData.get("name") ||
+        formData.get("fullName") ||
+        formData.get("nombre") ||
+        "Sin nombre"
+    ).trim();
+
+    const customerEmail = String(
+      formData.get("email") ||
+        formData.get("correo") ||
+        formData.get("customer_email") ||
+        ""
+    ).trim();
+
+    const vehiclePlate = String(
+      formData.get("plate") ||
+        formData.get("patente") ||
+        formData.get("vehicle_plate") ||
+        ""
+    )
+      .trim()
+      .toUpperCase();
+
+    const requestId = String(
+      responseAny.requestId ||
+        responseAny.request_id ||
+        resultAny.requestId ||
+        resultAny.request_id ||
+        `ptm-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
     );
+
+    const toNumber = (value: unknown): number => {
+      const numberValue = Number(value);
+      return Number.isFinite(numberValue) ? numberValue : 0;
+    };
+
+    const fineCount = toNumber(
+      resultAny.totalFines ??
+        resultAny.totalMultas ??
+        resultAny.finesTotal ??
+        resultAny.totalFinesDetected ??
+        resultAny.finesCount
+    );
+
+    const prescribedCount = toNumber(
+      resultAny.prescribedCount ??
+        resultAny.multasPotencialmentePrescritas ??
+        resultAny.multasPrescritas ??
+        resultAny.multasSusceptibles ??
+        resultAny.prescribedFinesCount ??
+        resultAny.potentiallyPrescribedCount
+    );
+
+    const totalAmountUtm = toNumber(
+      resultAny.totalPrescribedUtm ??
+        resultAny.sumaTotalUtmPrescritas ??
+        resultAny.totalUtmPrescritas ??
+        resultAny.prescribedUtmTotal ??
+        resultAny.totalUtm ??
+        resultAny.utmTotal
+    );
+
+    const originalFileName = file.name || "certificado.pdf";
+    const safeFileName = originalFileName
+      .replace(/[^a-zA-Z0-9._-]/g, "_")
+      .slice(-120);
+
+    let pdfPath: string | null = null;
+    let pdfUrl: string | null = null;
+
+    try {
+      pdfPath = `${requestId}/${Date.now()}-${safeFileName}`;
+
+      const { error: uploadError } = await supabaseAdmin.storage
+        .from("certificados")
+        .upload(pdfPath, buffer, {
+          contentType: file.type || "application/pdf",
+          upsert: true,
+        });
+
+      if (uploadError) {
+        console.error("[analyze-certificate] Supabase storage upload error:", uploadError);
+        pdfPath = null;
+      }
+    } catch (storageError) {
+      console.error("[analyze-certificate] Unexpected storage error:", storageError);
+      pdfPath = null;
+    }
+
+    const finalResponse = {
+      ...responseAny,
+      requestId,
+      request_id: requestId,
+      pdfPath,
+      pdf_path: pdfPath,
+      pdfFilename: safeFileName,
+      pdf_filename: safeFileName,
+    };
+
+    try {
+      const { error: dbError } = await supabaseAdmin
+        .from("analysis_requests")
+        .upsert(
+          {
+            customer_name: customerName,
+            customer_email: customerEmail,
+            vehicle_plate: vehiclePlate,
+            request_id: requestId,
+            status: "pending",
+            fine_count: fineCount,
+            prescribed_count: prescribedCount,
+            total_amount_utm: totalAmountUtm,
+            utm_value_clp: utmClp,
+            payment_status: "pending",
+            raw_analysis_json: finalResponse,
+            internal_notes: "",
+            pdf_path: pdfPath,
+            pdf_filename: safeFileName,
+            pdf_url: pdfUrl,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "request_id" }
+        );
+
+      if (dbError) {
+        console.error("[analyze-certificate] Supabase upsert error:", dbError);
+      }
+    } catch (dbUnexpectedError) {
+      console.error("[analyze-certificate] Unexpected database error:", dbUnexpectedError);
+    }
+
+    return NextResponse.json(finalResponse);
   } catch (error) {
     console.error("ANALYZE_CERTIFICATE_ERROR", error);
 
