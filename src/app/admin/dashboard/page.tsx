@@ -153,6 +153,9 @@ export default function AdminDashboard() {
   const [newNote, setNewNote] = useState('');
   const [detailLoading, setDetailLoading] = useState(false);
   const [savingNote, setSavingNote] = useState(false);
+  const [resendingEmail, setResendingEmail] = useState(false);
+  const [resendStatus, setResendStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [resendError, setResendError] = useState('');
 
   useEffect(() => {
     const token = localStorage.getItem('ptm-admin-token');
@@ -228,6 +231,8 @@ export default function AdminDashboard() {
     setSelectedId(requestId);
     setSidebarOpen(true);
     setNewNote('');
+    setResendStatus('idle');
+    setResendError('');
     fetchDetail(requestId);
   };
 
@@ -237,6 +242,29 @@ export default function AdminDashboard() {
     setDetail(null);
     setDetailNotes([]);
     setNewNote('');
+    setResendStatus('idle');
+    setResendError('');
+  };
+
+  const handleResendEmail = async () => {
+    if (!selectedId) return;
+    setResendingEmail(true);
+    setResendStatus('idle');
+    setResendError('');
+    try {
+      const res = await fetch(
+        `/api/admin/requests/${encodeURIComponent(selectedId)}/resend-email`,
+        { method: 'POST' }
+      );
+      const payload = await res.json();
+      if (!payload.ok) throw new Error(payload.error || 'Error al reenviar');
+      setResendStatus('success');
+    } catch (err) {
+      setResendStatus('error');
+      setResendError(err instanceof Error ? err.message : 'Error al reenviar correo');
+    } finally {
+      setResendingEmail(false);
+    }
   };
 
   const handleSaveNote = async () => {
@@ -745,17 +773,27 @@ export default function AdminDashboard() {
 
                 {/* Acciones */}
                 <section className="grid grid-cols-2 gap-2 pb-2">
-                  {/* Reenviar correo - pendiente de implementar endpoint */}
+                  <div className="flex flex-col gap-1">
                   <button
-                    disabled
-                    title="Funcionalidad pendiente de implementar"
-                    className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-gray-700/40 border border-gray-600/50 rounded-lg text-xs font-medium text-gray-500 cursor-not-allowed"
+                    onClick={handleResendEmail}
+                    disabled={resendingEmail || resendStatus === 'success'}
+                    className={`flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-medium transition-colors disabled:cursor-not-allowed ${
+                      resendStatus === 'success'
+                        ? 'bg-green-900/40 border border-green-700/50 text-green-400'
+                        : resendStatus === 'error'
+                        ? 'bg-red-900/40 border border-red-700/50 text-red-400 hover:bg-red-900/60'
+                        : 'bg-gray-700 border border-gray-600 text-gray-300 hover:bg-gray-600'
+                    }`}
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                     </svg>
-                    Reenviar correo
+                    {resendingEmail ? 'Enviando...' : resendStatus === 'success' ? 'Enviado ✓' : 'Reenviar correo'}
                   </button>
+                  {resendStatus === 'error' && resendError && (
+                    <p className="text-xs text-red-400 px-1">{resendError}</p>
+                  )}
+                </div>
                   {/* Regenerar documentos - pendiente de implementar endpoint */}
                   <button
                     disabled
