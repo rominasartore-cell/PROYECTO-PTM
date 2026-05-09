@@ -453,17 +453,18 @@ export default function RequestDetailPage() {
                   {/* Descarga */}
                   <div>
                     <p className="mb-2 text-sm font-semibold text-gray-300">Descargar documentos</p>
-                    <span
-                      title="El endpoint /api/download actualmente retorna 501 — pendiente de implementar descarga"
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-gray-700/40 px-3 py-2 text-sm text-gray-500 cursor-not-allowed border border-gray-600/50"
+                    <a
+                      href={`/api/download/${encodeURIComponent(requestId)}`}
+                      download={`informe-prescripcion-${(request.vehicle_plate || requestId).replace(/[^a-z0-9]/gi, '-').toLowerCase()}.html`}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-gray-700 px-3 py-2 text-sm transition hover:bg-gray-600 border border-gray-600"
                     >
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                       </svg>
-                      Descargar documentos
-                    </span>
+                      Descargar documentos (.html)
+                    </a>
                     <p className="mt-1 text-xs text-gray-500">
-                      Pendiente: <code className="text-gray-400">/api/download</code> retorna 501 (no implementado).
+                      Descarga informe + borradores + limitaciones en formato HTML imprimible.
                     </p>
                   </div>
 
