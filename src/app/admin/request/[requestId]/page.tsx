@@ -94,6 +94,9 @@ export default function RequestDetailPage() {
   const [newStatus, setNewStatus] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [drafts, setDrafts] = useState<Record<string, string> | null>(null);
+  const [draftsLoading, setDraftsLoading] = useState(false);
+  const [showDrafts, setShowDrafts] = useState(false);
 
   useEffect(() => {
     const token =
@@ -194,6 +197,35 @@ export default function RequestDetailPage() {
       );
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleLoadDrafts = async () => {
+    if (showDrafts) {
+      setShowDrafts(false);
+      return;
+    }
+    if (drafts) {
+      setShowDrafts(true);
+      return;
+    }
+    setDraftsLoading(true);
+    try {
+      const res = await fetch(
+        `/api/admin/requests/${encodeURIComponent(requestId)}/preview-drafts`
+      );
+      const payload = await res.json();
+      if (payload.ok) {
+        setDrafts(payload.drafts);
+        setShowDrafts(true);
+      } else {
+        alert(payload.error || 'Error al generar borradores');
+      }
+    } catch (err) {
+      console.error('Error loading drafts:', err);
+      alert('Error al cargar borradores');
+    } finally {
+      setDraftsLoading(false);
     }
   };
 
@@ -342,6 +374,101 @@ export default function RequestDetailPage() {
                   </p>
                 </div>
               </div>
+            </div>
+
+            {/* Documentos — usa funciones existentes de src/lib/document-generation */}
+            <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
+              <h2 className="mb-4 text-xl font-bold">Documentos</h2>
+
+              {!request.raw_analysis_json ? (
+                <p className="text-sm text-gray-400">
+                  No hay análisis disponible. Los documentos se generan una vez completado el análisis.
+                </p>
+              ) : (
+                <div className="space-y-5">
+
+                  {/* Informe de prescripción */}
+                  <div>
+                    <p className="mb-2 text-sm font-semibold text-gray-300">Informe de prescripción</p>
+                    <div className="flex flex-wrap gap-2">
+                      <a
+                        href={`/api/admin/requests/${encodeURIComponent(requestId)}/preview-report`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-gray-700 px-3 py-2 text-sm transition hover:bg-gray-600 border border-gray-600"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                        Previsualizar informe
+                      </a>
+                    </div>
+                  </div>
+
+                  {/* Borradores de solicitud */}
+                  <div>
+                    <p className="mb-2 text-sm font-semibold text-gray-300">Borradores de solicitud de prescripción</p>
+                    <button
+                      onClick={handleLoadDrafts}
+                      disabled={draftsLoading}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-gray-700 px-3 py-2 text-sm transition hover:bg-gray-600 disabled:bg-gray-600 border border-gray-600"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      {draftsLoading ? 'Generando...' : showDrafts ? 'Ocultar borradores' : 'Ver borradores'}
+                    </button>
+
+                    {showDrafts && drafts && (
+                      <div className="mt-3 space-y-3">
+                        {Object.entries(drafts).map(([filename, content]) => (
+                          <div key={filename} className="rounded-lg bg-gray-900 p-3 border border-gray-700">
+                            <p className="mb-2 text-xs font-semibold text-gray-400">{filename}</p>
+                            <pre className="max-h-48 overflow-y-auto whitespace-pre-wrap break-words font-mono text-xs text-gray-300">
+                              {content}
+                            </pre>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Instructivo — pendiente */}
+                  <div>
+                    <p className="mb-2 text-sm font-semibold text-gray-300">Instructivo de tramitación</p>
+                    <button
+                      disabled
+                      title="Pendiente de implementar generación de instructivo"
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-gray-700/40 px-3 py-2 text-sm text-gray-500 cursor-not-allowed border border-gray-600/50"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Previsualizar instructivo
+                    </button>
+                    <p className="mt-1 text-xs text-gray-500">Pendiente de conectar endpoint.</p>
+                  </div>
+
+                  {/* Descarga */}
+                  <div>
+                    <p className="mb-2 text-sm font-semibold text-gray-300">Descargar documentos</p>
+                    <span
+                      title="El endpoint /api/download actualmente retorna 501 — pendiente de implementar descarga"
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-gray-700/40 px-3 py-2 text-sm text-gray-500 cursor-not-allowed border border-gray-600/50"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      Descargar documentos
+                    </span>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Pendiente: <code className="text-gray-400">/api/download</code> retorna 501 (no implementado).
+                    </p>
+                  </div>
+
+                </div>
+              )}
             </div>
 
             <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
