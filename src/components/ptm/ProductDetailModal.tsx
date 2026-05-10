@@ -72,6 +72,31 @@ export default function ProductDetailModal({
         throw new Error("No se recibió link de pago.");
       }
 
+      const customerEmail = String(
+        paymentPayload?.email ??
+          paymentPayload?.correo ??
+          paymentPayload?.payerEmail ??
+          ""
+      ).trim();
+
+      const paymentRequestId = String(
+        requestId ??
+          paymentPayload?.requestId ??
+          paymentPayload?.quoteToken ??
+          ""
+      ).trim();
+
+      if (customerEmail) {
+        window.localStorage.setItem("ptm:lastPurchaseEmail", customerEmail);
+
+        if (paymentRequestId) {
+          window.localStorage.setItem(
+            `ptm:purchaseEmail:${paymentRequestId}`,
+            customerEmail
+          );
+        }
+      }
+
       window.location.href = paymentUrl;
     } catch (err) {
       setError(
