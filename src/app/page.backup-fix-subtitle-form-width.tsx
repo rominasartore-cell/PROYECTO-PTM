@@ -340,7 +340,9 @@ function Hero({ result }: { result: AnalysisResult | null }) {
             Tienes multas que podrian estar <span className="text-blue-600">prescritas</span>
           </h1>
 
-          <p className="mt-6 w-full max-w-5xl text-left text-lg font-semibold leading-8 text-slate-600 sm:text-xl">Descubre el monto asociado y obten tu informe para solicitar la prescripcion personalmente.</p>
+          <p className="mt-5 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg">
+            Descubre el monto asociado y obten tu informe para solicitar la prescripcion personalmente.
+          </p>
 
           <div className="mt-6 flex flex-wrap gap-2 text-xs font-black text-slate-600">
             {["Sin promesas falsas", "Basado en tu certificado", "Producto descargable", "Soporte de entrega post-compra"].map((item) => (
@@ -467,8 +469,7 @@ function AnalysisForm({
   }
 
   return (
-    <section id="analizar" className="space-y-6">
-      <div className="mx-auto w-full max-w-2xl rounded-[2rem] border border-slate-200 bg-white p-5 shadow-xl shadow-slate-900/5 sm:p-7">
+    <section id="analizar" className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-xl shadow-slate-900/5 sm:p-7">
       <div>
         <div className="mb-2 inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-black uppercase tracking-widest text-blue-700">
           Analisis preliminar
@@ -520,7 +521,6 @@ function AnalysisForm({
           {"\u{1f512}"} Tu informacion se usa solo para este analisis.
         </div>
       </form>
-      </div>
 
       {result ? <PreliminaryResult result={result} name={name} email={email} plate={plate} resultRef={resultRef} /> : null}
     </section>

@@ -467,8 +467,7 @@ function AnalysisForm({
   }
 
   return (
-    <section id="analizar" className="space-y-6">
-      <div className="mx-auto w-full max-w-2xl rounded-[2rem] border border-slate-200 bg-white p-5 shadow-xl shadow-slate-900/5 sm:p-7">
+    <section id="analizar" className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-xl shadow-slate-900/5 sm:p-7">
       <div>
         <div className="mb-2 inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-black uppercase tracking-widest text-blue-700">
           Analisis preliminar
@@ -479,7 +478,7 @@ function AnalysisForm({
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+      <form onSubmit={handleSubmit} className="mx-auto w-full max-w-2xl mt-6 space-y-4">
         <TextField id="name" label="Nombre completo" value={name} onChange={setName} placeholder="Ej: Juan Perez" autoComplete="name" />
         <TextField id="email" label="Correo electronico" value={email} onChange={setEmail} placeholder="ejemplo@correo.com" type="email" autoComplete="email" />
         <TextField id="plate" label="Patente" value={plate} onChange={(value) => setPlate(formatPlate(value))} placeholder="Ej: ABCD12" maxLength={7} />
@@ -520,7 +519,6 @@ function AnalysisForm({
           {"\u{1f512}"} Tu informacion se usa solo para este analisis.
         </div>
       </form>
-      </div>
 
       {result ? <PreliminaryResult result={result} name={name} email={email} plate={plate} resultRef={resultRef} /> : null}
     </section>

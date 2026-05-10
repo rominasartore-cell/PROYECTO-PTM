@@ -1,0 +1,202 @@
+﻿"use client";
+
+import { useState } from "react";
+
+type ProductDetailModalProps = {
+  open: boolean;
+  onClose: () => void;
+  quoteToken?: string | null;
+  requestId?: string | null;
+  paymentPayload?: Record<string, unknown>;
+};
+
+const PRODUCT_PRICE_CLP = 9990;
+
+function formatCLP(value: number) {
+  return new Intl.NumberFormat("es-CL", {
+    style: "currency",
+    currency: "CLP",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+export default function ProductDetailModal({
+  open,
+  onClose,
+  quoteToken,
+  requestId,
+  paymentPayload,
+}: ProductDetailModalProps) {
+  const [paying, setPaying] = useState(false);
+  const [error, setError] = useState("");
+
+  if (!open) return null;
+
+  async function handlePay() {
+    try {
+      setPaying(true);
+      setError("");
+
+      const response = await fetch("/api/payment/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...(paymentPayload ?? {}),
+          quoteToken: quoteToken ?? paymentPayload?.quoteToken ?? requestId,
+          requestId: requestId ?? paymentPayload?.requestId,
+          product: "informe-completo-prescripcion",
+          amount: PRODUCT_PRICE_CLP,
+        }),
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok || data?.ok === false) {
+        throw new Error(
+          data?.error ||
+            data?.message ||
+            "No se pudo iniciar el pago. Intenta nuevamente."
+        );
+      }
+
+      const paymentUrl =
+        data?.checkoutUrl ||
+        data?.init_point ||
+        data?.sandbox_init_point ||
+        data?.preference?.init_point ||
+        data?.url;
+
+      if (!paymentUrl) {
+        throw new Error("No se recibió link de pago.");
+      }
+
+      window.location.href = paymentUrl;
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Error inesperado al iniciar el pago."
+      );
+      setPaying(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-slate-950/60 px-4 py-6 backdrop-blur-sm">
+      <div className="relative max-h-[92vh] w-full max-w-[620px] overflow-y-auto rounded-[2rem] bg-white p-6 shadow-2xl sm:p-8">
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Cerrar"
+          className="absolute right-5 top-5 flex h-10 w-10 items-center justify-center rounded-full text-3xl leading-none text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+        >
+          ×
+        </button>
+
+        <p className="mb-6 text-sm font-black tracking-[0.16em] text-emerald-600">
+          DETALLE DEL PRODUCTO
+        </p>
+
+        <div className="mb-7 flex gap-5">
+          <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-emerald-50">
+            <span className="text-5xl">📄</span>
+          </div>
+
+          <div className="pr-8">
+            <h2 className="text-3xl font-black leading-tight text-slate-900">
+              Informe completo de análisis + borradores de escritos
+            </h2>
+            <p className="mt-3 text-lg leading-snug text-slate-500">
+              Revisa lo que incluye tu compra antes de continuar al pago.
+            </p>
+          </div>
+        </div>
+
+        <section className="mb-4 rounded-3xl border border-emerald-200 bg-emerald-50/40 p-5">
+          <h3 className="mb-4 flex items-center gap-3 text-2xl font-black text-emerald-700">
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-600 text-white">
+              ✓
+            </span>
+            Incluye:
+          </h3>
+
+          <ul className="space-y-3 text-base font-medium leading-snug text-slate-700">
+            {[
+              "Informe de análisis completo del certificado",
+              "Detalle y estado de cada multa: potencialmente prescrita o vigente",
+              "Borrador editable de solicitud de prescripción",
+              "Guía para tramitación personal paso a paso",
+            ].map((item) => (
+              <li key={item} className="flex gap-3">
+                <span className="mt-0.5 text-emerald-600">✓</span>
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section className="mb-4 rounded-3xl border border-blue-200 bg-blue-50/60 p-5">
+          <h3 className="mb-4 flex items-center gap-3 text-2xl font-black text-blue-700">
+            <span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-blue-600 text-blue-700">
+              !
+            </span>
+            Limitaciones:
+          </h3>
+
+          <ul className="list-disc space-y-3 pl-6 text-base font-medium leading-snug text-slate-700 marker:text-blue-600">
+            <li>Producto informativo y referencial; no garantiza resolución favorable del Tribunal.</li>
+            <li>La eliminación de las multas del RMNP depende exclusivamente de la resolución del Tribunal y/o de las gestiones de la parte interesada.</li>
+            <li>Aplica solo según los antecedentes del certificado subido.</li>
+            <li>La presentación de los escritos es de responsabilidad del solicitante.</li>
+            <li>Los escritos se entregan en formato tipo; cada Tribunal podría exigir formalidades adicionales.</li>
+          </ul>
+        </section>
+
+        <section className="mb-4 rounded-3xl border border-cyan-200 bg-cyan-50 p-5 text-center">
+          <p className="text-lg font-black text-emerald-700">Valor del producto</p>
+          <div className="mt-2 flex items-center justify-center gap-5">
+            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-600 text-4xl font-black text-white">
+              $
+            </span>
+            <p className="text-6xl font-black tracking-tight text-emerald-700">
+              {formatCLP(PRODUCT_PRICE_CLP)}
+            </p>
+          </div>
+          <p className="text-lg font-medium text-slate-600">Pago único</p>
+        </section>
+
+        {error ? (
+          <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
+            {error}
+          </div>
+        ) : null}
+
+        <button
+          type="button"
+          onClick={handlePay}
+          disabled={paying}
+          className="mb-3 flex w-full items-center justify-center gap-3 rounded-2xl bg-emerald-600 px-5 py-4 text-xl font-black text-white shadow-lg transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <span>🔒</span>
+          {paying ? "Abriendo pago..." : "Pagar ahora"}
+        </button>
+
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={paying}
+          className="w-full rounded-2xl border-2 border-emerald-600 px-5 py-4 text-xl font-black text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-60"
+        >
+          Volver
+        </button>
+
+        <p className="mt-4 flex items-center justify-center gap-2 text-base font-medium text-slate-500">
+          <span>🛡️</span>
+          Pago seguro
+        </p>
+      </div>
+    </div>
+  );
+}
