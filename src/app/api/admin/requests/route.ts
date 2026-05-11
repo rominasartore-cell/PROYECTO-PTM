@@ -1,89 +1,49 @@
-import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase-admin";
-import {
-  enrichRequestWithLocalPayment,
-  getLocalPaymentOnlyRows,
-  getRequestId,
-} from "@/lib/admin/payment-admin";
+﻿import { NextRequest, NextResponse } from "next/server";
+import { fetchUnifiedRequests } from "@/lib/admin/payment-admin";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+function numberParam(value: string | null, fallback: number): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const status = searchParams.get("status");
-    const paymentStatus = searchParams.get("payment_status");
-    const search = searchParams.get("search");
-    const page = parseInt(searchParams.get("page") || "1", 10);
-    const limit = 10;
-    const offset = (page - 1) * limit;
 
-    let query = supabaseAdmin
-      .from("analysis_requests")
-      .select("*", { count: "exact" });
+    const page = numberParam(searchParams.get("page"), 1);
+    const limit = Math.min(numberParam(searchParams.get("limit"), 20), 200);
 
-    if (status && status !== "all") {
-      query = query.eq("status", status);
-    }
-
-    if (paymentStatus && paymentStatus !== "all") {
-      query = query.eq("payment_status", paymentStatus);
-    }
-
-    if (search) {
-      query = query.or(
-        `customer_name.ilike.%${search}%,customer_email.ilike.%${search}%,vehicle_plate.ilike.%${search}%`
-      );
-    }
-
-    const { data, count, error } = await query
-      .order("created_at", { ascending: false })
-      .range(offset, offset + limit - 1);
-
-    if (error) {
-      console.error("[api/admin/requests] Error:", error);
-      return NextResponse.json(
-        { ok: false, error: error.message },
-        { status: 500 }
-      );
-    }
-
-    const supabaseRows = data || [];
-
-    const enrichedData = await Promise.all(
-      supabaseRows.map((row) => enrichRequestWithLocalPayment(row))
-    );
-
-    const existingRequestIds = enrichedData.map((row) => getRequestId(row)).filter(Boolean);
-
-    const localOnlyRows =
-      page === 1
-        ? await getLocalPaymentOnlyRows(existingRequestIds, {
-            status,
-            paymentStatus,
-            search,
-          })
-        : [];
-
-    const mergedData = [...localOnlyRows, ...enrichedData].slice(0, limit);
-    const total = (count || 0) + localOnlyRows.length;
+    const result = await fetchUnifiedRequests({
+      page,
+      limit,
+      search: searchParams.get("search") || "",
+      status: searchParams.get("status") || "",
+      paymentStatus: searchParams.get("payment_status") || "",
+      statusFilter: searchParams.get("payment_status") || "",
+    });
 
     return NextResponse.json({
       ok: true,
-      data: mergedData,
-      requests: mergedData,
+      data: result.data,
+      requests: result.requests,
       pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit),
+        page: result.page,
+        limit: result.limit,
+        total: result.total,
+        pages: result.pages,
       },
-      localOnlyPayments: localOnlyRows.length,
     });
   } catch (error: any) {
     console.error("[api/admin/requests] Error:", error);
+
     return NextResponse.json(
-      { ok: false, error: error?.message || "Error fetching requests" },
+      {
+        ok: false,
+        error: error?.message || "Error fetching requests",
+      },
       { status: 500 }
     );
   }
