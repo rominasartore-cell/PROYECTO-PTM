@@ -1,7 +1,5 @@
 "use client";
 
-import PublicSiteHeader from "@/components/ptm/PublicSiteHeader";
-
 
 import PreliminaryResultCard from '@/components/ptm/PreliminaryResultCard';
 import Image from "next/image";
@@ -302,7 +300,30 @@ function TextField({
 
 function Header() {
   return (
-    <PublicSiteHeader />
+    <header className="sticky top-0 z-40 border-b border-slate-100 bg-white/90 backdrop-blur">
+      <div className="mx-auto flex max-w-7xl justify-between px-4 py-3 sm:px-6 lg:px-8">
+        <a href="#" className="flex">
+          <Image
+            src="/logo-prescribe-tu-multa.png"
+            alt="Prescribe tu Multa"
+            width={260}
+            height={99}
+            priority
+            className="h-12 w-auto object-contain sm:h-14"
+          />
+        </a>
+
+        <nav className="hidden gap-8 md:flex">
+          <a href="#analizar" className="text-sm font-bold text-slate-600 transition hover:text-blue-700">Analizar</a>
+          <a href="#como-funciona" className="text-sm font-bold text-slate-600 transition hover:text-blue-700">Como funciona</a>
+          <a href="#servicio" className="text-sm font-bold text-slate-600 transition hover:text-blue-700">Servicio</a>
+          <a href="#preguntas" className="text-sm font-bold text-slate-600 transition hover:text-blue-700">Preguntas</a>
+          <a href="#analizar" className="rounded-full bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700">
+            Analizar mi certificado {"\u2192"}
+          </a>
+        </nav>
+      </div>
+    </header>
   );
 }
 
@@ -319,7 +340,9 @@ function Hero({ result }: { result: AnalysisResult | null }) {
             Tienes multas que podrian estar <span className="text-blue-600">prescritas</span>
           </h1>
 
-          <p className="mt-6 w-full max-w-5xl text-left text-lg font-semibold leading-8 text-slate-600 sm:text-xl">Descubre el monto asociado y obten tu informe para solicitar la prescripcion personalmente.</p>
+          <p className="mt-5 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg">
+            Descubre el monto asociado y obten tu informe para solicitar la prescripcion personalmente.
+          </p>
 
           <div className="mt-6 flex flex-wrap gap-2 text-xs font-black text-slate-600">
             {["Sin promesas falsas", "Basado en tu certificado", "Producto descargable", "Soporte de entrega post-compra"].map((item) => (
@@ -446,8 +469,7 @@ function AnalysisForm({
   }
 
   return (
-    <section id="analizar" className="space-y-6">
-      <div className="mx-auto w-full max-w-2xl rounded-[2rem] border border-slate-200 bg-white p-5 shadow-xl shadow-slate-900/5 sm:p-7">
+    <section id="analizar" className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-xl shadow-slate-900/5 sm:p-7">
       <div>
         <div className="mb-2 inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-black uppercase tracking-widest text-blue-700">
           Analisis preliminar
@@ -499,7 +521,6 @@ function AnalysisForm({
           {"\u{1f512}"} Tu informacion se usa solo para este analisis.
         </div>
       </form>
-      </div>
 
       {result ? <PreliminaryResult result={result} name={name} email={email} plate={plate} resultRef={resultRef} /> : null}
     </section>

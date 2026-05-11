@@ -1,7 +1,5 @@
 "use client";
 
-import PublicSiteHeader from "@/components/ptm/PublicSiteHeader";
-
 
 import PreliminaryResultCard from '@/components/ptm/PreliminaryResultCard';
 import Image from "next/image";
@@ -302,7 +300,30 @@ function TextField({
 
 function Header() {
   return (
-    <PublicSiteHeader />
+    <header className="sticky top-0 z-40 border-b border-slate-100 bg-white/90 backdrop-blur">
+      <div className="mx-auto flex max-w-7xl justify-between px-4 py-3 sm:px-6 lg:px-8">
+        <a href="#" className="flex">
+          <Image
+            src="/logo-prescribe-tu-multa.png"
+            alt="Prescribe tu Multa"
+            width={260}
+            height={99}
+            priority
+            className="h-12 w-auto object-contain sm:h-14"
+          />
+        </a>
+
+        <nav className="hidden gap-8 md:flex">
+          <a href="#analizar" className="text-sm font-bold text-slate-600 transition hover:text-blue-700">Analizar</a>
+          <a href="#como-funciona" className="text-sm font-bold text-slate-600 transition hover:text-blue-700">Como funciona</a>
+          <a href="#servicio" className="text-sm font-bold text-slate-600 transition hover:text-blue-700">Servicio</a>
+          <a href="#preguntas" className="text-sm font-bold text-slate-600 transition hover:text-blue-700">Preguntas</a>
+          <a href="#analizar" className="rounded-full bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700">
+            Analizar mi certificado {"\u2192"}
+          </a>
+        </nav>
+      </div>
+    </header>
   );
 }
 
@@ -315,11 +336,13 @@ function Hero({ result }: { result: AnalysisResult | null }) {
             {"\u2713"} Multas de transito informadas al Registro
           </div>
 
-          <h1 className="w-full max-w-7xl text-5xl font-black leading-none tracking-tight text-slate-950 sm:text-6xl lg:text-7xl">
+          <h1 className="max-w-5xl text-5xl font-black leading-none tracking-tight text-slate-950 sm:text-6xl lg:text-7xl">
             Tienes multas que podrian estar <span className="text-blue-600">prescritas</span>
           </h1>
 
-          <p className="mt-6 w-full max-w-5xl text-left text-lg font-semibold leading-8 text-slate-600 sm:text-xl">Descubre el monto asociado y obten tu informe para solicitar la prescripcion personalmente.</p>
+          <p className="mt-5 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg">
+            Descubre el monto asociado y obten tu informe para solicitar la prescripcion personalmente.
+          </p>
 
           <div className="mt-6 flex flex-wrap gap-2 text-xs font-black text-slate-600">
             {["Sin promesas falsas", "Basado en tu certificado", "Producto descargable", "Soporte de entrega post-compra"].map((item) => (
@@ -446,8 +469,7 @@ function AnalysisForm({
   }
 
   return (
-    <section id="analizar" className="space-y-6">
-      <div className="mx-auto w-full max-w-2xl rounded-[2rem] border border-slate-200 bg-white p-5 shadow-xl shadow-slate-900/5 sm:p-7">
+    <section id="analizar" className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-xl shadow-slate-900/5 sm:p-7">
       <div>
         <div className="mb-2 inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-black uppercase tracking-widest text-blue-700">
           Analisis preliminar
@@ -499,7 +521,6 @@ function AnalysisForm({
           {"\u{1f512}"} Tu informacion se usa solo para este analisis.
         </div>
       </form>
-      </div>
 
       {result ? <PreliminaryResult result={result} name={name} email={email} plate={plate} resultRef={resultRef} /> : null}
     </section>
@@ -551,8 +572,8 @@ function HowItWorks() {
 
   return (
     <section id="como-funciona" className="bg-white py-16 sm:py-20">
-      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto w-full max-w-7xl text-center">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-5xl text-center">
           <p className="text-sm font-black uppercase tracking-widest text-blue-700">Proceso simple</p>
           <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-5xl">Como funciona</h2>
           <p className="mt-4 text-base leading-8 text-slate-600">Tres pasos, todo en linea: subes el certificado, compras el informe y lo recibes por correo dentro de 24 horas.</p>
@@ -584,8 +605,8 @@ function ReportIncludes() {
 
   return (
     <section id="servicio" className="bg-slate-50 py-16 sm:py-20">
-      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid gap-10 lg:items-start">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
           <div>
             <p className="text-sm font-black uppercase tracking-widest text-blue-700">Informe completo</p>
             <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">Que recibe la persona que compra</h2>
@@ -620,8 +641,8 @@ function FAQ() {
 
   return (
     <section id="preguntas" className="bg-white py-16 sm:py-20">
-      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto w-full max-w-7xl text-center">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-5xl text-center">
           <p className="text-sm font-black uppercase tracking-widest text-blue-700">Preguntas</p>
           <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-5xl">Lo basico, sin letra chica ninja</h2>
           <p className="mt-4 text-base leading-8 text-slate-600">Respuestas rapidas antes de comprar.</p>
@@ -646,9 +667,9 @@ function FAQ() {
 function Footer() {
   return (
     <footer className="bg-slate-950 py-12 text-white">
-      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <p className="text-lg font-black text-white">Prescribe tu Multa</p>
-        <p className="mt-4 max-w-7xl text-sm leading-7 text-slate-400">
+        <p className="mt-4 max-w-xl text-sm leading-7 text-slate-400">
           Servicio documental automatizado para analizar multas de transito informadas al Registro de Multas No Pagadas sobre la base del certificado aportado por el usuario.
         </p>
 
@@ -674,7 +695,7 @@ export default function Page() {
       <Hero result={result} />
 
       <section className="bg-gradient-to-b from-emerald-50 to-white px-4 py-12 sm:px-6 lg:px-8">
-        <div className="mx-auto w-full max-w-7xl">
+        <div className="mx-auto max-w-5xl">
           <AnalysisForm result={result} setResult={setResult} resultRef={resultRef} />
         </div>
       </section>

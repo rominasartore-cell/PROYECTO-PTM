@@ -1,48 +1,34 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+﻿import { NextRequest, NextResponse } from "next/server";
+import { supabaseAdmin } from "@/lib/supabase-admin";
+import { buildAdminMetrics } from "@/lib/admin/payment-admin";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const { data, error } = await supabaseAdmin
-      .from('analysis_requests')
-      .select('status, payment_status');
+      .from("analysis_requests")
+      .select("request_id, status, payment_status");
 
     if (error) {
-      console.error('[api/admin/metrics] Error:', error);
+      console.error("[api/admin/metrics] Error:", error);
       return NextResponse.json(
         { ok: false, error: error.message },
         { status: 500 }
       );
     }
 
-    const requests = data || [];
-    const total = requests.length;
-    const pending = requests.filter((r) => r.status === 'pending').length;
-    const approved = requests.filter((r) => r.status === 'approved').length;
-    const paid = requests.filter((r) => r.status === 'paid').length;
-    const rejected = requests.filter((r) => r.status === 'rejected').length;
-    const paymentApproved = requests.filter((r) => r.payment_status === 'approved').length;
+    const metrics = await buildAdminMetrics(data || []);
 
     return NextResponse.json({
       ok: true,
-      metrics: {
-        total,
-        pending,
-        approved,
-        paid,
-        rejected,
-        paymentApproved,
-      },
+      metrics,
     });
   } catch (error: any) {
-    console.error('[api/admin/metrics] Error:', error);
+    console.error("[api/admin/metrics] Error:", error);
     return NextResponse.json(
-      { ok: false, error: error?.message || 'Error fetching metrics' },
+      { ok: false, error: error?.message || "Error fetching metrics" },
       { status: 500 }
     );
   }
 }
-
-
