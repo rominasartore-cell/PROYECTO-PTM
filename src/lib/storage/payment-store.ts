@@ -85,7 +85,11 @@ type SavePaymentWebhookUpdateInput = {
   mercadoPago?: Record<string, unknown>;
 };
 
-const STORAGE_ROOT = join(process.cwd(), "storage");
+const IS_VERCEL = Boolean(process.env.VERCEL || process.env.VERCEL_ENV);
+const STORAGE_ROOT = IS_VERCEL
+  ? join("/tmp", "ptm-storage")
+  : join(process.cwd(), "storage");
+
 const PAYMENTS_INDEX = join(STORAGE_ROOT, "payments-index.json");
 
 function nowIso(): string {
@@ -103,7 +107,7 @@ function paymentFilePath(requestId: string): string {
   return join(STORAGE_ROOT, safeRequestId(requestId), "payment.json");
 }
 
-async function ensureDir(dir: string) {
+async function ensureDir(dir: string): Promise<void> {
   await fs.mkdir(dir, { recursive: true });
 }
 
@@ -257,52 +261,69 @@ async function listPaymentsFromSupabase(): Promise<StoredPayment[]> {
 }
 
 async function savePaymentLocally(payment: StoredPayment): Promise<void> {
-  const requestId = safeRequestId(payment.requestId);
-  const dir = join(STORAGE_ROOT, requestId);
+  try {
+    const requestId = safeRequestId(payment.requestId);
+    const dir = join(STORAGE_ROOT, requestId);
 
-  await ensureDir(dir);
-  await fs.writeFile(paymentFilePath(requestId), JSON.stringify(payment, null, 2), "utf8");
+    await ensureDir(dir);
+    await fs.writeFile(paymentFilePath(requestId), JSON.stringify(payment, null, 2), "utf8");
 
-  const index = await readJsonFile<Record<string, unknown>>(PAYMENTS_INDEX, {});
-  index[requestId] = {
-    requestId,
-    status: payment.status,
-    amount: payment.amount,
-    customerEmail: payment.customerEmail || payment.payerEmail || null,
-    customerName: payment.customerName,
-    plate: payment.plate,
-    product: payment.product,
-    mock: payment.mock,
-    sandbox: payment.sandbox,
-    paidAt: payment.paidAt,
-    createdAt: payment.createdAt,
-    updatedAt: payment.updatedAt,
-  };
+    const index = await readJsonFile<Record<string, unknown>>(PAYMENTS_INDEX, {});
+    index[requestId] = {
+      requestId,
+      status: payment.status,
+      amount: payment.amount,
+      customerEmail: payment.customerEmail || payment.payerEmail || null,
+      customerName: payment.customerName,
+      plate: payment.plate,
+      product: payment.product,
+      mock: payment.mock,
+      sandbox: payment.sandbox,
+      paidAt: payment.paidAt,
+      createdAt: payment.createdAt,
+      updatedAt: payment.updatedAt,
+    };
 
-  await ensureDir(STORAGE_ROOT);
-  await fs.writeFile(PAYMENTS_INDEX, JSON.stringify(index, null, 2), "utf8");
+    await ensureDir(STORAGE_ROOT);
+    await fs.writeFile(PAYMENTS_INDEX, JSON.stringify(index, null, 2), "utf8");
+  } catch (error) {
+    console.warn("[payment-store] Local backup skipped:", error);
+  }
 }
 
 async function getPaymentLocally(requestId: string): Promise<StoredPayment | null> {
-  const safeId = safeRequestId(requestId);
-  return readJsonFile<StoredPayment | null>(paymentFilePath(safeId), null);
+  try {
+    const safeId = safeRequestId(requestId);
+    return readJsonFile<StoredPayment | null>(paymentFilePath(safeId), null);
+  } catch {
+    return null;
+  }
 }
 
 async function listPaymentsLocally(): Promise<StoredPayment[]> {
-  const index = await readJsonFile<Record<string, any>>(PAYMENTS_INDEX, {});
-  const ids = Object.keys(index);
+  try {
+    const index = await readJsonFile<Record<string, any>>(PAYMENTS_INDEX, {});
+    const ids = Object.keys(index);
 
-  const payments = await Promise.all(ids.map((id) => getPaymentLocally(id)));
+    const payments = await Promise.all(ids.map((id) => getPaymentLocally(id)));
 
-  return payments
-    .filter(Boolean)
-    .sort((a, b) => String(b?.updatedAt || "").localeCompare(String(a?.updatedAt || ""))) as StoredPayment[];
+    return payments
+      .filter(Boolean)
+      .sort((a, b) => String(b?.updatedAt || "").localeCompare(String(a?.updatedAt || ""))) as StoredPayment[];
+  } catch {
+    return [];
+  }
 }
 
 function mergePayment(base: StoredPayment | null, patch: Partial<StoredPayment>): StoredPayment {
   const timestamp = nowIso();
   const status = normalizeStatus(patch.status || base?.status || "unknown");
-  const customerEmail = patch.customerEmail ?? patch.payerEmail ?? base?.customerEmail ?? base?.payerEmail ?? null;
+  const customerEmail =
+    patch.customerEmail ??
+    patch.payerEmail ??
+    base?.customerEmail ??
+    base?.payerEmail ??
+    null;
 
   return {
     requestId: patch.requestId || base?.requestId || "",
@@ -394,7 +415,12 @@ export async function savePaymentWebhookUpdate(input: SavePaymentWebhookUpdateIn
   const existing = await getStoredPayment(input.requestId);
   const timestamp = nowIso();
   const status = normalizeStatus(input.status);
-  const email = input.customerEmail || input.payerEmail || existing?.customerEmail || existing?.payerEmail || null;
+  const email =
+    input.customerEmail ||
+    input.payerEmail ||
+    existing?.customerEmail ||
+    existing?.payerEmail ||
+    null;
 
   const updated = mergePayment(existing, {
     requestId: safeRequestId(input.requestId),
