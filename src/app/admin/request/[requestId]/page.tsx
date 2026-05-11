@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 
 type RequestDetail = {
   id: string;
@@ -15,6 +15,41 @@ type RequestDetail = {
   total_amount_utm: number | null;
   utm_value_clp: number | null;
   payment_status: string | null;
+  purchase_status?: string | null;
+  payment_amount?: number | null;
+  payment_paid_at?: string | null;
+  payment_id?: string | null;
+  preference_id?: string | null;
+  payment_customer_email?: string | null;
+  payment_mock?: boolean;
+  payment_sandbox?: boolean;
+  payment_local_record?: boolean;
+  local_only?: boolean;
+  payment?: {
+    requestId?: string;
+    externalReference?: string | null;
+    status?: string | null;
+    rawStatus?: string | null;
+    statusDetail?: string | null;
+    amount?: number | null;
+    paidAt?: string | null;
+    paymentId?: string | null;
+    preferenceId?: string | null;
+    customerEmail?: string | null;
+    customerName?: string | null;
+    plate?: string | null;
+    product?: string | null;
+    mock?: boolean;
+    sandbox?: boolean;
+    checkoutUrl?: string | null;
+    updatedAt?: string | null;
+    createdAt?: string | null;
+    events?: Array<{
+      at: string;
+      type: string;
+      payload?: Record<string, unknown>;
+    }>;
+  } | null;
   raw_analysis_json: any;
   internal_notes: string | null;
   created_at: string;
@@ -34,53 +69,138 @@ type Note = {
 function formatCLP(value: number | null | undefined): string {
   const safeValue = Number(value || 0);
 
-  return safeValue.toLocaleString('es-CL', {
-    style: 'currency',
-    currency: 'CLP',
+  return safeValue.toLocaleString("es-CL", {
+    style: "currency",
+    currency: "CLP",
     maximumFractionDigits: 0,
   });
 }
 
 function formatDate(value: string | null | undefined): string {
-  if (!value) return 'Sin fecha';
+  if (!value) return "Sin fecha";
 
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
-    return 'Fecha inválida';
+    return "Fecha invalida";
   }
 
-  return date.toLocaleString('es-CL');
+  return date.toLocaleString("es-CL", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function getStatusLabel(status: string | null | undefined): string {
   switch (status) {
-    case 'pending':
-      return 'Pendiente';
-    case 'approved':
-      return 'Aprobado';
-    case 'paid':
-      return 'Pagado';
-    case 'rejected':
-      return 'Rechazado';
-    case 'error':
-      return 'Error';
+    case "processing":
+    case "pending":
+      return "En proceso";
+    case "completed":
+    case "approved":
+      return "Completada";
+    case "paid":
+      return "Pagada";
+    case "failed":
+    case "rejected":
+      return "Rechazada";
+    case "error":
+      return "Error";
     default:
-      return status || 'Sin estado';
+      return status || "Sin estado";
+  }
+}
+
+function getStatusClass(status: string | null | undefined): string {
+  switch (status) {
+    case "processing":
+    case "pending":
+      return "bg-yellow-900/50 text-yellow-300 border border-yellow-700/50";
+    case "completed":
+    case "approved":
+      return "bg-blue-900/50 text-blue-300 border border-blue-700/50";
+    case "paid":
+      return "bg-green-900/50 text-green-300 border border-green-700/50";
+    case "failed":
+    case "rejected":
+      return "bg-red-900/50 text-red-300 border border-red-700/50";
+    default:
+      return "bg-gray-700 text-gray-300 border border-gray-600";
   }
 }
 
 function getPaymentStatusLabel(status: string | null | undefined): string {
   switch (status) {
-    case 'pending':
-      return 'Pendiente';
-    case 'approved':
-      return 'Aprobado';
-    case 'failed':
-      return 'Fallido';
+    case "approved":
+    case "paid":
+      return "Pago aprobado";
+    case "pending":
+    case "created":
+    case "in_process":
+      return "Pago pendiente";
+    case "rejected":
+    case "failed":
+    case "cancelled":
+    case "canceled":
+      return "Pago rechazado";
     default:
-      return status || 'No procesado';
+      return status || "No procesado";
   }
+}
+
+function getPaymentStatusClass(status: string | null | undefined): string {
+  switch (status) {
+    case "approved":
+    case "paid":
+      return "bg-green-900/50 text-green-300 border border-green-700/50";
+    case "pending":
+    case "created":
+    case "in_process":
+      return "bg-yellow-900/50 text-yellow-300 border border-yellow-700/50";
+    case "rejected":
+    case "failed":
+    case "cancelled":
+    case "canceled":
+      return "bg-red-900/50 text-red-300 border border-red-700/50";
+    default:
+      return "bg-gray-700 text-gray-400 border border-gray-600";
+  }
+}
+
+function Badge({
+  children,
+  className,
+}: {
+  children: string;
+  className: string;
+}) {
+  return (
+    <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${className}`}>
+      {children}
+    </span>
+  );
+}
+
+function InfoRow({
+  label,
+  value,
+  valueClassName = "text-gray-100",
+}: {
+  label: string;
+  value: string;
+  valueClassName?: string;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4 border-b border-gray-700/60 py-3 last:border-0">
+      <span className="text-sm text-gray-400">{label}</span>
+      <span className={`text-right text-sm font-medium break-all ${valueClassName}`}>
+        {value}
+      </span>
+    </div>
+  );
 }
 
 export default function RequestDetailPage() {
@@ -90,21 +210,22 @@ export default function RequestDetailPage() {
 
   const [request, setRequest] = useState<RequestDetail | null>(null);
   const [notes, setNotes] = useState<Note[]>([]);
-  const [newNote, setNewNote] = useState('');
-  const [newStatus, setNewStatus] = useState('');
+  const [newNote, setNewNote] = useState("");
+  const [newStatus, setNewStatus] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
   const [drafts, setDrafts] = useState<Record<string, string> | null>(null);
   const [draftsLoading, setDraftsLoading] = useState(false);
   const [showDrafts, setShowDrafts] = useState(false);
 
   useEffect(() => {
     const token =
-      localStorage.getItem('ptm-admin-token') ||
-      localStorage.getItem('ptm-admin-session');
+      localStorage.getItem("ptm-admin-token") ||
+      localStorage.getItem("ptm-admin-session");
 
     if (!token) {
-      router.push('/admin');
+      router.push("/admin");
       return;
     }
 
@@ -114,7 +235,7 @@ export default function RequestDetailPage() {
 
   useEffect(() => {
     if (request) {
-      setNewStatus(request.status || 'pending');
+      setNewStatus(request.status || "processing");
     }
   }, [request]);
 
@@ -123,19 +244,19 @@ export default function RequestDetailPage() {
 
     try {
       const res = await fetch(`/api/admin/requests/${encodeURIComponent(requestId)}`, {
-        cache: 'no-store',
+        cache: "no-store",
       });
 
       const payload = await res.json();
 
       if (!res.ok || !payload.ok) {
-        throw new Error(payload.error || 'Error al cargar solicitud');
+        throw new Error(payload.error || "Error al cargar solicitud");
       }
 
       const requestPayload = payload.request || payload.data;
 
       if (!requestPayload) {
-        throw new Error('La API no devolvió la solicitud.');
+        throw new Error("La API no devolvio la solicitud.");
       }
 
       const normalizedRequest = Array.isArray(requestPayload)
@@ -143,19 +264,15 @@ export default function RequestDetailPage() {
         : requestPayload;
 
       if (!normalizedRequest) {
-        throw new Error('Solicitud no encontrada.');
+        throw new Error("Solicitud no encontrada.");
       }
 
       setRequest(normalizedRequest);
       setNotes(payload.notes || []);
     } catch (err) {
-      console.error('Error fetching request:', err);
-      alert(
-        err instanceof Error
-          ? err.message
-          : 'Error al cargar solicitud'
-      );
-      router.push('/admin/dashboard');
+      console.error("Error fetching request:", err);
+      alert(err instanceof Error ? err.message : "Error al cargar solicitud");
+      router.push("/admin/dashboard");
     } finally {
       setLoading(false);
     }
@@ -168,15 +285,15 @@ export default function RequestDetailPage() {
 
     try {
       const res = await fetch(`/api/admin/requests/${encodeURIComponent(requestId)}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
       });
 
       const payload = await res.json();
 
       if (!res.ok || !payload.ok) {
-        throw new Error(payload.error || 'Error al actualizar estado');
+        throw new Error(payload.error || "Error al actualizar estado");
       }
 
       const updatedRequest = payload.request || payload.data;
@@ -187,14 +304,10 @@ export default function RequestDetailPage() {
         await fetchRequest();
       }
 
-      alert('Estado actualizado');
+      alert(payload.warning || "Estado actualizado");
     } catch (err) {
-      console.error('Error updating status:', err);
-      alert(
-        err instanceof Error
-          ? err.message
-          : 'Error al actualizar estado'
-      );
+      console.error("Error updating status:", err);
+      alert(err instanceof Error ? err.message : "Error al actualizar estado");
     } finally {
       setSaving(false);
     }
@@ -205,25 +318,30 @@ export default function RequestDetailPage() {
       setShowDrafts(false);
       return;
     }
+
     if (drafts) {
       setShowDrafts(true);
       return;
     }
+
     setDraftsLoading(true);
+
     try {
       const res = await fetch(
-        `/api/admin/requests/${encodeURIComponent(requestId)}/preview-drafts`
+        `/api/admin/requests/${encodeURIComponent(requestId)}/preview-drafts`,
+        { cache: "no-store" }
       );
       const payload = await res.json();
+
       if (payload.ok) {
-        setDrafts(payload.drafts);
+        setDrafts(payload.drafts || {});
         setShowDrafts(true);
       } else {
-        alert(payload.error || 'Error al generar borradores');
+        alert(payload.error || "Error al generar borradores");
       }
     } catch (err) {
-      console.error('Error loading drafts:', err);
-      alert('Error al cargar borradores');
+      console.error("Error loading drafts:", err);
+      alert("Error al cargar borradores");
     } finally {
       setDraftsLoading(false);
     }
@@ -236,34 +354,30 @@ export default function RequestDetailPage() {
 
     try {
       const res = await fetch(`/api/admin/requests/${encodeURIComponent(requestId)}/notes`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ note: newNote.trim() }),
       });
 
       const payload = await res.json();
 
       if (!res.ok || !payload.ok) {
-        throw new Error(payload.error || 'Error al agregar nota');
+        throw new Error(payload.error || "Error al agregar nota");
       }
 
       const createdNote = payload.note || payload.data;
 
       if (createdNote) {
-        setNotes([createdNote, ...notes]);
+        setNotes((previousNotes) => [createdNote, ...previousNotes]);
       } else {
         await fetchRequest();
       }
 
-      setNewNote('');
-      alert('Nota agregada');
+      setNewNote("");
+      alert("Nota agregada");
     } catch (err) {
-      console.error('Error adding note:', err);
-      alert(
-        err instanceof Error
-          ? err.message
-          : 'Error al agregar nota'
-      );
+      console.error("Error adding note:", err);
+      alert(err instanceof Error ? err.message : "Error al agregar nota");
     } finally {
       setSaving(false);
     }
@@ -282,7 +396,7 @@ export default function RequestDetailPage() {
       <div className="flex min-h-screen flex-col items-center justify-center bg-gray-900 text-white">
         <p className="mb-4 text-xl font-bold">Solicitud no encontrada</p>
         <button
-          onClick={() => router.push('/admin/dashboard')}
+          onClick={() => router.push("/admin/dashboard")}
           className="rounded-lg bg-blue-600 px-4 py-2 font-bold hover:bg-blue-700"
         >
           Volver al dashboard
@@ -291,340 +405,289 @@ export default function RequestDetailPage() {
     );
   }
 
-  const totalAmountClp = Number(request.total_amount_utm || 0) * Number(request.utm_value_clp || 0);
+  const totalAmountClp =
+    Number(request.total_amount_utm || 0) * Number(request.utm_value_clp || 0);
+  const paidAmount = Number(request.payment_amount || request.payment?.amount || 0);
   const hasPdf = Boolean(request.pdf_path || request.pdf_url);
+  const isLocalOnly = Boolean(request.local_only);
+  const isMock = Boolean(request.payment_mock || request.payment?.mock);
+  const isSandbox = Boolean(request.payment_sandbox || request.payment?.sandbox);
+  const paymentEvents = request.payment?.events || [];
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       <div className="border-b border-gray-700 bg-gray-800">
         <div className="mx-auto max-w-7xl px-4 py-6">
           <button
-            onClick={() => router.push('/admin/dashboard')}
+            onClick={() => router.push("/admin/dashboard")}
             className="mb-4 text-blue-400 hover:text-blue-300"
           >
-            ← Volver al Dashboard
+            ← Volver al dashboard
           </button>
 
-          <h1 className="text-3xl font-bold">Detalle de Solicitud</h1>
-          <p className="mt-2 text-sm text-gray-400">ID: {request.request_id}</p>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">Detalle de solicitud</h1>
+              <p className="mt-2 break-all text-sm text-gray-400">ID: {request.request_id}</p>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <Badge className={getStatusClass(request.status)}>
+                {getStatusLabel(request.status)}
+              </Badge>
+              <Badge className={getPaymentStatusClass(request.payment_status)}>
+                {getPaymentStatusLabel(request.payment_status)}
+              </Badge>
+              {isLocalOnly ? (
+                <Badge className="border border-cyan-700/50 bg-cyan-900/40 text-cyan-300">
+                  Solo local
+                </Badge>
+              ) : null}
+              {isMock ? (
+                <Badge className="border border-amber-700/50 bg-amber-900/40 text-amber-300">
+                  Mock
+                </Badge>
+              ) : null}
+              {isSandbox ? (
+                <Badge className="border border-blue-700/50 bg-blue-900/40 text-blue-300">
+                  Sandbox
+                </Badge>
+              ) : null}
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="mx-auto max-w-7xl px-4 py-8">
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <div className="space-y-6 lg:col-span-2">
-            <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
-              <h2 className="mb-4 text-xl font-bold">Información del Cliente</h2>
+      <main className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-8 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-2">
+          <section className="rounded-lg border border-gray-700 bg-gray-800 p-6">
+            <h2 className="mb-4 text-xl font-bold">Informacion del cliente</h2>
 
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm text-gray-400">Nombre</p>
-                  <p className="text-lg">{request.customer_name || 'Sin nombre'}</p>
-                </div>
-
-                <div>
-                  <p className="text-sm text-gray-400">Correo</p>
-                  <p className="text-lg">{request.customer_email || 'Sin correo'}</p>
-                </div>
-
-                <div>
-                  <p className="text-sm text-gray-400">Patente</p>
-                  <p className="font-mono text-lg">{request.vehicle_plate || 'Sin patente'}</p>
-                </div>
-
-                <div>
-                  <p className="text-sm text-gray-400">Fecha de Solicitud</p>
-                  <p className="text-lg">{formatDate(request.created_at)}</p>
-                </div>
-              </div>
+            <div className="rounded-lg bg-gray-900/40 px-4">
+              <InfoRow label="Nombre" value={request.customer_name || "Sin nombre"} />
+              <InfoRow label="Correo" value={request.customer_email || "Sin correo"} />
+              <InfoRow label="Patente" value={request.vehicle_plate || "Sin patente"} />
+              <InfoRow label="Creada" value={formatDate(request.created_at)} />
+              <InfoRow label="Actualizada" value={formatDate(request.updated_at)} />
             </div>
+          </section>
 
-            <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
-              <h2 className="mb-4 text-xl font-bold">Análisis</h2>
+          <section className="rounded-lg border border-gray-700 bg-gray-800 p-6">
+            <h2 className="mb-4 text-xl font-bold">Estado comercial</h2>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-400">Total de Multas</p>
-                  <p className="text-2xl font-bold">{request.fine_count || 0}</p>
-                </div>
-
-                <div>
-                  <p className="text-sm text-gray-400">Multas Potencialmente Prescritas</p>
-                  <p className="text-2xl font-bold text-green-400">
-                    {request.prescribed_count || 0}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-sm text-gray-400">Monto Total UTM</p>
-                  <p className="text-2xl font-bold">{request.total_amount_utm || 0}</p>
-                </div>
-
-                <div>
-                  <p className="text-sm text-gray-400">Valor UTM usado</p>
-                  <p className="text-2xl font-bold">
-                    {formatCLP(request.utm_value_clp)}
-                  </p>
-                </div>
-
-                <div className="col-span-2">
-                  <p className="text-sm text-gray-400">Monto referencial en pesos</p>
-                  <p className="text-3xl font-bold text-emerald-400">
-                    {formatCLP(totalAmountClp)}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Documentos — usa funciones existentes de src/lib/document-generation */}
-            <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
-              <h2 className="mb-4 text-xl font-bold">Documentos</h2>
-
-              {!request.raw_analysis_json ? (
-                <p className="text-sm text-gray-400">
-                  No hay análisis disponible. Los documentos se generan una vez completado el análisis.
-                </p>
-              ) : (
-                <div className="space-y-5">
-
-                  {/* Informe de prescripción */}
-                  <div>
-                    <p className="mb-2 text-sm font-semibold text-gray-300">Informe de prescripción</p>
-                    <div className="flex flex-wrap gap-2">
-                      <a
-                        href={`/api/admin/requests/${encodeURIComponent(requestId)}/preview-report`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-gray-700 px-3 py-2 text-sm transition hover:bg-gray-600 border border-gray-600"
-                      >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                        Previsualizar informe
-                      </a>
-                    </div>
-                  </div>
-
-                  {/* Borradores de solicitud */}
-                  <div>
-                    <p className="mb-2 text-sm font-semibold text-gray-300">Borradores de solicitud de prescripción</p>
-                    <button
-                      onClick={handleLoadDrafts}
-                      disabled={draftsLoading}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-gray-700 px-3 py-2 text-sm transition hover:bg-gray-600 disabled:bg-gray-600 border border-gray-600"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      {draftsLoading ? 'Generando...' : showDrafts ? 'Ocultar borradores' : 'Ver borradores'}
-                    </button>
-
-                    {showDrafts && drafts && (
-                      <div className="mt-3 space-y-3">
-                        {Object.entries(drafts).map(([filename, content]) => (
-                          <div key={filename} className="rounded-lg bg-gray-900 p-3 border border-gray-700">
-                            <p className="mb-2 text-xs font-semibold text-gray-400">{filename}</p>
-                            <pre className="max-h-48 overflow-y-auto whitespace-pre-wrap break-words font-mono text-xs text-gray-300">
-                              {content}
-                            </pre>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Instructivo — pendiente */}
-                  <div>
-                    <p className="mb-2 text-sm font-semibold text-gray-300">Instructivo de tramitación</p>
-                    <button
-                      disabled
-                      title="Pendiente de implementar generación de instructivo"
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-gray-700/40 px-3 py-2 text-sm text-gray-500 cursor-not-allowed border border-gray-600/50"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      Previsualizar instructivo
-                    </button>
-                    <p className="mt-1 text-xs text-gray-500">Pendiente de conectar endpoint.</p>
-                  </div>
-
-                  {/* Descarga */}
-                  <div>
-                    <p className="mb-2 text-sm font-semibold text-gray-300">Descargar documentos</p>
-                    <a
-                      href={`/api/download/${encodeURIComponent(requestId)}`}
-                      download={`informe-prescripcion-${(request.vehicle_plate || requestId).replace(/[^a-z0-9]/gi, '-').toLowerCase()}.html`}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-gray-700 px-3 py-2 text-sm transition hover:bg-gray-600 border border-gray-600"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                      </svg>
-                      Descargar documentos (.html)
-                    </a>
-                    <p className="mt-1 text-xs text-gray-500">
-                      Descarga informe + borradores + limitaciones en formato HTML imprimible.
-                    </p>
-                  </div>
-
-                </div>
-              )}
-            </div>
-
-            <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
-              <h2 className="mb-4 text-xl font-bold">Archivo PDF</h2>
-
-              {hasPdf ? (
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-sm text-gray-400">Nombre archivo</p>
-                    <p className="break-words text-sm">
-                      {request.pdf_filename || 'Certificado PDF'}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-gray-400">Ruta Storage</p>
-                    <p className="break-words font-mono text-xs text-gray-300">
-                      {request.pdf_path || 'Sin ruta'}
-                    </p>
-                  </div>
-
-                  {request.pdf_url ? (
-                    <a
-                      href={request.pdf_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold hover:bg-blue-700"
-                    >
-                      Abrir PDF
-                    </a>
-                  ) : (
-                    <p className="rounded-lg bg-gray-900 p-3 text-sm text-gray-300">
-                      PDF guardado en Storage privado. Para abrirlo desde el dashboard,
-                      falta crear un endpoint de descarga o URL firmada.
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <p className="text-gray-400">No hay PDF asociado a esta solicitud.</p>
-              )}
-            </div>
-
-            {request.raw_analysis_json && (
-              <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
-                <h2 className="mb-4 text-xl font-bold">Análisis Completo JSON</h2>
-
-                <div className="overflow-x-auto rounded-lg bg-gray-900 p-4">
-                  <pre className="whitespace-pre-wrap break-words font-mono text-xs text-gray-300">
-                    {JSON.stringify(request.raw_analysis_json, null, 2)}
-                  </pre>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-6">
-            <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
-              <h2 className="mb-4 text-xl font-bold">Estado</h2>
-
-              <div className="mb-4">
-                <p className="mb-2 text-sm text-gray-400">Estado actual</p>
-                <span className="inline-block rounded bg-gray-700 px-3 py-1 text-sm font-medium text-gray-200">
-                  {getStatusLabel(request.status)}
-                </span>
-              </div>
-
-              <select
-                value={newStatus}
-                onChange={(e) => setNewStatus(e.target.value)}
-                className="mb-4 w-full rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white outline-none focus:border-blue-500"
-              >
-                <option value="pending">Pendiente</option>
-                <option value="approved">Aprobado</option>
-                <option value="paid">Pagado</option>
-                <option value="rejected">Rechazado</option>
-                <option value="error">Error</option>
-              </select>
-
-              <button
-                onClick={handleUpdateStatus}
-                disabled={saving || newStatus === request.status}
-                className="w-full rounded-lg bg-blue-600 py-2 transition hover:bg-blue-700 disabled:bg-gray-600"
-              >
-                {saving ? 'Actualizando...' : 'Actualizar Estado'}
-              </button>
-
-              <div className="mt-4 space-y-2">
-                <p className="text-sm text-gray-400">Estado de Pago</p>
-
-                <span
-                  className={`inline-block rounded px-3 py-1 text-sm font-medium ${
-                    request.payment_status === 'approved'
-                      ? 'bg-green-900 text-green-200'
-                      : request.payment_status === 'failed'
-                        ? 'bg-red-900 text-red-200'
-                        : 'bg-gray-700 text-gray-300'
-                  }`}
-                >
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="rounded-xl border border-green-700/40 bg-green-900/20 p-4">
+                <p className="text-sm text-green-300">Pago</p>
+                <p className="mt-2 text-2xl font-black text-green-400">
                   {getPaymentStatusLabel(request.payment_status)}
-                </span>
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-emerald-700/40 bg-emerald-900/20 p-4">
+                <p className="text-sm text-emerald-300">Monto pagado</p>
+                <p className="mt-2 text-2xl font-black text-emerald-400">
+                  {formatCLP(paidAmount)}
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-blue-700/40 bg-blue-900/20 p-4">
+                <p className="text-sm text-blue-300">Compra</p>
+                <p className="mt-2 text-2xl font-black text-blue-400">
+                  {request.purchase_status || "pending"}
+                </p>
               </div>
             </div>
 
-            <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
-              <h2 className="mb-4 text-xl font-bold">Agregar Nota</h2>
+            <div className="mt-5 rounded-lg bg-gray-900/40 px-4">
+              <InfoRow label="Fecha pago" value={formatDate(request.payment_paid_at || request.payment?.paidAt)} />
+              <InfoRow label="Payment ID" value={request.payment_id || request.payment?.paymentId || "Sin payment ID"} />
+              <InfoRow label="Preference ID" value={request.preference_id || request.payment?.preferenceId || "Sin preference ID"} />
+              <InfoRow label="Correo pago" value={request.payment_customer_email || request.payment?.customerEmail || request.customer_email || "Sin correo"} />
+              <InfoRow label="Origen" value={isLocalOnly ? "Registro local" : "Supabase + pago"} />
+              <InfoRow label="Modo prueba" value={isMock ? "Si" : "No"} />
+              <InfoRow label="Sandbox" value={isSandbox ? "Si" : "No"} />
+            </div>
+          </section>
 
-              <textarea
-                value={newNote}
-                onChange={(e) => setNewNote(e.target.value)}
-                placeholder="Escribe una nota interna..."
-                className="mb-4 h-24 w-full resize-none rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white placeholder-gray-500 outline-none focus:border-blue-500"
-              />
+          <section className="rounded-lg border border-gray-700 bg-gray-800 p-6">
+            <h2 className="mb-4 text-xl font-bold">Resultado del analisis</h2>
+
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="rounded-xl bg-gray-900/40 p-4">
+                <p className="text-sm text-gray-400">Total multas</p>
+                <p className="mt-2 text-3xl font-black">{request.fine_count ?? "—"}</p>
+              </div>
+
+              <div className="rounded-xl bg-gray-900/40 p-4">
+                <p className="text-sm text-gray-400">Potencialmente prescritas</p>
+                <p className="mt-2 text-3xl font-black text-green-400">
+                  {request.prescribed_count ?? "—"}
+                </p>
+              </div>
+
+              <div className="rounded-xl bg-gray-900/40 p-4">
+                <p className="text-sm text-gray-400">Monto multas</p>
+                <p className="mt-2 text-2xl font-black text-emerald-400">
+                  {formatCLP(totalAmountClp)}
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-lg border border-gray-700 bg-gray-800 p-6">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h2 className="text-xl font-bold">Certificado y documentos</h2>
 
               <button
-                onClick={handleAddNote}
-                disabled={saving || !newNote.trim()}
-                className="w-full rounded-lg bg-blue-600 py-2 transition hover:bg-blue-700 disabled:bg-gray-600"
+                onClick={handleLoadDrafts}
+                disabled={draftsLoading}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-600"
               >
-                {saving ? 'Guardando...' : 'Agregar Nota'}
+                {draftsLoading
+                  ? "Cargando..."
+                  : showDrafts
+                  ? "Ocultar borradores"
+                  : "Previsualizar borradores"}
               </button>
             </div>
 
-            <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
-              <h2 className="mb-4 text-xl font-bold">Notas ({notes.length})</h2>
+            <div className="rounded-lg bg-gray-900/40 px-4">
+              <InfoRow label="PDF" value={hasPdf ? request.pdf_filename || "certificado.pdf" : "Sin certificado asociado"} />
+              <InfoRow label="Ruta PDF" value={request.pdf_path || request.pdf_url || "Sin ruta"} />
+            </div>
 
-              {notes.length > 0 ? (
-                <div className="max-h-64 space-y-3 overflow-y-auto">
-                  {notes.map((note) => (
-                    <div key={note.id} className="rounded-lg bg-gray-700 p-3 text-sm">
-                      <p className="text-gray-300">{note.note}</p>
-                      <p className="mt-2 text-xs text-gray-500">
-                        {formatDate(note.created_at)}
-                      </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {request.pdf_url ? (
+                <a
+                  href={request.pdf_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-sm font-semibold hover:bg-gray-600"
+                >
+                  Ver PDF
+                </a>
+              ) : null}
+
+              <a
+                href={`/api/download/${encodeURIComponent(request.request_id)}`}
+                className="rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-sm font-semibold hover:bg-gray-600"
+              >
+                Descargar documentos
+              </a>
+            </div>
+
+            {showDrafts && drafts ? (
+              <div className="mt-5 space-y-4">
+                {Object.entries(drafts).map(([key, value]) => (
+                  <div key={key} className="rounded-lg border border-gray-700 bg-gray-900/50 p-4">
+                    <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-gray-400">
+                      {key}
+                    </h3>
+                    <pre className="max-h-80 overflow-auto whitespace-pre-wrap rounded-lg bg-black/30 p-3 text-xs leading-5 text-gray-200">
+                      {String(value)}
+                    </pre>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </section>
+
+          <section className="rounded-lg border border-gray-700 bg-gray-800 p-6">
+            <h2 className="mb-4 text-xl font-bold">Eventos de pago</h2>
+
+            {paymentEvents.length > 0 ? (
+              <div className="space-y-3">
+                {paymentEvents.map((event, index) => (
+                  <div key={`${event.at}-${index}`} className="rounded-lg bg-gray-900/40 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-bold text-white">{event.type}</p>
+                      <p className="text-xs text-gray-500">{formatDate(event.at)}</p>
                     </div>
-                  ))}
-                </div>
+                    {event.payload ? (
+                      <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap rounded bg-black/30 p-3 text-xs text-gray-300">
+                        {JSON.stringify(event.payload, null, 2)}
+                      </pre>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400">No hay eventos de pago registrados.</p>
+            )}
+          </section>
+        </div>
+
+        <aside className="space-y-6">
+          <section className="rounded-lg border border-gray-700 bg-gray-800 p-6">
+            <h2 className="mb-4 text-xl font-bold">Gestion interna</h2>
+
+            <label className="mb-2 block text-sm text-gray-400">
+              Estado solicitud
+            </label>
+
+            <select
+              value={newStatus}
+              onChange={(event) => setNewStatus(event.target.value)}
+              className="w-full rounded-lg border border-gray-600 bg-gray-700 px-3 py-2.5 text-sm text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="processing">En proceso</option>
+              <option value="completed">Completada</option>
+              <option value="failed">Fallida</option>
+              <option value="pending">Pendiente</option>
+              <option value="approved">Aprobada</option>
+              <option value="rejected">Rechazada</option>
+              <option value="paid">Pagada</option>
+            </select>
+
+            <button
+              onClick={handleUpdateStatus}
+              disabled={saving || !request || newStatus === request.status}
+              className="mt-3 w-full rounded-lg bg-green-600 px-4 py-2.5 text-sm font-bold hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-600"
+            >
+              {saving ? "Guardando..." : "Actualizar estado"}
+            </button>
+
+            {isLocalOnly ? (
+              <p className="mt-3 rounded-lg border border-amber-700/50 bg-amber-900/30 p-3 text-xs text-amber-200">
+                Esta solicitud existe solo en storage local. Puede verse y gestionarse parcialmente, pero los cambios permanentes deben migrarse a Supabase para produccion.
+              </p>
+            ) : null}
+          </section>
+
+          <section className="rounded-lg border border-gray-700 bg-gray-800 p-6">
+            <h2 className="mb-4 text-xl font-bold">Notas internas</h2>
+
+            <textarea
+              value={newNote}
+              onChange={(event) => setNewNote(event.target.value)}
+              placeholder="Agregar nota interna..."
+              rows={4}
+              className="w-full resize-none rounded-lg border border-gray-600 bg-gray-700/60 px-3 py-2.5 text-sm text-white placeholder-gray-500 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            />
+
+            <button
+              onClick={handleAddNote}
+              disabled={saving || !newNote.trim()}
+              className="mt-3 w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-bold hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-600"
+            >
+              {saving ? "Guardando..." : "Agregar nota"}
+            </button>
+
+            <div className="mt-5 space-y-3">
+              {notes.length > 0 ? (
+                notes.map((note) => (
+                  <div key={note.id} className="rounded-lg bg-gray-900/40 p-4">
+                    <p className="text-sm text-gray-200">{note.note}</p>
+                    <p className="mt-2 text-xs text-gray-500">{formatDate(note.created_at)}</p>
+                  </div>
+                ))
               ) : (
                 <p className="text-sm text-gray-400">Sin notas internas.</p>
               )}
             </div>
-
-            <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
-              <h2 className="mb-4 text-xl font-bold">Acciones</h2>
-
-              <button
-                onClick={fetchRequest}
-                disabled={saving}
-                className="w-full rounded-lg bg-gray-700 py-2 transition hover:bg-gray-600 disabled:bg-gray-600"
-              >
-                Actualizar datos
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+          </section>
+        </aside>
+      </main>
     </div>
   );
 }

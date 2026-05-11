@@ -1,11 +1,18 @@
+﻿import { savePaymentCreated } from "@/lib/storage/payment-store";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type PaymentBody = {
   requestId?: string;
+  quoteToken?: string;
   name?: string;
+  nombre?: string;
   email?: string;
+  correo?: string;
+  payerEmail?: string;
   plate?: string;
+  patente?: string;
   totalMultas?: number;
   multasSusceptibles?: number;
   montoPotencial?: number;
@@ -13,6 +20,8 @@ type PaymentBody = {
   valorUtm?: number;
   analysisResult?: any;
   result?: any;
+  product?: string;
+  amount?: number;
 };
 
 function getEnvNumber(key: string, fallback: number): number {
@@ -56,11 +65,14 @@ function getAccessToken(): string | null {
 }
 
 function isTruthyEnv(value: string | undefined): boolean {
-  return ["true", "1", "yes", "si", "sí"].includes((value || "").toLowerCase().trim());
+  return ["true", "1", "yes", "si"].includes((value || "").toLowerCase().trim());
 }
 
 function shouldUseSandbox(accessToken: string): boolean {
-  return accessToken.trim().startsWith("TEST-") || isTruthyEnv(process.env.MERCADO_PAGO_USE_SANDBOX);
+  return (
+    accessToken.trim().startsWith("TEST-") ||
+    isTruthyEnv(process.env.MERCADO_PAGO_USE_SANDBOX)
+  );
 }
 
 function pickCheckoutUrl(mpData: any, accessToken: string): string | null {
@@ -83,7 +95,10 @@ function formatMercadoPagoError(mpData: any): string {
     for (const cause of mpData.cause) {
       const code = cause?.code ? `[${cause.code}] ` : "";
       const description = cause?.description || cause?.message;
-      if (description) parts.push(`${code}${description}`);
+
+      if (description) {
+        parts.push(`${code}${description}`);
+      }
     }
   }
 
@@ -91,9 +106,9 @@ function formatMercadoPagoError(mpData: any): string {
 }
 
 function sanitizeText(value: unknown, fallback = ""): string {
-  if (typeof value !== "string") return fallback;
+  if (typeof value !== "string" && typeof value !== "number") return fallback;
 
-  return value
+  return String(value)
     .replace(/\s+/g, " ")
     .replace(/[<>]/g, "")
     .trim()
@@ -110,8 +125,23 @@ function sanitizeEmail(value: unknown): string | null {
   return email;
 }
 
+function numberFrom(value: unknown, fallback = 0): number {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : fallback;
+  }
+
+  if (typeof value === "string") {
+    const parsed = Number(value.replace(/\./g, "").replace(",", "."));
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+
+  return fallback;
+}
+
 function createRequestId(body: PaymentBody): string {
-  const existing = sanitizeText(body.requestId, "");
+  const existing =
+    sanitizeText(body.requestId, "") ||
+    sanitizeText(body.quoteToken, "");
 
   if (existing) return existing;
 
@@ -120,6 +150,28 @@ function createRequestId(body: PaymentBody): string {
   }
 
   return `ptm_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
+
+function buildResultUrl(
+  siteUrl: string,
+  requestId: string,
+  status: "approved" | "pending" | "rejected",
+  email: string,
+  mock = false
+): string {
+  const params = new URLSearchParams();
+
+  params.set("status", status);
+
+  if (email) {
+    params.set("email", email);
+  }
+
+  if (mock) {
+    params.set("mock", "true");
+  }
+
+  return `${siteUrl}/resultados/${encodeURIComponent(requestId)}?${params.toString()}`;
 }
 
 export async function POST(request: Request) {
@@ -131,29 +183,30 @@ export async function POST(request: Request) {
 
     const reportPriceClp = getEnvNumber("REPORT_PRICE_CLP", 9990);
 
-    const name = sanitizeText(body.name, "Cliente");
-    const email = sanitizeEmail(body.email);
-    const plate = sanitizeText(body.plate, "SIN-PATENTE");
+    const name = sanitizeText(body.name ?? body.nombre, "Cliente");
+    const email = sanitizeEmail(body.email ?? body.correo ?? body.payerEmail);
+    const plate = sanitizeText(body.plate ?? body.patente, "SIN-PATENTE");
+    const product = sanitizeText(body.product, "informe-completo-prescripcion");
 
     const sourceResult = body.analysisResult || body.result || body;
 
-    const totalMultas = Number(sourceResult.totalMultas ?? body.totalMultas ?? 0);
-    const multasSusceptibles = Number(
-      sourceResult.multasSusceptibles ?? body.multasSusceptibles ?? 0
+    const totalMultas = numberFrom(sourceResult.totalMultas ?? body.totalMultas);
+    const multasSusceptibles = numberFrom(
+      sourceResult.multasSusceptibles ?? body.multasSusceptibles
     );
-    const montoPotencial = Number(
-      sourceResult.montoPotencial ?? body.montoPotencial ?? 0
+    const montoPotencial = numberFrom(
+      sourceResult.montoPotencial ?? body.montoPotencial
     );
-    const montoPotencialUtm = Number(
-      sourceResult.montoPotencialUtm ?? body.montoPotencialUtm ?? 0
+    const montoPotencialUtm = numberFrom(
+      sourceResult.montoPotencialUtm ?? body.montoPotencialUtm
     );
-    const valorUtm = Number(sourceResult.valorUtm ?? body.valorUtm ?? 0);
+    const valorUtm = numberFrom(sourceResult.valorUtm ?? body.valorUtm);
 
     if (!email) {
       return Response.json(
         {
           ok: false,
-          error: "Correo inválido o ausente. No se puede crear el pago.",
+          error: "Correo invalido o ausente. No se puede crear el pago.",
         },
         { status: 400 }
       );
@@ -164,23 +217,67 @@ export async function POST(request: Request) {
         {
           ok: false,
           error:
-            "No hay multas revisables/potencialmente prescritas. Compra no disponible.",
+            "No hay multas revisables o potencialmente prescritas. Compra no disponible.",
           requestId,
         },
         { status: 400 }
       );
     }
 
+    const successUrl = buildResultUrl(siteUrl, requestId, "approved", email);
+    const pendingUrl = buildResultUrl(siteUrl, requestId, "pending", email);
+    const failureUrl = buildResultUrl(siteUrl, requestId, "rejected", email);
+
+    const commonMetadata = {
+      request_id: requestId,
+      name,
+      email,
+      plate,
+      product,
+      total_multas: totalMultas,
+      multas_susceptibles: multasSusceptibles,
+      monto_potencial: montoPotencial,
+      monto_potencial_utm: montoPotencialUtm,
+      valor_utm: valorUtm,
+      report_price_clp: reportPriceClp,
+    };
+
     if (process.env.MOCK_PAYMENT === "true") {
+      const mockUrl = buildResultUrl(siteUrl, requestId, "approved", email, true);
+
+      await savePaymentCreated({
+        requestId,
+        externalReference: requestId,
+        status: "approved",
+        amount: reportPriceClp,
+        customerEmail: email,
+        customerName: name,
+        plate,
+        product,
+        checkoutUrl: mockUrl,
+        sandbox: true,
+        mock: true,
+        urls: {
+          success: mockUrl,
+          pending: pendingUrl,
+          failure: failureUrl,
+          webhook: `${siteUrl}/api/payment/webhook`,
+        },
+        metadata: commonMetadata,
+      });
+
       return Response.json({
         ok: true,
         mock: true,
-        status: "PAYMENT_PENDING",
+        sandbox: true,
+        status: "PAYMENT_MOCK_CREATED",
         requestId,
-        checkoutUrl: `${siteUrl}/resultados/${requestId}?mock=true&status=approved`,
-        init_point: `${siteUrl}/resultados/${requestId}?mock=true&status=approved`,
-        sandbox_init_point: `${siteUrl}/resultados/${requestId}?mock=true&status=approved`,
-        message: "Pago mock creado. Mercado Pago no configurado.",
+        checkoutUrl: mockUrl,
+        init_point: mockUrl,
+        sandbox_init_point: mockUrl,
+        external_reference: requestId,
+        amount: reportPriceClp,
+        message: "Pago de prueba creado. Mercado Pago no fue llamado.",
       });
     }
 
@@ -191,7 +288,7 @@ export async function POST(request: Request) {
         {
           ok: false,
           error:
-            "Mercado Pago no está configurado. Define MERCADO_PAGO_ACCESS_TOKEN en .env.local o activa MOCK_PAYMENT=true.",
+            "Mercado Pago no esta configurado. Define MERCADO_PAGO_ACCESS_TOKEN o activa MOCK_PAYMENT=true.",
         },
         { status: 501 }
       );
@@ -201,7 +298,7 @@ export async function POST(request: Request) {
       items: [
         {
           id: "informe-prescripcion-tag",
-          title: "Informe de prescripción de multas de tránsito",
+          title: "Informe de prescripcion de multas de transito",
           description: `Informe completo para patente ${plate}`,
           quantity: 1,
           currency_id: "CLP",
@@ -213,25 +310,15 @@ export async function POST(request: Request) {
         email,
       },
       back_urls: {
-        success: `${siteUrl}/resultados/${requestId}?status=success`,
-        pending: `${siteUrl}/resultados/${requestId}?status=pending`,
-        failure: `${siteUrl}/resultados/${requestId}?status=failure`,
+        success: successUrl,
+        pending: pendingUrl,
+        failure: failureUrl,
       },
       auto_return: "approved",
       notification_url: `${siteUrl}/api/payment/webhook`,
       external_reference: requestId,
       statement_descriptor: "PRESCRIBE MULTA",
-      metadata: {
-        request_id: requestId,
-        name,
-        email,
-        plate,
-        total_multas: totalMultas,
-        multas_susceptibles: multasSusceptibles,
-        monto_potencial: montoPotencial,
-        monto_potencial_utm: montoPotencialUtm,
-        valor_utm: valorUtm,
-      },
+      metadata: commonMetadata,
     };
 
     const mpResponse = await fetch(
@@ -255,8 +342,8 @@ export async function POST(request: Request) {
         {
           ok: false,
           error: mpError
-            ? `Mercado Pago rechazó la creación de la preferencia: ${mpError}`
-            : "Mercado Pago rechazó la creación de la preferencia.",
+            ? `Mercado Pago rechazo la creacion de la preferencia: ${mpError}`
+            : "Mercado Pago rechazo la creacion de la preferencia.",
           status: mpResponse.status,
           mercadoPago: mpData,
         },
@@ -270,12 +357,41 @@ export async function POST(request: Request) {
       return Response.json(
         {
           ok: false,
-          error: "Mercado Pago creó la preferencia, pero no devolvió link de checkout.",
+          error:
+            "Mercado Pago creo la preferencia, pero no devolvio link de checkout.",
           mercadoPago: mpData,
         },
         { status: 502 }
       );
     }
+
+    await savePaymentCreated({
+      requestId,
+      externalReference: requestId,
+      preferenceId: mpData.id,
+      status: "created",
+      amount: reportPriceClp,
+      customerEmail: email,
+      customerName: name,
+      plate,
+      product,
+      checkoutUrl,
+      sandbox: shouldUseSandbox(accessToken),
+      mock: false,
+      urls: {
+        success: successUrl,
+        pending: pendingUrl,
+        failure: failureUrl,
+        webhook: `${siteUrl}/api/payment/webhook`,
+      },
+      mercadoPago: {
+        id: mpData.id,
+        init_point: mpData.init_point,
+        sandbox_init_point: mpData.sandbox_init_point,
+        external_reference: mpData.external_reference,
+      },
+      metadata: commonMetadata,
+    });
 
     return Response.json({
       ok: true,
@@ -289,6 +405,12 @@ export async function POST(request: Request) {
       sandbox_init_point: mpData.sandbox_init_point,
       external_reference: requestId,
       amount: reportPriceClp,
+      urls: {
+        success: successUrl,
+        pending: pendingUrl,
+        failure: failureUrl,
+        webhook: `${siteUrl}/api/payment/webhook`,
+      },
       mercadoPago: {
         id: mpData.id,
         init_point: mpData.init_point,
