@@ -1,60 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { fetchUnifiedRequests } from '@/lib/admin/payment-admin';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const status = searchParams.get('status');
-    const search = searchParams.get('search');
-    const page = parseInt(searchParams.get('page') || '1', 10);
+    const statusFilter = searchParams.get('status') || 'all';
+    const search = searchParams.get('search') || '';
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
     const limit = 10;
-    const offset = (page - 1) * limit;
 
-    let query = supabaseAdmin
-      .from('analysis_requests')
-      .select('*', { count: 'exact' });
-
-    if (status && status !== 'all') {
-      query = query.eq('status', status);
-    }
-
-    if (search) {
-      query = query.or(
-        `customer_name.ilike.%${search}%,customer_email.ilike.%${search}%,vehicle_plate.ilike.%${search}%`
-      );
-    }
-
-    const { data, count, error } = await query
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
-
-    if (error) {
-      console.error('[api/admin/requests] Error:', error);
-      return NextResponse.json(
-        { ok: false, error: error.message },
-        { status: 500 }
-      );
-    }
+    const { data, total, pages } = await fetchUnifiedRequests({ statusFilter, search, page, limit });
 
     return NextResponse.json({
       ok: true,
       data,
-      pagination: {
-        page,
-        limit,
-        total: count,
-        pages: Math.ceil((count || 0) / limit),
-      },
+      requests: data,
+      pagination: { page, limit, total, pages },
     });
-  } catch (error: any) {
-    console.error('[api/admin/requests] Error:', error);
-    return NextResponse.json(
-      { ok: false, error: error?.message || 'Error fetching requests' },
-      { status: 500 }
-    );
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Error fetching requests';
+    console.error('[api/admin/requests] Error:', err);
+    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }
 }
-
-

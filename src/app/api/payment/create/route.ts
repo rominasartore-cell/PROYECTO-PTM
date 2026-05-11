@@ -1,5 +1,46 @@
+import { createClient } from "@supabase/supabase-js";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+function getSupabaseAdmin() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
+}
+
+async function savePaymentRecord(record: {
+  preference_id: string | null;
+  external_reference: string;
+  status: string;
+  amount: number;
+  payer_name: string;
+  payer_email: string;
+  plate: string;
+  is_mock: boolean;
+  is_sandbox: boolean;
+  metadata: unknown;
+}) {
+  try {
+    const db = getSupabaseAdmin();
+    if (!db) return;
+    await db.from("ptm_payments").insert({
+      preference_id: record.preference_id,
+      external_reference: record.external_reference,
+      status: record.status,
+      amount: record.amount,
+      payer_name: record.payer_name,
+      payer_email: record.payer_email,
+      plate: record.plate,
+      is_mock: record.is_mock,
+      is_sandbox: record.is_sandbox,
+      metadata: record.metadata,
+    });
+  } catch (err) {
+    console.error("[payment/create] Error saving to ptm_payments:", err);
+  }
+}
 
 type PaymentBody = {
   requestId?: string;
@@ -172,6 +213,18 @@ export async function POST(request: Request) {
     }
 
     if (process.env.MOCK_PAYMENT === "true") {
+      void savePaymentRecord({
+        preference_id: null,
+        external_reference: requestId,
+        status: "created",
+        amount: reportPriceClp,
+        payer_name: name,
+        payer_email: email,
+        plate,
+        is_mock: true,
+        is_sandbox: false,
+        metadata: { totalMultas, multasSusceptibles, montoPotencial, montoPotencialUtm, valorUtm },
+      });
       return Response.json({
         ok: true,
         mock: true,
@@ -277,10 +330,24 @@ export async function POST(request: Request) {
       );
     }
 
+    const isSandbox = shouldUseSandbox(accessToken);
+    void savePaymentRecord({
+      preference_id: mpData.id ?? null,
+      external_reference: requestId,
+      status: "created",
+      amount: reportPriceClp,
+      payer_name: name,
+      payer_email: email,
+      plate,
+      is_mock: false,
+      is_sandbox: isSandbox,
+      metadata: { totalMultas, multasSusceptibles, montoPotencial, montoPotencialUtm, valorUtm },
+    });
+
     return Response.json({
       ok: true,
       mock: false,
-      sandbox: shouldUseSandbox(accessToken),
+      sandbox: isSandbox,
       status: "PAYMENT_CREATED",
       requestId,
       preferenceId: mpData.id,

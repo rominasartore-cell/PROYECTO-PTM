@@ -4,24 +4,30 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 
 type RequestDetail = {
-  id: string;
+  id?: string;
   customer_name: string | null;
   customer_email: string | null;
   vehicle_plate: string | null;
   request_id: string;
+  source?: 'analysis' | 'payment_only';
   status: string | null;
   fine_count: number | null;
   prescribed_count: number | null;
   total_amount_utm: number | null;
   utm_value_clp: number | null;
   payment_status: string | null;
-  raw_analysis_json: any;
+  raw_analysis_json: Record<string, unknown> | null;
   internal_notes: string | null;
   created_at: string;
   updated_at: string | null;
   pdf_path?: string | null;
   pdf_filename?: string | null;
   pdf_url?: string | null;
+  preference_id?: string | null;
+  payment_id?: string | null;
+  is_mock?: boolean;
+  is_sandbox?: boolean;
+  has_supabase_payment?: boolean;
 };
 
 type Note = {
@@ -72,14 +78,11 @@ function getStatusLabel(status: string | null | undefined): string {
 
 function getPaymentStatusLabel(status: string | null | undefined): string {
   switch (status) {
-    case 'pending':
-      return 'Pendiente';
-    case 'approved':
-      return 'Aprobado';
-    case 'failed':
-      return 'Fallido';
-    default:
-      return status || 'No procesado';
+    case 'pending': return 'Pendiente';
+    case 'approved': return 'Pagado';
+    case 'rejected': return 'Rechazado';
+    case 'failed': return 'Fallido';
+    default: return status || 'Sin pago';
   }
 }
 
@@ -293,6 +296,7 @@ export default function RequestDetailPage() {
 
   const totalAmountClp = Number(request.total_amount_utm || 0) * Number(request.utm_value_clp || 0);
   const hasPdf = Boolean(request.pdf_path || request.pdf_url);
+  const isPaymentOnly = request.source === 'payment_only';
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
@@ -305,14 +309,39 @@ export default function RequestDetailPage() {
             ← Volver al Dashboard
           </button>
 
-          <h1 className="text-3xl font-bold">Detalle de Solicitud</h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-3xl font-bold">Detalle de Solicitud</h1>
+            {isPaymentOnly && (
+              <span className="px-3 py-1 rounded-full text-sm font-semibold bg-amber-900/40 text-amber-300 border border-amber-700/50">
+                Pago sin análisis vinculado
+              </span>
+            )}
+          </div>
           <p className="mt-2 text-sm text-gray-400">ID: {request.request_id}</p>
+          {request.preference_id && (
+            <p className="mt-1 text-xs text-gray-500 font-mono">Preferencia MP: {request.preference_id}</p>
+          )}
         </div>
       </div>
 
       <div className="mx-auto max-w-7xl px-4 py-8">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="space-y-6 lg:col-span-2">
+            {isPaymentOnly && (
+              <div className="rounded-lg border border-amber-700/50 bg-amber-900/20 p-4">
+                <p className="text-amber-300 font-semibold mb-1">Registro de pago sin solicitud de análisis</p>
+                <p className="text-sm text-amber-400/80">
+                  Este registro proviene de Mercado Pago. No hay certificado PDF ni análisis de prescripción asociado.
+                  Los documentos no están disponibles para este tipo de registro.
+                </p>
+                <div className="flex gap-2 mt-2 flex-wrap">
+                  {request.is_mock && <span className="px-2 py-0.5 rounded text-xs font-semibold bg-purple-900/60 text-purple-300">Mock</span>}
+                  {request.is_sandbox && !request.is_mock && <span className="px-2 py-0.5 rounded text-xs font-semibold bg-blue-900/60 text-blue-300">Sandbox</span>}
+                  {!request.is_mock && !request.is_sandbox && request.has_supabase_payment && <span className="px-2 py-0.5 rounded text-xs font-semibold bg-green-900/60 text-green-300">MP real</span>}
+                </div>
+              </div>
+            )}
+
             <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
               <h2 className="mb-4 text-xl font-bold">Información del Cliente</h2>
 
@@ -339,7 +368,7 @@ export default function RequestDetailPage() {
               </div>
             </div>
 
-            <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
+            {!isPaymentOnly && <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
               <h2 className="mb-4 text-xl font-bold">Análisis</h2>
 
               <div className="grid grid-cols-2 gap-4">
@@ -374,10 +403,10 @@ export default function RequestDetailPage() {
                   </p>
                 </div>
               </div>
-            </div>
+            </div>}
 
             {/* Documentos — usa funciones existentes de src/lib/document-generation */}
-            <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
+            {!isPaymentOnly && <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
               <h2 className="mb-4 text-xl font-bold">Documentos</h2>
 
               {!request.raw_analysis_json ? (
@@ -470,9 +499,9 @@ export default function RequestDetailPage() {
 
                 </div>
               )}
-            </div>
+            </div>}
 
-            <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
+            {!isPaymentOnly && <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
               <h2 className="mb-4 text-xl font-bold">Archivo PDF</h2>
 
               {hasPdf ? (
@@ -510,9 +539,9 @@ export default function RequestDetailPage() {
               ) : (
                 <p className="text-gray-400">No hay PDF asociado a esta solicitud.</p>
               )}
-            </div>
+            </div>}
 
-            {request.raw_analysis_json && (
+            {!isPaymentOnly && !!request.raw_analysis_json && (
               <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
                 <h2 className="mb-4 text-xl font-bold">Análisis Completo JSON</h2>
 
@@ -536,34 +565,37 @@ export default function RequestDetailPage() {
                 </span>
               </div>
 
-              <select
-                value={newStatus}
-                onChange={(e) => setNewStatus(e.target.value)}
-                className="mb-4 w-full rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white outline-none focus:border-blue-500"
-              >
-                <option value="pending">Pendiente</option>
-                <option value="approved">Aprobado</option>
-                <option value="paid">Pagado</option>
-                <option value="rejected">Rechazado</option>
-                <option value="error">Error</option>
-              </select>
+              {!isPaymentOnly && (
+                <>
+                  <select
+                    value={newStatus}
+                    onChange={(e) => setNewStatus(e.target.value)}
+                    className="mb-4 w-full rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white outline-none focus:border-blue-500"
+                  >
+                    <option value="pending">Pendiente</option>
+                    <option value="approved">Aprobado</option>
+                    <option value="paid">Pagado</option>
+                    <option value="rejected">Rechazado</option>
+                    <option value="error">Error</option>
+                  </select>
 
-              <button
-                onClick={handleUpdateStatus}
-                disabled={saving || newStatus === request.status}
-                className="w-full rounded-lg bg-blue-600 py-2 transition hover:bg-blue-700 disabled:bg-gray-600"
-              >
-                {saving ? 'Actualizando...' : 'Actualizar Estado'}
-              </button>
+                  <button
+                    onClick={handleUpdateStatus}
+                    disabled={saving || newStatus === request.status}
+                    className="w-full rounded-lg bg-blue-600 py-2 transition hover:bg-blue-700 disabled:bg-gray-600"
+                  >
+                    {saving ? 'Actualizando...' : 'Actualizar Estado'}
+                  </button>
+                </>
+              )}
 
               <div className="mt-4 space-y-2">
                 <p className="text-sm text-gray-400">Estado de Pago</p>
-
                 <span
                   className={`inline-block rounded px-3 py-1 text-sm font-medium ${
                     request.payment_status === 'approved'
                       ? 'bg-green-900 text-green-200'
-                      : request.payment_status === 'failed'
+                      : request.payment_status === 'rejected'
                         ? 'bg-red-900 text-red-200'
                         : 'bg-gray-700 text-gray-300'
                   }`}
@@ -573,7 +605,7 @@ export default function RequestDetailPage() {
               </div>
             </div>
 
-            <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
+            {!isPaymentOnly && <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
               <h2 className="mb-4 text-xl font-bold">Agregar Nota</h2>
 
               <textarea
@@ -590,7 +622,7 @@ export default function RequestDetailPage() {
               >
                 {saving ? 'Guardando...' : 'Agregar Nota'}
               </button>
-            </div>
+            </div>}
 
             <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
               <h2 className="mb-4 text-xl font-bold">Notas ({notes.length})</h2>
