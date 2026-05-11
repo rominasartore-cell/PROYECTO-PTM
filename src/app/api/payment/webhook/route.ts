@@ -252,7 +252,7 @@ async function fetchMercadoPagoPayment(paymentId: string) {
   };
 }
 
-function getPaymentEmail(payment: any, storedEmail?: string) {
+function getPaymentEmail(payment: any, storedEmail?: string | null): string {
   return String(
     payment?.payer?.email ||
       payment?.metadata?.email ||
@@ -261,7 +261,7 @@ function getPaymentEmail(payment: any, storedEmail?: string) {
   ).trim();
 }
 
-function getPaymentName(payment: any, storedName?: string) {
+function getPaymentName(payment: any, storedName?: string | null): string {
   return String(
     payment?.metadata?.name ||
       payment?.payer?.first_name ||
