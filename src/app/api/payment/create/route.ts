@@ -1,4 +1,5 @@
-﻿import { savePaymentCreated } from "@/lib/storage/payment-store";
+﻿import { randomUUID } from "node:crypto";
+import { savePaymentCreated } from "@/lib/storage/payment-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -145,11 +146,7 @@ function createRequestId(body: PaymentBody): string {
 
   if (existing) return existing;
 
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
-
-  return `ptm_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+  return randomUUID();
 }
 
 function buildResultUrl(
@@ -172,6 +169,49 @@ function buildResultUrl(
   }
 
   return `${siteUrl}/resultados/${encodeURIComponent(requestId)}?${params.toString()}`;
+}
+
+async function persistPaymentCreated(params: {
+  requestId: string;
+  externalReference: string;
+  status: "created" | "approved" | "pending";
+  amount: number;
+  customerEmail: string;
+  customerName: string;
+  plate: string;
+  product: string;
+  checkoutUrl: string;
+  sandbox: boolean;
+  mock: boolean;
+  preferenceId?: string | null;
+  siteUrl: string;
+  urls: {
+    success: string;
+    pending: string;
+    failure: string;
+    webhook: string;
+  };
+  metadata: Record<string, unknown>;
+  mercadoPago?: Record<string, unknown>;
+}) {
+  await savePaymentCreated({
+    requestId: params.requestId,
+    externalReference: params.externalReference,
+    preferenceId: params.preferenceId || null,
+    status: params.status,
+    amount: params.amount,
+    customerEmail: params.customerEmail,
+    payerEmail: params.customerEmail,
+    customerName: params.customerName,
+    plate: params.plate,
+    product: params.product,
+    checkoutUrl: params.checkoutUrl,
+    sandbox: params.sandbox,
+    mock: params.mock,
+    urls: params.urls,
+    metadata: params.metadata,
+    mercadoPago: params.mercadoPago || {},
+  });
 }
 
 export async function POST(request: Request) {
@@ -227,6 +267,7 @@ export async function POST(request: Request) {
     const successUrl = buildResultUrl(siteUrl, requestId, "approved", email);
     const pendingUrl = buildResultUrl(siteUrl, requestId, "pending", email);
     const failureUrl = buildResultUrl(siteUrl, requestId, "rejected", email);
+    const webhookUrl = `${siteUrl}/api/payment/webhook`;
 
     const commonMetadata = {
       request_id: requestId,
@@ -242,10 +283,17 @@ export async function POST(request: Request) {
       report_price_clp: reportPriceClp,
     };
 
+    const urls = {
+      success: successUrl,
+      pending: pendingUrl,
+      failure: failureUrl,
+      webhook: webhookUrl,
+    };
+
     if (process.env.MOCK_PAYMENT === "true") {
       const mockUrl = buildResultUrl(siteUrl, requestId, "approved", email, true);
 
-      await savePaymentCreated({
+      await persistPaymentCreated({
         requestId,
         externalReference: requestId,
         status: "approved",
@@ -257,11 +305,11 @@ export async function POST(request: Request) {
         checkoutUrl: mockUrl,
         sandbox: true,
         mock: true,
+        preferenceId: null,
+        siteUrl,
         urls: {
+          ...urls,
           success: mockUrl,
-          pending: pendingUrl,
-          failure: failureUrl,
-          webhook: `${siteUrl}/api/payment/webhook`,
         },
         metadata: commonMetadata,
       });
@@ -315,7 +363,7 @@ export async function POST(request: Request) {
         failure: failureUrl,
       },
       auto_return: "approved",
-      notification_url: `${siteUrl}/api/payment/webhook`,
+      notification_url: webhookUrl,
       external_reference: requestId,
       statement_descriptor: "PRESCRIBE MULTA",
       metadata: commonMetadata,
@@ -365,10 +413,12 @@ export async function POST(request: Request) {
       );
     }
 
-    await savePaymentCreated({
+    const preferenceId = String(mpData?.id || "").trim();
+    const sandbox = shouldUseSandbox(accessToken);
+
+    await persistPaymentCreated({
       requestId,
       externalReference: requestId,
-      preferenceId: mpData.id,
       status: "created",
       amount: reportPriceClp,
       customerEmail: email,
@@ -376,41 +426,33 @@ export async function POST(request: Request) {
       plate,
       product,
       checkoutUrl,
-      sandbox: shouldUseSandbox(accessToken),
+      sandbox,
       mock: false,
-      urls: {
-        success: successUrl,
-        pending: pendingUrl,
-        failure: failureUrl,
-        webhook: `${siteUrl}/api/payment/webhook`,
-      },
+      preferenceId,
+      siteUrl,
+      urls,
+      metadata: commonMetadata,
       mercadoPago: {
         id: mpData.id,
         init_point: mpData.init_point,
         sandbox_init_point: mpData.sandbox_init_point,
         external_reference: mpData.external_reference,
       },
-      metadata: commonMetadata,
     });
 
     return Response.json({
       ok: true,
       mock: false,
-      sandbox: shouldUseSandbox(accessToken),
+      sandbox,
       status: "PAYMENT_CREATED",
       requestId,
-      preferenceId: mpData.id,
+      preferenceId,
       checkoutUrl,
       init_point: mpData.init_point,
       sandbox_init_point: mpData.sandbox_init_point,
       external_reference: requestId,
       amount: reportPriceClp,
-      urls: {
-        success: successUrl,
-        pending: pendingUrl,
-        failure: failureUrl,
-        webhook: `${siteUrl}/api/payment/webhook`,
-      },
+      urls,
       mercadoPago: {
         id: mpData.id,
         init_point: mpData.init_point,
@@ -419,6 +461,8 @@ export async function POST(request: Request) {
       },
     });
   } catch (error: any) {
+    console.error("[api/payment/create] Error:", error);
+
     return Response.json(
       { ok: false, error: error?.message || "Error creando pago." },
       { status: 500 }
