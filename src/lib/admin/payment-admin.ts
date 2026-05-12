@@ -126,10 +126,13 @@ export async function fetchUnifiedRequests(opts: FetchUnifiedOptions = {}): Prom
   const analyses = ((analysisRes.data as AnalysisRow[]) || []);
   const payments = ((paymentsRes.data as PaymentRow[]) || []);
 
-  // Index payments by external_reference for O(1) lookup
+  // Index payments by external_reference for O(1) lookup.
+  // Query is ordered DESC so the first entry per key is the most recent payment.
   const paymentMap = new Map<string, PaymentRow>();
   for (const p of payments) {
-    if (p.external_reference) paymentMap.set(p.external_reference, p);
+    if (p.external_reference && !paymentMap.has(p.external_reference)) {
+      paymentMap.set(p.external_reference, p);
+    }
   }
 
   const analysisIds = new Set(analyses.map(a => a.request_id));
@@ -243,7 +246,7 @@ export async function fetchAdminMetrics(): Promise<AdminMetrics> {
 
   const paymentMap = new Map<string, { status: string; is_mock: boolean; is_sandbox: boolean }>();
   for (const p of payments) {
-    if (p.external_reference) paymentMap.set(p.external_reference, p);
+    if (p.external_reference && !paymentMap.has(p.external_reference)) paymentMap.set(p.external_reference, p);
   }
 
   const analysisIds = new Set(analyses.map(a => a.request_id));
