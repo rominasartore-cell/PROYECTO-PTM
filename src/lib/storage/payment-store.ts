@@ -171,10 +171,10 @@ function mapSupabasePayment(row: any): StoredPayment | null {
     customerEmail,
     payerEmail: row.payer_email || customerEmail,
     customerName: row.customer_name || null,
-    plate: row.vehicle_plate || row.plate || null,
+    plate: row.plate || row.vehicle_plate || null,
     product: row.product || "informe-completo-prescripcion",
-    mock: Boolean(row.mock),
-    sandbox: Boolean(row.sandbox),
+    mock: Boolean(row.mock || row.payment_mock),
+    sandbox: Boolean(row.sandbox || row.payment_sandbox),
     checkoutUrl: row.checkout_url || null,
     urls: row.urls || {},
     metadata: row.metadata || {},
@@ -185,7 +185,7 @@ function mapSupabasePayment(row: any): StoredPayment | null {
   };
 }
 
-function toSupabasePayload(payment: StoredPayment): Record<string, unknown> {
+function toStandardSupabasePayload(payment: StoredPayment): Record<string, unknown> {
   const email = payment.customerEmail || payment.payerEmail || null;
 
   return {
@@ -201,46 +201,87 @@ function toSupabasePayload(payment: StoredPayment): Record<string, unknown> {
     payment_id: payment.paymentId || null,
     preference_id: payment.preferenceId || null,
     customer_email: email,
-customer_name: payment.customerName || null,
-    vehicle_plate: payment.plate || null,
+    customer_name: payment.customerName || null,
+    plate: payment.plate || null,
     product: payment.product || "informe-completo-prescripcion",
     mock: Boolean(payment.mock),
     sandbox: Boolean(payment.sandbox),
     checkout_url: payment.checkoutUrl || null,
-    urls: payment.urls || {},
-    metadata: payment.metadata || {},
-    mercado_pago: payment.mercadoPago || {},
     events: payment.events || [],
     created_at: payment.createdAt,
     updated_at: payment.updatedAt,
   };
 }
 
+function toCoreSupabasePayload(payment: StoredPayment): Record<string, unknown> {
+  const email = payment.customerEmail || payment.payerEmail || null;
+
+  return {
+    request_id: payment.requestId,
+    external_reference: payment.externalReference || payment.requestId,
+    status: payment.status,
+    amount: Number(payment.amount || 0),
+    paid_at:
+      payment.paidAt ||
+      (payment.status === "approved" ? payment.updatedAt : null),
+    customer_email: email,
+    customer_name: payment.customerName || null,
+    plate: payment.plate || null,
+    mock: Boolean(payment.mock),
+    sandbox: Boolean(payment.sandbox),
+    created_at: payment.createdAt,
+    updated_at: payment.updatedAt,
+  };
+}
+
+async function upsertPaymentPayload(
+  payment: StoredPayment,
+  payload: Record<string, unknown>,
+  variant: "standard" | "core"
+): Promise<boolean> {
+  const { error } = await supabaseAdmin
+    .from("ptm_payments")
+    .upsert(payload, { onConflict: "request_id" });
+
+  if (error) {
+    console.error("[payment-store] Supabase upsert error:", {
+      variant,
+      requestId: payment.requestId,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      code: error.code,
+    });
+
+    return false;
+  }
+
+  return true;
+}
+
 async function savePaymentToSupabase(payment: StoredPayment): Promise<boolean> {
   try {
-    const payload = toSupabasePayload(payment);
+    const standardSaved = await upsertPaymentPayload(
+      payment,
+      toStandardSupabasePayload(payment),
+      "standard"
+    );
 
-    const { error } = await supabaseAdmin
-      .from("ptm_payments")
-      .upsert(payload, { onConflict: "request_id" });
+    if (standardSaved) return true;
 
-    if (error) {
-      console.error("[payment-store] Supabase upsert error:", {
-        requestId: payment.requestId,
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code,
-      });
-      return false;
-    }
+    const coreSaved = await upsertPaymentPayload(
+      payment,
+      toCoreSupabasePayload(payment),
+      "core"
+    );
 
-    return true;
+    return coreSaved;
   } catch (error) {
     console.error("[payment-store] Supabase unavailable:", {
       requestId: payment.requestId,
       error,
     });
+
     return false;
   }
 }
@@ -450,7 +491,7 @@ export async function savePaymentCreated(
   const requestId = safeRequestId(input.requestId);
 
   if (!requestId) {
-    throw new Error("[payment-store] requestId inválido al crear pago.");
+    throw new Error("[payment-store] requestId invalido al crear pago.");
   }
 
   const status = normalizeStatus(input.status);
@@ -463,7 +504,10 @@ export async function savePaymentCreated(
     rawStatus: null,
     statusDetail: null,
     amount: Number(input.amount || 0),
-    paidAt: status === "approved" ? input.paidAt || timestamp : input.paidAt || null,
+    paidAt:
+      status === "approved"
+        ? input.paidAt || timestamp
+        : input.paidAt || null,
     paymentId: input.paymentId || null,
     preferenceId: input.preferenceId || null,
     customerEmail: email,
@@ -508,7 +552,7 @@ export async function savePaymentWebhookUpdate(
   const requestId = safeRequestId(input.requestId);
 
   if (!requestId) {
-    throw new Error("[payment-store] requestId inválido al actualizar pago.");
+    throw new Error("[payment-store] requestId invalido al actualizar pago.");
   }
 
   const status = normalizeStatus(input.status);
@@ -521,12 +565,16 @@ export async function savePaymentWebhookUpdate(
 
   const updated = mergePayment(existing, {
     requestId,
-    externalReference: input.externalReference || existing?.externalReference || requestId,
+    externalReference:
+      input.externalReference || existing?.externalReference || requestId,
     status,
     rawStatus: input.rawStatus || null,
     statusDetail: input.statusDetail || null,
     amount: Number(input.amount ?? existing?.amount ?? 0),
-    paidAt: status === "approved" ? existing?.paidAt || timestamp : existing?.paidAt || null,
+    paidAt:
+      status === "approved"
+        ? existing?.paidAt || timestamp
+        : existing?.paidAt || null,
     paymentId: input.paymentId || existing?.paymentId || null,
     preferenceId: input.preferenceId || existing?.preferenceId || null,
     customerEmail: email,
