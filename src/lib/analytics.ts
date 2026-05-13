@@ -2,20 +2,43 @@ type AnalyticsParams = Record<string, string | number | boolean | null | undefin
 
 declare global {
   interface Window {
-    dataLayer?: unknown[];
     gtag?: (...args: unknown[]) => void;
+    dataLayer?: unknown[];
   }
 }
 
-export function trackEvent(eventName: string, params: AnalyticsParams = {}) {
-  if (typeof window === "undefined") return;
-  if (typeof window.gtag !== "function") return;
+const isBrowser = typeof window !== "undefined";
 
-  window.gtag("event", eventName, {
+function isDebugMode() {
+  if (!isBrowser) return false;
+
+  const params = new URLSearchParams(window.location.search);
+
+  return (
+    process.env.NODE_ENV !== "production" ||
+    params.has("debug") ||
+    params.has("gtm_debug") ||
+    params.get("ga_debug") === "true"
+  );
+}
+
+export function trackEvent(eventName: string, params: AnalyticsParams = {}) {
+  if (!isBrowser) return;
+
+  const payload = {
     ...params,
-    page_location: window.location.href,
-    page_path: window.location.pathname,
-  });
+    debug_mode: isDebugMode(),
+    event_source: "ptm_web",
+  };
+
+  if (typeof window.gtag !== "function") {
+    console.warn("[PTM Analytics] window.gtag no disponible:", eventName, payload);
+    return;
+  }
+
+  window.gtag("event", eventName, payload);
+
+  console.info("[PTM Analytics] Evento enviado:", eventName, payload);
 }
 
 export function trackAnalysisStarted(params: AnalyticsParams = {}) {
@@ -32,4 +55,8 @@ export function trackPurchaseClicked(params: AnalyticsParams = {}) {
 
 export function trackPaymentRedirect(params: AnalyticsParams = {}) {
   trackEvent("payment_redirect_started", params);
+}
+
+export function trackPaymentApproved(params: AnalyticsParams = {}) {
+  trackEvent("payment_approved", params);
 }
