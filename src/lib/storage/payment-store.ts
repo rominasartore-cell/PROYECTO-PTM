@@ -96,7 +96,7 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
-function safeRequestId(value: string): string {
+function safeRequestId(value: unknown): string {
   return String(value || "")
     .trim()
     .replace(/[^\w.-]/g, "")
@@ -124,9 +124,18 @@ function normalizeStatus(value: unknown): StoredPaymentStatus {
   const status = String(value || "").trim().toLowerCase();
 
   if (status === "created") return "created";
-  if (status === "approved") return "approved";
-  if (status === "pending" || status === "in_process" || status === "authorized") return "pending";
-  if (status === "rejected") return "rejected";
+  if (status === "approved" || status === "paid" || status === "accredited") {
+    return "approved";
+  }
+  if (
+    status === "pending" ||
+    status === "in_process" ||
+    status === "authorized" ||
+    status === "processing"
+  ) {
+    return "pending";
+  }
+  if (status === "rejected" || status === "failed") return "rejected";
   if (status === "cancelled" || status === "canceled") return "cancelled";
   if (status === "refunded") return "refunded";
   if (status === "charged_back") return "charged_back";
@@ -153,7 +162,10 @@ function mapSupabasePayment(row: any): StoredPayment | null {
     rawStatus: row.raw_status || null,
     statusDetail: row.status_detail || null,
     amount: Number(row.amount || row.payment_amount || 0),
-    paidAt: row.paid_at || row.payment_paid_at || (isApproved(status) ? updatedAt : null),
+    paidAt:
+      row.paid_at ||
+      row.payment_paid_at ||
+      (isApproved(status) ? updatedAt : null),
     paymentId: row.payment_id || null,
     preferenceId: row.preference_id || null,
     customerEmail,
@@ -182,11 +194,14 @@ function toSupabasePayload(payment: StoredPayment): Record<string, unknown> {
     status: payment.status,
     raw_status: payment.rawStatus || null,
     status_detail: payment.statusDetail || null,
-    amount: payment.amount || 0,
-    paid_at: payment.paidAt || (payment.status === "approved" ? payment.updatedAt : null),
+    amount: Number(payment.amount || 0),
+    paid_at:
+      payment.paidAt ||
+      (payment.status === "approved" ? payment.updatedAt : null),
     payment_id: payment.paymentId || null,
     preference_id: payment.preferenceId || null,
     customer_email: email,
+    payer_email: payment.payerEmail || email,
     customer_name: payment.customerName || null,
     vehicle_plate: payment.plate || null,
     product: payment.product || "informe-completo-prescripcion",
@@ -204,23 +219,49 @@ function toSupabasePayload(payment: StoredPayment): Record<string, unknown> {
 
 async function savePaymentToSupabase(payment: StoredPayment): Promise<boolean> {
   try {
+    const payload = toSupabasePayload(payment);
+
     const { error } = await supabaseAdmin
       .from("ptm_payments")
-      .upsert(toSupabasePayload(payment), { onConflict: "request_id" });
+      .upsert(payload, { onConflict: "request_id" });
 
     if (error) {
-      console.error("[payment-store] Supabase upsert error:", error);
+      console.error("[payment-store] Supabase upsert error:", {
+        requestId: payment.requestId,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      });
       return false;
     }
 
     return true;
   } catch (error) {
-    console.error("[payment-store] Supabase unavailable:", error);
+    console.error("[payment-store] Supabase unavailable:", {
+      requestId: payment.requestId,
+      error,
+    });
     return false;
   }
 }
 
-async function getPaymentFromSupabase(requestId: string): Promise<StoredPayment | null> {
+async function requireSupabasePaymentSave(
+  payment: StoredPayment,
+  action: "created" | "webhook_update"
+): Promise<void> {
+  const supabaseSaved = await savePaymentToSupabase(payment);
+
+  if (!supabaseSaved) {
+    throw new Error(
+      `[payment-store] No se pudo guardar el pago en Supabase. action=${action} requestId=${payment.requestId}`
+    );
+  }
+}
+
+async function getPaymentFromSupabase(
+  requestId: string
+): Promise<StoredPayment | null> {
   try {
     const { data, error } = await supabaseAdmin
       .from("ptm_payments")
@@ -229,12 +270,22 @@ async function getPaymentFromSupabase(requestId: string): Promise<StoredPayment 
       .maybeSingle();
 
     if (error) {
-      console.error("[payment-store] Supabase read error:", error);
+      console.error("[payment-store] Supabase read error:", {
+        requestId,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      });
       return null;
     }
 
     return mapSupabasePayment(data);
-  } catch {
+  } catch (error) {
+    console.error("[payment-store] Supabase read unavailable:", {
+      requestId,
+      error,
+    });
     return null;
   }
 }
@@ -248,14 +299,20 @@ async function listPaymentsFromSupabase(): Promise<StoredPayment[]> {
       .limit(500);
 
     if (error) {
-      console.error("[payment-store] Supabase list error:", error);
+      console.error("[payment-store] Supabase list error:", {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      });
       return [];
     }
 
     return Array.isArray(data)
       ? (data.map(mapSupabasePayment).filter(Boolean) as StoredPayment[])
       : [];
-  } catch {
+  } catch (error) {
+    console.error("[payment-store] Supabase list unavailable:", error);
     return [];
   }
 }
@@ -266,9 +323,17 @@ async function savePaymentLocally(payment: StoredPayment): Promise<void> {
     const dir = join(STORAGE_ROOT, requestId);
 
     await ensureDir(dir);
-    await fs.writeFile(paymentFilePath(requestId), JSON.stringify(payment, null, 2), "utf8");
+    await fs.writeFile(
+      paymentFilePath(requestId),
+      JSON.stringify(payment, null, 2),
+      "utf8"
+    );
 
-    const index = await readJsonFile<Record<string, unknown>>(PAYMENTS_INDEX, {});
+    const index = await readJsonFile<Record<string, unknown>>(
+      PAYMENTS_INDEX,
+      {}
+    );
+
     index[requestId] = {
       requestId,
       status: payment.status,
@@ -291,7 +356,9 @@ async function savePaymentLocally(payment: StoredPayment): Promise<void> {
   }
 }
 
-async function getPaymentLocally(requestId: string): Promise<StoredPayment | null> {
+async function getPaymentLocally(
+  requestId: string
+): Promise<StoredPayment | null> {
   try {
     const safeId = safeRequestId(requestId);
     return readJsonFile<StoredPayment | null>(paymentFilePath(safeId), null);
@@ -309,13 +376,18 @@ async function listPaymentsLocally(): Promise<StoredPayment[]> {
 
     return payments
       .filter(Boolean)
-      .sort((a, b) => String(b?.updatedAt || "").localeCompare(String(a?.updatedAt || ""))) as StoredPayment[];
+      .sort((a, b) =>
+        String(b?.updatedAt || "").localeCompare(String(a?.updatedAt || ""))
+      ) as StoredPayment[];
   } catch {
     return [];
   }
 }
 
-function mergePayment(base: StoredPayment | null, patch: Partial<StoredPayment>): StoredPayment {
+function mergePayment(
+  base: StoredPayment | null,
+  patch: Partial<StoredPayment>
+): StoredPayment {
   const timestamp = nowIso();
   const status = normalizeStatus(patch.status || base?.status || "unknown");
   const customerEmail =
@@ -326,13 +398,21 @@ function mergePayment(base: StoredPayment | null, patch: Partial<StoredPayment>)
     null;
 
   return {
-    requestId: patch.requestId || base?.requestId || "",
-    externalReference: patch.externalReference || base?.externalReference || patch.requestId || base?.requestId || "",
+    requestId: safeRequestId(patch.requestId || base?.requestId || ""),
+    externalReference:
+      patch.externalReference ||
+      base?.externalReference ||
+      patch.requestId ||
+      base?.requestId ||
+      "",
     status,
     rawStatus: patch.rawStatus ?? base?.rawStatus ?? null,
     statusDetail: patch.statusDetail ?? base?.statusDetail ?? null,
     amount: Number(patch.amount ?? base?.amount ?? 0),
-    paidAt: patch.paidAt ?? base?.paidAt ?? (status === "approved" ? timestamp : null),
+    paidAt:
+      patch.paidAt ??
+      base?.paidAt ??
+      (status === "approved" ? timestamp : null),
     paymentId: patch.paymentId ?? base?.paymentId ?? null,
     preferenceId: patch.preferenceId ?? base?.preferenceId ?? null,
     customerEmail,
@@ -352,7 +432,9 @@ function mergePayment(base: StoredPayment | null, patch: Partial<StoredPayment>)
   };
 }
 
-export async function getStoredPayment(requestId: string): Promise<StoredPayment | null> {
+export async function getStoredPayment(
+  requestId: string
+): Promise<StoredPayment | null> {
   const safeId = safeRequestId(requestId);
   if (!safeId) return null;
 
@@ -362,14 +444,22 @@ export async function getStoredPayment(requestId: string): Promise<StoredPayment
   return getPaymentLocally(safeId);
 }
 
-export async function savePaymentCreated(input: SavePaymentCreatedInput): Promise<StoredPayment> {
+export async function savePaymentCreated(
+  input: SavePaymentCreatedInput
+): Promise<StoredPayment> {
   const timestamp = nowIso();
+  const requestId = safeRequestId(input.requestId);
+
+  if (!requestId) {
+    throw new Error("[payment-store] requestId inválido al crear pago.");
+  }
+
   const status = normalizeStatus(input.status);
   const email = input.customerEmail || input.payerEmail || null;
 
   const payment: StoredPayment = {
-    requestId: safeRequestId(input.requestId),
-    externalReference: input.externalReference || input.requestId,
+    requestId,
+    externalReference: input.externalReference || requestId,
     status,
     rawStatus: null,
     statusDetail: null,
@@ -405,15 +495,23 @@ export async function savePaymentCreated(input: SavePaymentCreatedInput): Promis
     ],
   };
 
-  await savePaymentToSupabase(payment);
+  await requireSupabasePaymentSave(payment, "created");
   await savePaymentLocally(payment);
 
   return payment;
 }
 
-export async function savePaymentWebhookUpdate(input: SavePaymentWebhookUpdateInput): Promise<StoredPayment> {
+export async function savePaymentWebhookUpdate(
+  input: SavePaymentWebhookUpdateInput
+): Promise<StoredPayment> {
   const existing = await getStoredPayment(input.requestId);
   const timestamp = nowIso();
+  const requestId = safeRequestId(input.requestId);
+
+  if (!requestId) {
+    throw new Error("[payment-store] requestId inválido al actualizar pago.");
+  }
+
   const status = normalizeStatus(input.status);
   const email =
     input.customerEmail ||
@@ -423,8 +521,8 @@ export async function savePaymentWebhookUpdate(input: SavePaymentWebhookUpdateIn
     null;
 
   const updated = mergePayment(existing, {
-    requestId: safeRequestId(input.requestId),
-    externalReference: input.externalReference || existing?.externalReference || input.requestId,
+    requestId,
+    externalReference: input.externalReference || existing?.externalReference || requestId,
     status,
     rawStatus: input.rawStatus || null,
     statusDetail: input.statusDetail || null,
@@ -463,7 +561,7 @@ export async function savePaymentWebhookUpdate(input: SavePaymentWebhookUpdateIn
     ],
   });
 
-  await savePaymentToSupabase(updated);
+  await requireSupabasePaymentSave(updated, "webhook_update");
   await savePaymentLocally(updated);
 
   return updated;
