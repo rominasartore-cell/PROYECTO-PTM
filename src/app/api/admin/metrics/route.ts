@@ -1,24 +1,12 @@
-﻿import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase-admin";
-import { buildAdminMetrics } from "@/lib/admin/payment-admin";
+﻿import { NextResponse } from "next/server";
+import { fetchAdminMetrics } from "@/lib/admin/payment-admin";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET(_request: NextRequest) {
+export async function GET() {
   try {
-    const { data, error } = await supabaseAdmin
-      .from("analysis_requests")
-      .select("request_id, status, payment_status");
-
-    if (error) {
-      console.error("[api/admin/metrics] Error:", error);
-      return NextResponse.json(
-        { ok: false, error: error.message },
-        { status: 500 }
-      );
-    }
-
-    const metrics = await buildAdminMetrics(data || []);
+    const metrics = await fetchAdminMetrics();
 
     return NextResponse.json({
       ok: true,
@@ -26,8 +14,12 @@ export async function GET(_request: NextRequest) {
     });
   } catch (error: any) {
     console.error("[api/admin/metrics] Error:", error);
+
     return NextResponse.json(
-      { ok: false, error: error?.message || "Error fetching metrics" },
+      {
+        ok: false,
+        error: error?.message || "Error fetching metrics",
+      },
       { status: 500 }
     );
   }

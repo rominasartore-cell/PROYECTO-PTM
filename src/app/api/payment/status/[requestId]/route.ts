@@ -63,7 +63,7 @@ export async function GET(_request: Request, context: RouteContext) {
       paymentId: payment.paymentId || "",
       preferenceId: payment.preferenceId || "",
       amount: payment.amount || 0,
-      customerEmail: payment.customerEmail || payment.payerEmail || "",
+      customerEmail: payment.customerEmail || "",
       customerName: payment.customerName || "",
       plate: payment.plate || "",
       product: payment.product || "",
@@ -85,3 +85,4 @@ export async function GET(_request: Request, context: RouteContext) {
     );
   }
 }
+
