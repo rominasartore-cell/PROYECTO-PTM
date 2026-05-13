@@ -2,6 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
+import { trackPaymentApproved } from "@/lib/analytics";
 
 type NormalizedStatus = "approved" | "pending" | "rejected" | "cancelled" | "in_process" | "unknown";
 
@@ -10,6 +11,7 @@ type PaymentStatusResponse = {
   found?: boolean;
   requestId?: string;
   status?: string | null;
+  purchaseStatus?: string | null;
   error?: string | null;
   payment?: {
     status?: string | null;
@@ -73,7 +75,7 @@ function getStatusCopy(status: NormalizedStatus, hasConfirmedRecord: boolean): S
       badge: "Aprobado",
       message: "Tu compra fue registrada correctamente.",
       detail:
-        "El comprobante quedó asociado a esta solicitud. El informe completo y los solicitudes editables se enviarán al correo registrado cuando estén disponibles.",
+        "El comprobante quedó asociado a esta solicitud. El informe completo y las solicitudes editables se enviarán al correo registrado cuando estén disponibles.",
       panelClass: "border-emerald-200 bg-emerald-50 text-emerald-950",
       badgeClass: "border-emerald-300 bg-emerald-100 text-emerald-900",
     };
@@ -243,6 +245,31 @@ function ResultadosContent() {
   const paymentId = String(data?.payment?.paymentId || "").trim();
   const isMock = Boolean(data?.payment?.mock) || queryMock === "true";
   const isSandbox = Boolean(data?.payment?.sandbox);
+
+  useEffect(() => {
+    if (loading) return;
+    if (!requestId) return;
+    if (!hasConfirmedRecord) return;
+    if (status !== "approved") return;
+
+    const storageKey = `ptm_payment_approved_${requestId}`;
+
+    try {
+      if (window.sessionStorage.getItem(storageKey) === "1") return;
+      window.sessionStorage.setItem(storageKey, "1");
+    } catch {
+      // Si sessionStorage no está disponible, igual enviamos el evento.
+    }
+
+    trackPaymentApproved({
+      request_id: requestId,
+      amount: Number(amount || 0),
+      status: "approved",
+      purchase_status: "paid",
+      mock: isMock,
+      sandbox: isSandbox,
+    });
+  }, [amount, hasConfirmedRecord, isMock, isSandbox, loading, requestId, status]);
 
   const supportHref = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(
     `Soporte compra PTM ${requestId || "sin codigo"}`
