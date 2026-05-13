@@ -25,7 +25,7 @@ export default function PublicSiteHeader() {
           <Link href="/#como-funciona" className="transition hover:text-blue-700">
             Cómo funciona
           </Link>
-          <Link href="/#faq" className="transition hover:text-blue-700">
+          <Link href="/#preguntas" className="transition hover:text-blue-700">
             Preguntas
           </Link>
         </nav>

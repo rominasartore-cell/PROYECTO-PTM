@@ -5,6 +5,7 @@ import PublicSiteHeader from "@/components/ptm/PublicSiteHeader";
 
 import PreliminaryResultCard from '@/components/ptm/PreliminaryResultCard';
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 type AnalysisResult = {
@@ -647,14 +648,58 @@ function Footer() {
   return (
     <footer className="bg-slate-950 py-12 text-white">
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-        <p className="text-lg font-black text-white">Prescribe tu Multa</p>
-        <p className="mt-4 max-w-7xl text-sm leading-7 text-slate-400">
-          Servicio documental automatizado para analizar multas de transito informadas al Registro de Multas No Pagadas sobre la base del certificado aportado por el usuario.
-        </p>
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <p className="text-lg font-black text-white">Prescribe tu Multa</p>
+            <p className="mt-3 text-sm leading-7 text-slate-400">
+              Servicio documental automatizado para analizar multas de transito informadas al Registro de Multas No Pagadas.
+            </p>
+          </div>
 
-        <p className="mt-6 text-xs leading-6 text-slate-400">
-          No incluye representacion judicial, patrocinio profesional, asesoria personalizada, presentacion ante tribunales, seguimiento del tramite ni garantia de resultado.
-        </p>
+          <div>
+            <h3 className="text-sm font-black text-white">Legal</h3>
+            <ul className="mt-4 space-y-2">
+              <li>
+                <Link href="/terminos-y-condiciones" className="text-sm text-slate-400 transition hover:text-white">
+                  T\u00e9rminos y Condiciones
+                </Link>
+              </li>
+              <li>
+                <Link href="/politica-de-privacidad" className="text-sm text-slate-400 transition hover:text-white">
+                  Pol\u00edtica de Privacidad
+                </Link>
+              </li>
+              <li>
+                <Link href="/politica-de-reembolso" className="text-sm text-slate-400 transition hover:text-white">
+                  Pol\u00edtica de Reembolso
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-black text-white">Soporte</h3>
+            <ul className="mt-4 space-y-2">
+              <li>
+                <Link href="/contacto" className="text-sm text-slate-400 transition hover:text-white">
+                  Contacto
+                </Link>
+              </li>
+              <li>
+                <a href="/#preguntas" className="text-sm text-slate-400 transition hover:text-white">
+                  Preguntas Frecuentes
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-black text-white">Descargo</h3>
+            <p className="mt-4 text-xs leading-5 text-slate-400">
+              No incluye representacion judicial, patrocinio profesional, asesoria personalizada, presentacion ante tribunales, seguimiento del tramite ni garantia de resultado.
+            </p>
+          </div>
+        </div>
 
         <div className="mt-10 border-t border-white/10 pt-6 text-center text-xs text-slate-500">
           {"\u00a9"} {new Date().getFullYear()} Prescribe tu Multa. Todos los derechos reservados.
