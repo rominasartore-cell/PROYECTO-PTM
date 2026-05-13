@@ -184,6 +184,151 @@ function JsonBlock({ value }: { value: unknown }) {
   );
 }
 
+function firstValue(record: JsonRecord, keys: string[]): unknown {
+  for (const key of keys) {
+    const value = record[key];
+    if (value !== null && value !== undefined && value !== "") return value;
+  }
+
+  return null;
+}
+
+function textValue(value: unknown, fallback = "—"): string {
+  if (value === null || value === undefined || value === "") return fallback;
+  return String(value);
+}
+
+function optionalMoney(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "—";
+
+  const normalized = typeof value === "string" ? value.replace(/\./g, "").replace(",", ".") : value;
+  const amount = Number(normalized);
+
+  if (!Number.isFinite(amount)) return "—";
+
+  return money(amount);
+}
+
+function optionalNumber(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "—";
+
+  const amount = Number(value);
+
+  if (!Number.isFinite(amount)) return String(value);
+
+  return String(amount);
+}
+
+function getFineLogsFromRecord(record: JsonRecord): JsonRecord[] {
+  const candidates = [
+    record.logs,
+    asRecord(record.result).logs,
+    asRecord(record.analysis).logs,
+    asRecord(record.analysisResult).logs,
+    asRecord(record.preliminaryResult).logs,
+    asRecord(record.data).logs,
+    asRecord(asRecord(record.raw_analysis_json).data).logs,
+  ];
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) {
+      return candidate.filter((item) => item && typeof item === "object" && !Array.isArray(item)) as JsonRecord[];
+    }
+  }
+
+  return [];
+}
+
+function fineStatusClass(value: unknown): string {
+  const status = String(value || "").toUpperCase();
+
+  if (status.includes("PRESCRITA")) {
+    return "border-emerald-500/40 bg-emerald-500/10 text-emerald-200";
+  }
+
+  if (status.includes("VIGENTE")) {
+    return "border-yellow-500/40 bg-yellow-500/10 text-yellow-200";
+  }
+
+  return "border-slate-500/40 bg-slate-500/10 text-slate-200";
+}
+
+function fineStatusLabel(value: unknown): string {
+  const status = String(value || "").toUpperCase();
+
+  if (status === "POTENCIALMENTE_PRESCRITA") return "Potencialmente prescrita";
+  if (status === "VIGENTE") return "Vigente";
+
+  return status || "Sin estado";
+}
+
+function FinesTable({ fines }: { fines: JsonRecord[] }) {
+  if (!fines.length) {
+    return (
+      <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 text-sm text-slate-400">
+        No hay multas detectadas para mostrar.
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-slate-800">
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-slate-800 text-left text-sm">
+          <thead className="bg-slate-950/80 text-xs uppercase tracking-[0.14em] text-slate-500">
+            <tr>
+              <th className="px-4 py-3">ID multa</th>
+              <th className="px-4 py-3">Estado</th>
+              <th className="px-4 py-3">Ingreso RMNP</th>
+              <th className="px-4 py-3">Prescripción ref.</th>
+              <th className="px-4 py-3 text-right">UTM</th>
+              <th className="px-4 py-3 text-right">Monto</th>
+            </tr>
+          </thead>
+
+          <tbody className="divide-y divide-slate-800 bg-slate-900">
+            {fines.map((fine, index) => {
+              const estado = firstValue(fine, ["estado", "status"]);
+              const idMulta = firstValue(fine, ["idMulta", "id_multa", "fineId"]);
+              const ingresoRmnp = firstValue(fine, ["fechaIngresoRmnp", "fecha_ingreso_rmnp"]);
+              const prescripcion = firstValue(fine, ["fechaPrescripcionReferencial", "fecha_prescripcion_referencial"]);
+              const montoUtm = firstValue(fine, ["montoUtm", "monto_utm"]);
+              const montoPesos = firstValue(fine, ["montoPesos", "monto_pesos"]);
+
+              return (
+                <tr key={`${textValue(idMulta, "multa")}-${index}`} className="align-top transition hover:bg-slate-800/70">
+                  <td className="px-4 py-3 font-mono text-xs text-slate-200">
+                    {textValue(idMulta)}
+                  </td>
+
+                  <td className="px-4 py-3">
+                    <Badge className={fineStatusClass(estado)}>{fineStatusLabel(estado)}</Badge>
+                  </td>
+
+                  <td className="px-4 py-3 text-slate-300">
+                    {textValue(ingresoRmnp)}
+                  </td>
+
+                  <td className="px-4 py-3 text-slate-300">
+                    {textValue(prescripcion)}
+                  </td>
+
+                  <td className="px-4 py-3 text-right font-bold text-slate-200">
+                    {optionalNumber(montoUtm)}
+                  </td>
+
+                  <td className="px-4 py-3 text-right font-bold text-emerald-300">
+                    {optionalMoney(montoPesos)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
 function ActionButton({
   children,
   onClick,
@@ -278,6 +423,7 @@ export default function AdminRequestDetailPage() {
   const isSupabase = pickBoolean(merged, ["payment_supabase_record", "paymentSupabaseRecord", "has_supabase_payment", "supabase_record", "supabaseRecord"]);
   const isLocalOnly = pickBoolean(merged, ["local_only", "localOnly"]);
   const approved = isApprovedStatus(status);
+  const fineLogs = useMemo(() => getFineLogsFromRecord(merged), [merged]);
 
   const loadRequest = useCallback(async () => {
     if (!requestId) return;
@@ -559,14 +705,26 @@ export default function AdminRequestDetailPage() {
               </InfoCard>
             </section>
 
-            <section className="grid gap-4 lg:grid-cols-2">
-              <InfoCard title="Detalle normalizado">
-                <JsonBlock value={merged} />
+            <section className="grid gap-4">
+              <InfoCard title="Tabla de multas detectadas">
+                <FinesTable fines={fineLogs} />
               </InfoCard>
 
-              <InfoCard title="Respuesta completa API">
-                <JsonBlock value={payload} />
-              </InfoCard>
+              <details className="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-sm">
+                <summary className="cursor-pointer text-sm font-black uppercase tracking-[0.16em] text-slate-400 transition hover:text-cyan-300">
+                  Ver datos técnicos
+                </summary>
+
+                <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                  <InfoCard title="Detalle normalizado">
+                    <JsonBlock value={merged} />
+                  </InfoCard>
+
+                  <InfoCard title="Respuesta completa API">
+                    <JsonBlock value={payload} />
+                  </InfoCard>
+                </div>
+              </details>
             </section>
           </>
         )}
