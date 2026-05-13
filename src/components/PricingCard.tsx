@@ -22,7 +22,7 @@ export function PricingCard() {
     <section className="bg-slate-50 py-16">
       <div className="container">
         <div className="mb-12 text-center">
-          <p className="text-sm font-black uppercase tracking-[0.2em] text-amber-700">
+          <p className="text-sm font-black uppercase tracking-[0.2em] text-teal-700">
             Producto
           </p>
           <h2 className="mt-3 text-3xl font-black text-slate-950">
@@ -35,7 +35,7 @@ export function PricingCard() {
             <h3 className="mb-4 text-2xl font-black text-slate-950">
               Análisis preliminar
             </h3>
-            <div className="mb-6 text-4xl font-black text-blue-700">
+            <div className="mb-6 text-4xl font-black text-emerald-700">
               Gratis
             </div>
 
@@ -57,15 +57,15 @@ export function PricingCard() {
           </article>
 
           <article className="card relative border-2 border-blue-700">
-            <div className="absolute right-4 top-4 rounded-full bg-blue-700 px-3 py-1 text-sm font-black text-white">
+            <div className="absolute right-4 top-4 rounded-full bg-emerald-700 px-3 py-1 text-sm font-black text-white">
               Recomendado
             </div>
 
             <h3 className="mb-4 mt-4 text-2xl font-black text-slate-950">
-              Informe completo + borradores
+              Informe completo + solicitudes editables
             </h3>
 
-            <div className="mb-2 text-4xl font-black text-blue-700">
+            <div className="mb-2 text-4xl font-black text-emerald-700">
               {formatCLP(PRODUCT_PRICE_CLP)}
             </div>
             <p className="mb-6 text-sm font-bold text-slate-600">
@@ -75,7 +75,7 @@ export function PricingCard() {
             <ul className="mb-8 space-y-3 text-sm font-medium leading-6 text-slate-700">
               <li>✓ Informe completo de análisis del certificado.</li>
               <li>✓ Detalle de multas potencialmente prescritas o vigentes.</li>
-              <li>✓ Borrador editable de solicitud de prescripción.</li>
+              <li>✓ Solicitudes editables de prescripción.</li>
               <li>✓ Guía de tramitación personal paso a paso.</li>
               <li>✓ Advertencias y limitaciones del producto.</li>
             </ul>

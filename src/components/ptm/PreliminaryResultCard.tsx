@@ -236,14 +236,14 @@ export default function PreliminaryResultCard({
 
   return (
     <>
-      <article className="mx-auto mt-6 w-full max-w-[760px] overflow-hidden rounded-[2rem] bg-white shadow-2xl ring-1 ring-slate-200">
+      <article className="mx-auto mt-6 w-full max-w-[760px] overflow-hidden rounded-3xl bg-white shadow-lg ring-1 ring-slate-200">
         <header className="bg-gradient-to-br from-emerald-600 via-cyan-700 to-slate-700 px-7 py-9 text-white sm:px-10">
           <p className="mb-6 flex items-center gap-3 text-sm font-black tracking-[0.18em] text-white/90">
             <span className="text-2xl" aria-hidden="true">✓</span>
             RESULTADO PRELIMINAR
           </p>
 
-          <h2 className="max-w-xl text-4xl font-black leading-tight sm:text-5xl">
+          <h2 className="max-w-xl text-3xl font-black leading-tight sm:text-3xl">
             Se detectaron multas ingresadas al RMNP
           </h2>
 
@@ -253,28 +253,19 @@ export default function PreliminaryResultCard({
         </header>
 
         <div className="space-y-5 px-6 py-7 sm:px-9 sm:py-9">
-          <section className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 text-center">
-              <p className="text-sm font-black uppercase tracking-widest text-slate-500">
-                Multas detectadas
-              </p>
-              <p className="mt-3 text-5xl font-black text-slate-950">
-                {normalized.totalCount}
-              </p>
-            </div>
-
+          <section>
             <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5 text-center">
               <p className="text-sm font-black uppercase tracking-widest text-emerald-700">
                 Potencialmente prescritas
               </p>
-              <p className="mt-3 text-5xl font-black text-emerald-700">
+              <p className="mt-3 text-3xl font-black text-emerald-700">
                 {normalized.prescribedCount}
               </p>
             </div>
           </section>
 
           <section className="relative rounded-3xl border border-cyan-200 bg-cyan-50 px-5 pb-7 pt-16 text-center">
-            <div className="absolute left-1/2 top-0 flex h-20 w-20 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-gradient-to-br from-cyan-400 to-emerald-600 text-5xl font-black text-white shadow-xl">
+            <div className="absolute left-1/2 top-0 flex h-20 w-20 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-gradient-to-br from-cyan-400 to-emerald-600 text-3xl font-black text-white shadow-lg">
               $
             </div>
 
@@ -282,11 +273,11 @@ export default function PreliminaryResultCard({
               MONTO ASOCIADO A LAS MULTAS POTENCIALMENTE PRESCRITAS
             </p>
 
-            <p className="mt-5 text-5xl font-black leading-none tracking-tight text-teal-700 sm:text-7xl">
+            <p className="mt-5 text-3xl font-black leading-none tracking-tight text-teal-700 sm:text-7xl">
               {formatCLP(normalized.amount)}
             </p>
 
-            <p className="mx-auto mt-5 max-w-md text-lg font-medium leading-tight text-slate-600 sm:text-xl">
+            <p className="mx-auto mt-5 max-w-md text-lg font-medium leading-tight text-slate-700 sm:text-xl">
               Monto referencial calculado en base al certificado subido.
             </p>
           </section>
@@ -311,7 +302,7 @@ export default function PreliminaryResultCard({
             </div>
           </section>
 
-          <section className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm font-semibold leading-6 text-amber-950">
+          <section className="rounded-3xl border border-teal-200 bg-teal-50 p-5 text-sm font-semibold leading-6 text-teal-950">
             <p className="font-black">Importante</p>
             <p className="mt-2">
               El resultado es preliminar y referencial. La prescripción debe solicitarse ante el tribunal competente y la eliminación del RMNP depende de la resolución respectiva.
@@ -322,7 +313,7 @@ export default function PreliminaryResultCard({
             type="button"
             onClick={() => setModalOpen(true)}
             disabled={!canPurchase}
-            className="w-full rounded-2xl bg-emerald-600 px-6 py-5 text-xl font-black text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-emerald-700 active:translate-y-0 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
+            className="w-full rounded-2xl bg-emerald-700 px-6 py-5 text-xl font-black text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-emerald-800 active:translate-y-0 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
           >
             {canPurchase ? "Comprar informe completo →" : "Compra no disponible"}
           </button>
@@ -331,7 +322,7 @@ export default function PreliminaryResultCard({
             href="https://www.registrocivil.cl/principal/servicios-en-linea/certificado-de-multas-de-tránsito-no-pagadas"
             target="_blank"
             rel="noopener noreferrer"
-            className="block w-full rounded-2xl border-2 border-blue-600 px-6 py-4 text-center text-xl font-black text-blue-700 transition hover:bg-blue-50"
+            className="block w-full rounded-2xl border-2 border-emerald-600 px-5 py-3 text-center text-xl font-black text-teal-700 transition hover:bg-emerald-50"
           >
             Obtener certificado ↗
           </a>

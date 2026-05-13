@@ -2,7 +2,7 @@ export default function PoliticaDeReembolsoPage() {
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-12 text-slate-950 sm:px-6 lg:px-8">
       <section className="mx-auto max-w-4xl rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-10">
-        <p className="text-sm font-black uppercase tracking-[0.25em] text-amber-700">
+        <p className="text-sm font-black uppercase tracking-[0.25em] text-teal-700">
           Prescribe tu Multa
         </p>
 
@@ -12,7 +12,7 @@ export default function PoliticaDeReembolsoPage() {
 
         <div className="mt-8 space-y-6 text-sm leading-7 text-slate-700">
           <p>
-            El producto consiste en un informe documental y borradores editables generados a partir del certificado aportado por el usuario.
+            El producto consiste en un informe documental y solicitudes editables generados a partir del certificado aportado por el usuario.
           </p>
 
           <p>

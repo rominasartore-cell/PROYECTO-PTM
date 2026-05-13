@@ -16,10 +16,10 @@ export function Header() {
         </Link>
 
         <nav className="hidden items-center gap-6 text-sm font-bold text-slate-600 md:flex">
-          <Link href="/#upload-form" className="transition hover:text-amber-700">
+          <Link href="/#upload-form" className="transition hover:text-teal-700">
             Analizar
           </Link>
-          <Link href="/#faq" className="transition hover:text-amber-700">
+          <Link href="/#faq" className="transition hover:text-teal-700">
             Preguntas
           </Link>
         </nav>

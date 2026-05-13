@@ -225,7 +225,7 @@ export function UploadForm() {
       <div className="container max-w-2xl">
         <div className="card">
           <div className="mb-8 text-center">
-            <p className="text-sm font-black uppercase tracking-[0.2em] text-amber-700">
+            <p className="text-sm font-black uppercase tracking-[0.2em] text-teal-700">
               Análisis preliminar
             </p>
             <h2 className="mt-3 text-3xl font-black text-slate-950">
@@ -239,7 +239,7 @@ export function UploadForm() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div
               className={`rounded-2xl border-2 border-dashed p-8 text-center transition ${
-                dragActive ? "border-blue-500 bg-blue-50" : "border-slate-300 bg-white"
+                dragActive ? "border-blue-500 bg-emerald-50" : "border-slate-300 bg-white"
               }`}
               onDragEnter={handleDrag}
               onDragLeave={handleDrag}
@@ -288,7 +288,7 @@ export function UploadForm() {
                 onChange={handleInputChange}
                 disabled={loading}
                 autoComplete="name"
-                className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:opacity-60"
+                className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-emerald-100 disabled:opacity-60"
                 required
               />
 
@@ -300,7 +300,7 @@ export function UploadForm() {
                 onChange={handleInputChange}
                 disabled={loading}
                 autoComplete="email"
-                className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:opacity-60"
+                className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-emerald-100 disabled:opacity-60"
                 required
               />
             </div>
@@ -314,7 +314,7 @@ export function UploadForm() {
               disabled={loading}
               autoComplete="off"
               inputMode="text"
-              className="w-full rounded-2xl border border-slate-300 px-4 py-3 uppercase outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:opacity-60"
+              className="w-full rounded-2xl border border-slate-300 px-4 py-3 uppercase outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-emerald-100 disabled:opacity-60"
               required
             />
 
@@ -335,7 +335,7 @@ export function UploadForm() {
             {error ? (
               <div
                 role="alert"
-                className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700"
+                className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700"
               >
                 {error}
               </div>
@@ -344,7 +344,7 @@ export function UploadForm() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-2xl bg-blue-900 py-4 font-black text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full rounded-2xl bg-emerald-900 py-4 font-black text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading ? "Analizando..." : "Analizar certificado gratis"}
             </button>

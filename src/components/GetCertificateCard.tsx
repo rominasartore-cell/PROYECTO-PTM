@@ -22,7 +22,7 @@ export function GetCertificateCard() {
     <section className="bg-white py-16">
       <div className="container">
         <div className="mb-12 text-center">
-          <p className="text-sm font-black uppercase tracking-[0.2em] text-amber-700">
+          <p className="text-sm font-black uppercase tracking-[0.2em] text-teal-700">
             Paso previo
           </p>
           <h2 className="mt-3 text-3xl font-black text-slate-950">
@@ -51,7 +51,7 @@ export function GetCertificateCard() {
               <p className="mb-4 text-sm font-medium leading-6 text-slate-600">
                 {item.description}
               </p>
-              <span className="font-black text-blue-700">Ir al sitio →</span>
+              <span className="font-black text-emerald-700">Ir al sitio →</span>
             </a>
           ))}
         </div>

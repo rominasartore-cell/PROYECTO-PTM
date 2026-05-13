@@ -76,7 +76,7 @@ export function AdminLogin() {
         {error ? (
           <div
             role="alert"
-            className="mb-5 rounded-2xl border border-red-500/40 bg-red-500/10 p-4 text-sm font-semibold text-red-100"
+            className="mb-5 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-4 text-sm font-semibold text-emerald-100"
           >
             {error}
           </div>

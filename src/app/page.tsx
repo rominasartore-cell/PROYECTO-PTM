@@ -249,8 +249,8 @@ function MetricCard({
     accent === "emerald"
       ? "border-emerald-100 bg-emerald-50 text-emerald-700"
       : accent === "amber"
-        ? "border-amber-100 bg-amber-50 text-amber-700"
-        : "border-amber-100 bg-amber-50 text-amber-700";
+        ? "border-teal-100 bg-teal-50 text-teal-700"
+        : "border-teal-100 bg-teal-50 text-teal-700";
 
   return (
     <div className={"rounded-3xl border p-4 text-center " + color}>
@@ -291,7 +291,7 @@ function TextField({
         placeholder={placeholder}
         autoComplete={autoComplete}
         maxLength={maxLength}
-        className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-amber-500 focus:ring-4 focus:ring-amber-100"
+        className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-teal-500 focus:ring-4 focus:ring-teal-100"
       />
     </label>
   );
@@ -324,7 +324,7 @@ function Header() {
             <a
               key={item.href}
               href={item.href}
-              className="text-sm font-black text-slate-700 transition hover:text-orange-600"
+              className="text-sm font-black text-slate-700 transition hover:text-emerald-700"
             >
               {item.label}
             </a>
@@ -333,7 +333,7 @@ function Header() {
 
         <a
           href="#analizar"
-          className="hidden rounded-2xl bg-orange-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-orange-600/20 transition hover:bg-orange-700 sm:inline-flex"
+          className="hidden rounded-2xl bg-gradient-to-r from-emerald-700 to-teal-700 px-5 py-3 text-sm font-black text-white shadow-lg shadow-emerald-700/25 transition hover:from-emerald-800 hover:to-teal-800 sm:inline-flex"
         >
           Analizar mi multa
         </a>
@@ -342,183 +342,137 @@ function Header() {
   );
 }
 
-function Hero({ result }: { result: AnalysisResult | null }) {
-  const benefits = [
-    { icon: "🛡️", title: "100% online", text: "Sin trámites presenciales" },
-    { icon: "⏱️", title: "Resultados rápidos", text: "En pocos minutos" },
-    { icon: "🔒", title: "Seguro y confidencial", text: "Protegemos tus datos" },
-  ];
-
-  const serviceCards = [
-    {
-      icon: "📄",
-      title: "Análisis legal experto",
-      text: "Evaluamos tus multas según la normativa chilena vigente.",
-    },
-    {
-      icon: "✅",
-      title: "Documentos listos",
-      text: "Recibe escritos editables para tu trámite de prescripción.",
-    },
-    {
-      icon: "🕒",
-      title: "Ahorra tiempo y dinero",
-      text: "Evitamos gestiones innecesarias. Nosotros hacemos el análisis por ti.",
-    },
-    {
-      icon: "🧭",
-      title: "Acompañamiento claro",
-      text: "Te orientamos en cada paso del proceso con transparencia.",
-    },
-  ];
-
+function Hero({
+  result,
+  setResult,
+  resultRef,
+}: {
+  result: AnalysisResult | null;
+  setResult: (result: AnalysisResult | null) => void;
+  resultRef: { current: HTMLDivElement | null };
+}) {
   return (
     <section className="relative overflow-hidden bg-white">
-      <div className="absolute inset-0 bg-gradient-to-br from-orange-50 via-white to-slate-100" />
-      <div className="absolute right-0 top-0 hidden h-full w-1/2 bg-gradient-to-l from-slate-200/70 via-orange-100/30 to-transparent lg:block" />
-      <div className="absolute right-[-12rem] top-[-10rem] hidden h-[32rem] w-[32rem] rounded-full bg-orange-200/30 blur-3xl lg:block" />
+      <div className="absolute inset-0 bg-gradient-to-br from-emerald-50 via-white to-teal-50" />
+      <div className="absolute right-[-12rem] top-[-10rem] hidden h-[32rem] w-[32rem] rounded-full bg-emerald-200/30 blur-3xl lg:block" />
 
-      <div className="relative mx-auto w-full max-w-7xl px-4 pb-8 pt-10 sm:px-6 lg:px-8 lg:pb-12 lg:pt-14">
-        <div className="grid items-center gap-10 lg:grid-cols-[1.12fr_0.88fr]">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/85 px-4 py-2 text-xs font-black text-slate-700 shadow-sm">
-              <span className="text-orange-600">⚖</span>
-              Servicio legal especializado en multas de tránsito en Chile
+      <div className="relative mx-auto grid w-full max-w-7xl items-start gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[0.92fr_1.08fr] lg:px-8 lg:py-14">
+        <div className="pt-2 lg:pt-8">
+          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-white/90 px-4 py-2 text-xs font-black text-slate-700 shadow-sm">
+            <span className="text-emerald-700">⚖</span>
+            Servicio legal especializado en multas de tránsito en Chile
+          </div>
+
+          <h1 className="mt-7 max-w-4xl text-4xl font-black leading-[0.98] tracking-tight text-slate-950 sm:text-5xl lg:text-6xl">
+            ¿Tienes multas que podrían estar prescritas?
+          </h1>
+
+          <p className="mt-4 text-xl font-black leading-tight text-emerald-700 sm:text-2xl">
+            Analiza tu certificado al instante
+          </p>
+
+          <p className="mt-5 max-w-2xl text-base font-semibold leading-8 text-slate-700">
+            Sube tu certificado y obtén un resultado preliminar inmediato de tus multas.
+          </p>
+
+          <div className="mt-8 grid gap-4 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-white">
+                ✓
+              </div>
+              <div>
+                <p className="text-sm font-black text-slate-950">100% online</p>
+                
+              </div>
             </div>
 
-            <h1 className="mt-7 max-w-4xl text-5xl font-black leading-[0.95] tracking-tight text-slate-950 sm:text-6xl lg:text-7xl">
-              Analizamos tus multas de tránsito no pagadas
-            </h1>
-
-            <p className="mt-4 text-2xl font-black leading-tight text-orange-600 sm:text-3xl">
-              y te ayudamos a recuperar tu tranquilidad
-            </p>
-
-            <p className="mt-5 max-w-2xl text-base font-semibold leading-8 text-slate-700 sm:text-lg">
-              Verificamos si tus multas pueden prescribir según la ley chilena. Obtén un informe preliminar y los documentos necesarios para iniciar el trámite.
-            </p>
-
-            <div className="mt-7 grid gap-4 sm:grid-cols-3">
-              {benefits.map((item) => (
-                <div key={item.title} className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-lg text-white">
-                    {item.icon}
-                  </div>
-
-                  <div>
-                    <p className="text-sm font-black text-slate-950">
-                      {item.title}
-                    </p>
-                    <p className="text-xs font-semibold text-slate-500">
-                      {item.text}
-                    </p>
-                  </div>
-                </div>
-              ))}
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-white">
+                ✓
+              </div>
+              <div>
+                <p className="text-sm font-black text-slate-950">Resultado inmediato</p>
+                
+              </div>
             </div>
 
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <a
-                href="#analizar"
-                className="inline-flex items-center justify-center rounded-2xl bg-orange-600 px-7 py-4 text-sm font-black text-white shadow-xl shadow-orange-600/20 transition hover:bg-orange-700"
-              >
-                Analizar mi multa ahora →
-              </a>
-
-              <a
-                href="#como-funciona"
-                className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white/80 px-7 py-4 text-sm font-black text-slate-900 transition hover:border-orange-300 hover:bg-orange-50"
-              >
-                Cómo funciona →
-              </a>
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-white">
+                ✓
+              </div>
+              <div>
+                <p className="text-sm font-black text-slate-950">Documental</p>
+                <p className="text-xs font-semibold text-slate-500">Informe y solicitudes editables</p>
+              </div>
             </div>
           </div>
 
-          <div className="relative">
-            <div className="rounded-[2rem] border border-slate-200 bg-white/95 p-7 shadow-2xl shadow-slate-950/10 backdrop-blur">
-              <div className="flex items-start gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-950 text-xl text-white">
-                  ✓
-                </div>
+          <div className="mt-8 rounded-3xl border border-teal-200 bg-teal-50 p-5 text-sm leading-7 text-teal-950">
+            <p className="font-black">Importante</p>
+            <p className="mt-1">
+              El servicio no elimina multas automáticamente ni garantiza resultado. Entrega análisis documental, informe y solicitudes editables para tramitación personal.
+            </p>
+          </div>
 
+          <div id="como-funciona" className="mt-5 rounded-3xl border border-emerald-200 bg-white/90 p-5 shadow-lg shadow-emerald-950/5">
+            <p className="text-sm font-black uppercase tracking-widest text-emerald-700">
+              Cómo funciona
+            </p>
+
+            <div className="mt-4 grid gap-3">
+              <div className="flex gap-3">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-950 text-xs font-black text-white">
+                  1
+                </span>
                 <div>
-                  <p className="text-lg font-black text-slate-950">
-                    {result ? "Resultado preliminar" : "Análisis preliminar"}
+                  <p className="text-sm font-black text-slate-950">
+                    Sube tu certificado
                   </p>
-
-                  <p className="text-sm font-black text-sky-700">
-                    {result ? "Generado" : "Disponible en línea"}
+                  <p className="text-xs font-semibold leading-5 text-slate-600">
+                    Adjunta el Certificado de Multas de Tránsito No Pagadas en PDF.
                   </p>
                 </div>
               </div>
 
-              <div className="my-7 h-px bg-slate-200" />
-
-              {result ? (
-                <>
-                  <p className="text-2xl font-black leading-tight text-slate-950">
-                    Detectamos{" "}
-                    <span className="text-orange-600">
-                      {result.multasSusceptibles}
-                    </span>{" "}
-                    multas potencialmente prescritas
+              <div className="flex gap-3">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-700 text-xs font-black text-white">
+                  2
+                </span>
+                <div>
+                  <p className="text-sm font-black text-slate-950">
+                    Revisamos los antecedentes
                   </p>
-
-                  <p className="mt-6 text-sm font-black text-slate-700">
-                    Monto referencial asociado
+                  <p className="text-xs font-semibold leading-5 text-slate-600">
+                    El sistema identifica multas y posibles antecedentes de prescripción.
                   </p>
+                </div>
+              </div>
 
-                  <p className="mt-1 text-5xl font-black tracking-tight text-orange-600">
-                    {formatCLP(result.montoPotencial)}
+              <div className="flex gap-3">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-teal-700 text-xs font-black text-white">
+                  3
+                </span>
+                <div>
+                  <p className="text-sm font-black text-slate-950">
+                    Obtén tu resultado preliminar
                   </p>
-                </>
-              ) : (
-                <>
-                  <p className="text-2xl font-black leading-tight text-slate-950">
-                    Esta multa <span className="text-orange-600">podría</span>{" "}
-                    estar <span className="text-orange-600">prescrita</span>
+                  <p className="text-xs font-semibold leading-5 text-slate-600">
+                    Luego puedes comprar el informe completo con solicitudes editables.
                   </p>
-
-                  <p className="mt-6 text-sm font-black text-slate-700">
-                    Resultado estimado
-                  </p>
-
-                  <p className="mt-1 text-5xl font-black tracking-tight text-orange-600">
-                    En minutos
-                  </p>
-                </>
-              )}
-
-              <a
-                href="#analizar"
-                className="mt-7 inline-flex w-full items-center justify-center rounded-2xl bg-orange-50 px-5 py-4 text-sm font-black text-slate-950 transition hover:bg-orange-100"
-              >
-                Ver detalles del análisis →
-              </a>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="mt-10 grid overflow-hidden rounded-[2rem] border border-orange-100 bg-white/90 shadow-xl shadow-slate-950/5 backdrop-blur sm:grid-cols-2 lg:grid-cols-4">
-          {serviceCards.map((item, index) => (
-            <div
-              key={item.title}
-              className={`flex gap-4 p-6 ${
-                index > 0 ? "border-t border-orange-100 sm:border-l sm:border-t-0" : ""
-              }`}
-            >
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-orange-50 text-2xl text-orange-600">
-                {item.icon}
-              </div>
-
-              <div>
-                <p className="font-black text-slate-950">{item.title}</p>
-                <p className="mt-2 text-sm leading-6 text-slate-600">
-                  {item.text}
-                </p>
-              </div>
-            </div>
-          ))}
+        <div id="analizar" className="scroll-mt-28">
+          <div className="rounded-[2rem] border border-emerald-200 bg-white p-5 shadow-2xl shadow-emerald-950/15 ring-1 ring-emerald-100 sm:p-7">
+            <AnalysisForm
+              result={result}
+              setResult={setResult}
+              resultRef={resultRef}
+            />
+          </div>
         </div>
       </div>
     </section>
@@ -622,7 +576,7 @@ function AnalysisForm({
     <section id="analizar" className="space-y-6">
       <div className="mx-auto w-full max-w-2xl rounded-[2rem] border border-slate-200 bg-white p-5 shadow-xl shadow-slate-900/5 sm:p-7">
       <div>
-        <div className="mb-2 inline-flex rounded-full bg-amber-50 px-3 py-1 text-xs font-black uppercase tracking-widest text-amber-700">
+        <div className="mb-2 inline-flex rounded-full bg-teal-50 px-3 py-1 text-xs font-black uppercase tracking-widest text-teal-700">
           Análisis preliminar
         </div>
         <h2 className="text-2xl font-black tracking-tight text-slate-950">Analiza gratis tu certificado</h2>
@@ -636,35 +590,35 @@ function AnalysisForm({
         <TextField id="email" label="Correo electrónico" value={email} onChange={setEmail} placeholder="ejemplo@correo.com" type="email" autoComplete="email" />
         <TextField id="plate" label="Patente" value={plate} onChange={(value) => setPlate(formatPlate(value))} placeholder="Ej: ABCD12" maxLength={7} />
 
-        <label htmlFor="certificate" className="group flex cursor-pointer flex-col justify-center rounded-3xl border-2 border-dashed border-amber-200 bg-amber-50/40 p-6 text-center transition hover:border-orange-400 hover:bg-amber-50">
-          <div className="mb-3 text-4xl text-slate-400 transition group-hover:text-amber-600">{"\u2b06"}</div>
+        <label htmlFor="certificate" className="group flex cursor-pointer flex-col justify-center rounded-3xl border-2 border-dashed border-teal-200 bg-teal-50/40 p-6 text-center transition hover:border-emerald-400 hover:bg-teal-50">
+          <div className="mb-3 text-4xl text-slate-400 transition group-hover:text-teal-600">{"\u2b06"}</div>
           <span className="text-sm font-bold text-slate-800">{file?.name || "Sube tu certificado de multas"}</span>
           <span className="mt-1 text-xs text-slate-500">Solo PDF. Máx. 10 MB.</span>
           <input id="certificate" name="certificate" type="file" accept="application/pdf" className="sr-only" onChange={handleFileChange} />
         </label>
 
-        <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4">
+        <div className="rounded-2xl border border-teal-100 bg-teal-50 p-4">
           <p className="text-sm font-black text-slate-900">¿No tienes el certificado?</p>
           <p className="mt-1 text-xs leading-relaxed text-slate-500">Puedes obténerlo en el Registro Civil y luego subirlo aquí para analizarlo.</p>
-          <a href={REGISTRO_CIVIL_URL} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex text-xs font-black text-amber-700">
+          <a href={REGISTRO_CIVIL_URL} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex text-xs font-black text-teal-700">
             Obtener certificado {"\u2197"}
           </a>
         </div>
 
         <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs leading-5 text-slate-600">
-          <input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} className="mt-1 h-4 w-4 rounded border-slate-300 text-amber-600" />
+          <input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} className="mt-1 h-4 w-4 rounded border-slate-300 text-teal-600" />
           <span>
             Consiento el tratamiento de mis datos personales para realizar el análisis del certificado, generar el informe y enviarlo al correo indicado.
 Entiendo que no incluye representación judicial, patrocinio profesional, presentación ante tribunales, seguimiento ni garantía de resultado.
           </span>
         </label>
 
-        {error ? <div className="rounded-2xl bg-red-50 p-4 text-sm font-bold text-red-700">{error}</div> : null}
+        {error ? <div className="rounded-2xl border border-slate-300 bg-slate-50 p-4 text-sm font-bold text-slate-800">{error}</div> : null}
 
         <button
           type="submit"
           disabled={!canSubmit || isAnalyzing}
-          className="flex w-full justify-center rounded-2xl bg-orange-600 px-5 py-4 text-sm font-black text-white shadow-lg shadow-orange-600/20 transition hover:bg-slate-950 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
+          className="flex w-full justify-center rounded-2xl bg-emerald-700 px-5 py-4 text-sm font-black text-white shadow-lg shadow-emerald-700/25 transition hover:bg-slate-950 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
         >
           {isAnalyzing ? "Analizando certificado..." : <>Analizar ahora {"\u2192"}</>}
         </button>
@@ -716,79 +670,12 @@ function PreliminaryResult({
   );
 }
 
-function HowItWorks() {
-  const steps = [
-    {
-      number: "1",
-      icon: "⬆",
-      title: "Sube tu certificado",
-      text: "Sube tu Certificado de Multas de Tránsito No Pagadas en formato PDF.",
-    },
-    {
-      number: "2",
-      icon: "⌕",
-      title: "Analizamos tu caso",
-      text: "Verificamos si tus multas pueden prescribir según los antecedentes del certificado.",
-    },
-    {
-      number: "3",
-      icon: "⇩",
-      title: "Recibe tu resultado",
-      text: "Obtén tu informe preliminar y, si compras, los documentos para el trámite.",
-    },
-  ];
-
-  return (
-    <section id="como-funciona" className="bg-white py-14 sm:py-16">
-      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="text-center">
-          <h2 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
-            ¿Cómo funciona?
-          </h2>
-          <p className="mt-2 text-base font-black text-orange-600">
-            En 3 simples pasos
-          </p>
-        </div>
-
-        <div className="mt-10 grid gap-5 lg:grid-cols-3">
-          {steps.map((step, index) => (
-            <div key={step.number} className="relative">
-              <article className="h-full rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                <div className="flex gap-4">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-950 text-sm font-black text-white">
-                    {step.number}
-                  </div>
-
-                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-orange-50 text-3xl text-slate-950">
-                    {step.icon}
-                  </div>
-
-                  <div>
-                    <p className="text-base font-black text-slate-950">{step.title}</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">{step.text}</p>
-                  </div>
-                </div>
-              </article>
-
-              {index < steps.length - 1 ? (
-                <div className="absolute -right-5 top-1/2 hidden -translate-y-1/2 text-2xl font-black text-orange-500 lg:block">
-                  →
-                </div>
-              ) : null}
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function ReportIncludes() {
   const items = [
     "Informe de análisis del certificado aportado",
     "Detalle de multas detectadas y revisables",
     "Identificación de multas potencialmente prescritas",
-    "Borrador editable de solicitud de prescripción",
+    "Solicitudes editables de prescripción",
     "Guía de tramitación personal paso a paso",
     "Advertencias, límites y alcance del servicio",
   ];
@@ -797,24 +684,32 @@ function ReportIncludes() {
     <section id="servicio" className="bg-slate-50 py-16 sm:py-20">
       <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.8fr_1.2fr] lg:px-8">
         <div>
-          <p className="text-sm font-black uppercase tracking-widest text-orange-600">
+          <p className="text-sm font-black uppercase tracking-widest text-emerald-700">
             Producto
           </p>
           <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
-            Informe completo + borradores de escritos
+            Informe completo + solicitudes editables
           </h2>
           <p className="mt-4 text-base leading-8 text-slate-600">
             Un producto documental preparado con los antecedentes del certificado aportado. No incluye representación judicial ni tramitación completa.
           </p>
-          <p className="mt-5 text-4xl font-black text-slate-950">
-            $9.990 <span className="text-base font-black text-slate-500">CLP</span>
-          </p>
+          <div className="mt-5 inline-flex flex-col rounded-[2rem] border border-emerald-300 bg-slate-950 px-6 py-5 shadow-2xl shadow-emerald-950/25">
+            <span className="inline-flex w-fit rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-black uppercase tracking-[0.22em] text-emerald-300">
+              Oferta de lanzamiento
+            </span>
+            <span className="mt-3 text-6xl font-black tracking-tight text-emerald-300">
+              $9.990 <span className="align-middle text-base font-black text-emerald-100">CLP</span>
+            </span>
+            <span className="mt-2 text-xs font-bold text-emerald-100/90">
+              Precio único por informe completo + solicitudes editables
+            </span>
+          </div>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           {items.map((item) => (
             <div key={item} className="flex gap-3 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-600 text-sm font-black text-white">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-700 text-sm font-black text-white">
                 ✓
               </div>
               <p className="font-bold leading-6 text-slate-800">{item}</p>
@@ -830,7 +725,7 @@ function FAQ() {
   const questions = [
     {
       q: "¿Este servicio elimina mis multas?",
-      a: "No. El servicio entrega un informe documental y borradores para solicitar la prescripción. La decisión depende del tribunal competente.",
+      a: "No. El servicio entrega un informe documental y solicitudes editables para solicitar la prescripción. La decisión depende del tribunal competente.",
     },
     {
       q: "¿El servicio incluye representación o presentación ante tribunales?",
@@ -842,7 +737,7 @@ function FAQ() {
     },
     {
       q: "¿Cuándo recibo el informe completo?",
-      a: "Una vez realizada la compra, el informe y los borradores se envían al correo electrónico indicado. Revisa también la carpeta de spam, promociones o correo no deseado.",
+      a: "Una vez realizada la compra, el informe y los solicitudes editables se envían al correo electrónico indicado. Revisa también la carpeta de spam, promociones o correo no deseado.",
     },
     {
       q: "¿Qué hago si compré y no recibí el correo?",
@@ -854,7 +749,7 @@ function FAQ() {
     <section id="preguntas" className="bg-white py-16 sm:py-20">
       <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8">
         <div className="text-center">
-          <p className="text-sm font-black uppercase tracking-widest text-orange-600">
+          <p className="text-sm font-black uppercase tracking-widest text-emerald-700">
             Preguntas frecuentes
           </p>
           <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-5xl">
@@ -867,7 +762,7 @@ function FAQ() {
             <details key={item.q} className="group rounded-3xl border border-slate-200 bg-slate-50 p-5 shadow-sm">
               <summary className="flex cursor-pointer list-none justify-between gap-4 text-base font-black text-slate-950">
                 {item.q}
-                <span className="text-orange-600">⌄</span>
+                <span className="text-emerald-700">⌄</span>
               </summary>
               <p className="mt-3 text-sm leading-7 text-slate-600">{item.a}</p>
             </details>
@@ -919,15 +814,13 @@ export default function Page() {
   return (
     <main className="min-h-screen bg-white text-slate-950">
       <Header />
-      <Hero result={result} />
+      <Hero result={result} setResult={setResult} resultRef={resultRef} />
 
-      <section className="bg-gradient-to-b from-orange-50/70 to-white px-4 py-12 sm:px-6 lg:px-8">
+      <section className="bg-gradient-to-b from-emerald-50/70 to-white px-4 py-12 sm:px-6 lg:px-8">
         <div className="mx-auto w-full max-w-7xl">
-          <AnalysisForm result={result} setResult={setResult} resultRef={resultRef} />
-        </div>
+</div>
       </section>
 
-      <HowItWorks />
       <ReportIncludes />
       <FAQ />
       <Footer />

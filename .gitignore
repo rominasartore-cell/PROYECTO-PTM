@@ -42,3 +42,7 @@ emails_outbox/
 Thumbs.db
 .vercel
 .env*.local
+*.bak-*
+*.backup-*
+*backup*
+_backups_fuera_de_next/

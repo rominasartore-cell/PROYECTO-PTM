@@ -179,9 +179,25 @@ export default function ProductDetailModal({
     }
   }
 
+  const includedItems = [
+    "Informe completo de análisis del certificado.",
+    "Detalle de multas detectadas y estado estimado.",
+    "Identificación de multas potencialmente prescritas.",
+    "Solicitud editable de prescripción.",
+    "Guía de tramitación personal paso a paso.",
+  ];
+
+  const excludedItems = [
+    "No incluye representación judicial ni patrocinio profesional.",
+    "No incluye presentación de escritos ante tribunales.",
+    "No incluye seguimiento del expediente.",
+    "No garantiza resolución favorable ni eliminación de multas.",
+    "El tribunal puede exigir antecedentes o formalidades adicionales.",
+  ];
+
   return (
-    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-slate-950/60 px-4 py-6 backdrop-blur-sm">
-      <div className="relative max-h-[92vh] w-full max-w-[620px] overflow-y-auto rounded-[2rem] bg-white p-6 shadow-2xl sm:p-8">
+    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-slate-950/70 px-4 py-6 backdrop-blur-sm">
+      <div className="relative max-h-[92vh] w-full max-w-[760px] overflow-y-auto rounded-[2rem] border border-emerald-200 bg-white p-5 shadow-2xl shadow-emerald-950/20 sm:p-7">
         <button
           type="button"
           onClick={onClose}
@@ -192,106 +208,117 @@ export default function ProductDetailModal({
           ×
         </button>
 
-        <p className="mb-6 text-sm font-black tracking-[0.16em] text-emerald-600">
-          DETALLE DEL PRODUCTO
-        </p>
+        <div className="pr-12">
+          <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-700">
+            Detalle del producto
+          </p>
 
-        <div className="mb-7 flex gap-5">
-          <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-emerald-50">
-            <span className="text-3xl font-black text-emerald-700">PTM</span>
-          </div>
+          <h2 className="mt-3 text-2xl font-black leading-tight text-slate-950 sm:text-3xl">
+            Informe completo de análisis + solicitudes editables
+          </h2>
 
-          <div className="pr-8">
-            <h2 className="text-3xl font-black leading-tight text-slate-900">
-              Informe completo de análisis + borradores de escritos
-            </h2>
-            <p className="mt-3 text-lg leading-snug text-slate-500">
-              Revisa lo que incluye tu compra antes de continuar al pago.
-            </p>
-          </div>
+          <p className="mt-3 max-w-2xl text-sm font-semibold leading-7 text-slate-600">
+            Revisa el valor, compra el informe y luego descarga/recibe el detalle preparado con los antecedentes de tu certificado.
+          </p>
         </div>
 
-        <section className="mb-4 rounded-3xl border border-emerald-200 bg-emerald-50/40 p-5">
-          <h3 className="mb-4 flex items-center gap-3 text-2xl font-black text-emerald-700">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-600 text-sm text-white">
-              OK
-            </span>
-            Incluye:
-          </h3>
+        <section className="mt-6 rounded-[2rem] border border-emerald-300 bg-slate-950 p-5 text-white shadow-xl shadow-emerald-950/20 sm:p-6">
+          <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+            <div>
+              <span className="inline-flex rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-black uppercase tracking-[0.22em] text-emerald-300">
+                Oferta de lanzamiento
+              </span>
 
-          <ul className="space-y-3 text-base font-medium leading-snug text-slate-700">
-            {[
-              "Informe de análisis completo del certificado",
-              "Detalle y estado de cada multa: potencialmente prescrita o vigente",
-              "Borrador editable de solicitud de prescripción",
-              "Guía para tramitación personal paso a paso",
-            ].map((item) => (
-              <li key={item} className="flex gap-3">
-                <span className="mt-0.5 font-black text-emerald-600">OK</span>
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
+              <div className="mt-3 flex items-end gap-2">
+                <p className="text-5xl font-black tracking-tight text-emerald-300 sm:text-6xl">
+                  {formatCLP(PRODUCT_PRICE_CLP)}
+                </p>
+                <p className="pb-2 text-sm font-black text-emerald-100">CLP</p>
+              </div>
 
-        <section className="mb-4 rounded-3xl border border-amber-200 bg-amber-50/60 p-5">
-          <h3 className="mb-4 flex items-center gap-3 text-2xl font-black text-amber-700">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-amber-600 text-amber-700">
-              !
-            </span>
-            Limitaciones:
-          </h3>
+              <p className="mt-2 text-xs font-bold leading-6 text-emerald-100/90">
+                Precio único por informe completo + solicitudes editables.
+              </p>
+            </div>
 
-          <ul className="list-disc space-y-3 pl-6 text-base font-medium leading-snug text-slate-700 marker:text-amber-600">
-            <li>Producto informativo y referencial; no garantiza resolución favorable del tribunal.</li>
-            <li>La eliminación de las multas del RMNP depende de la resolución del tribunal y/o de las gestiones de la parte interesada.</li>
-            <li>Aplica solo según los antecedentes del certificado subido.</li>
-            <li>La presentación de los escritos es responsabilidad del solicitante.</li>
-            <li>Los escritos se entregan en formato tipo; cada tribunal podría exigir formalidades adicionales.</li>
-          </ul>
-        </section>
+            <div className="w-full md:max-w-[250px]">
+              <button
+                type="button"
+                onClick={handlePay}
+                disabled={paying}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-400 px-5 py-4 text-base font-black text-slate-950 shadow-lg shadow-emerald-400/20 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <span>{paying ? "Abriendo pago..." : "Comprar informe"}</span>
+                <span aria-hidden="true">→</span>
+              </button>
 
-        <section className="mb-4 rounded-3xl border border-cyan-200 bg-cyan-50 p-5 text-center">
-          <p className="text-lg font-black text-emerald-700">Valor del producto</p>
-          <div className="mt-2 flex items-center justify-center gap-5">
-            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-600 text-4xl font-black text-white">
-              $
-            </span>
-            <p className="text-6xl font-black tracking-tight text-emerald-700">
-              {formatCLP(PRODUCT_PRICE_CLP)}
-            </p>
+              <p className="mt-3 text-center text-xs font-semibold text-emerald-100/80">
+                Pago seguro vía Mercado Pago
+              </p>
+            </div>
           </div>
-          <p className="text-lg font-medium text-slate-600">Pago único</p>
         </section>
 
         {error ? (
-          <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
+          <div className="mt-4 rounded-2xl border border-slate-300 bg-slate-50 p-4 text-sm font-bold text-slate-800">
             {error}
           </div>
         ) : null}
 
-        <button
-          type="button"
-          onClick={handlePay}
-          disabled={paying}
-          className="mb-3 flex w-full items-center justify-center gap-3 rounded-2xl bg-emerald-600 px-5 py-4 text-xl font-black text-white shadow-lg transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          <span>$</span>
-          {paying ? "Abriendo pago..." : "Pagar ahora"}
-        </button>
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
+          <section className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5">
+            <h3 className="flex items-center gap-3 text-lg font-black text-emerald-900">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-700 text-sm font-black text-white">
+                ✓
+              </span>
+              Qué incluye
+            </h3>
+
+            <ul className="mt-4 space-y-3 text-sm font-semibold leading-6 text-slate-700">
+              {includedItems.map((item) => (
+                <li key={item} className="flex gap-3">
+                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-700 text-[11px] font-black text-white">
+                    ✓
+                  </span>
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          <section className="rounded-3xl border border-teal-200 bg-teal-50 p-5">
+            <h3 className="flex items-center gap-3 text-lg font-black text-teal-950">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full border border-teal-700 text-sm font-black text-teal-800">
+                —
+              </span>
+              Qué no incluye
+            </h3>
+
+            <ul className="mt-4 space-y-3 text-sm font-semibold leading-6 text-slate-700">
+              {excludedItems.map((item) => (
+                <li key={item} className="flex gap-3">
+                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-teal-600 text-[11px] font-black text-teal-800">
+                    —
+                  </span>
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </div>
+
+        <div className="mt-5 rounded-3xl border border-slate-200 bg-slate-50 p-4 text-xs font-semibold leading-6 text-slate-600">
+          La compra no garantiza que el tribunal declare la prescripción ni que las multas sean eliminadas del Registro de Multas No Pagadas. El producto entrega documentos para tramitación personal.
+        </div>
 
         <button
           type="button"
           onClick={onClose}
           disabled={paying}
-          className="w-full rounded-2xl border-2 border-emerald-600 px-5 py-4 text-xl font-black text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-60"
+          className="mt-4 w-full rounded-2xl border border-slate-300 px-5 py-3 text-sm font-black text-slate-800 transition hover:bg-slate-50 disabled:opacity-60"
         >
-          Volver
+          Volver al resultado preliminar
         </button>
-
-        <p className="mt-4 text-center text-base font-medium text-slate-500">
-          Pago seguro vía Mercado Pago
-        </p>
       </div>
     </div>
   );

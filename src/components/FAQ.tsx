@@ -16,7 +16,7 @@ const faqs = [
   {
     question: "¿Prescribe tu Multa elimina mis multas?",
     answer:
-      "No. Prescribe tu Multa entrega un análisis documental, un informe y borradores editables para solicitar la prescripción. La eliminación de multas depende exclusivamente del tribunal y/o del organismo correspondiente.",
+      "No. Prescribe tu Multa entrega un análisis documental, un informe y solicitudes editables para solicitar la prescripción. La eliminación de multas depende exclusivamente del tribunal y/o del organismo correspondiente.",
   },
   {
     question: "¿El resultado está garantizado?",
@@ -26,12 +26,12 @@ const faqs = [
   {
     question: "¿Cuánto cuesta el informe completo?",
     answer:
-      "El informe completo cuesta $9.990 CLP, pago único. Incluye análisis del certificado, detalle de multas detectadas, borradores editables y guía de tramitación personal.",
+      "El informe completo tiene precio de lanzamiento de $9.990 CLP, pago único. Incluye análisis del certificado, detalle de multas detectadas, solicitudes editables y guía de tramitación personal.",
   },
   {
     question: "¿Qué incluye el informe completo?",
     answer:
-      "Incluye informe de análisis, detalle de multas potencialmente prescritas, borrador editable de solicitud de prescripción y guía de tramitación personal paso a paso.",
+      "Incluye informe de análisis, detalle de multas potencialmente prescritas, solicitudes editables de prescripción y guía de tramitación personal paso a paso.",
   },
   {
     question: "¿Incluye abogado o representación judicial?",
@@ -57,7 +57,7 @@ export function FAQ() {
     <section id="faq" className="bg-white py-16">
       <div className="container max-w-3xl">
         <div className="mb-12 text-center">
-          <p className="text-sm font-black uppercase tracking-[0.2em] text-amber-700">
+          <p className="text-sm font-black uppercase tracking-[0.2em] text-teal-700">
             Dudas frecuentes
           </p>
           <h2 className="mt-3 text-3xl font-black text-slate-950">
@@ -80,12 +80,12 @@ export function FAQ() {
                   aria-expanded={isOpen}
                   aria-controls={panelId}
                   onClick={() => setOpenIndex(isOpen ? null : index)}
-                  className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left text-base font-black text-slate-900 transition hover:bg-amber-50"
+                  className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left text-base font-black text-slate-900 transition hover:bg-teal-50"
                 >
                   <span>{faq.question}</span>
                   <span
                     aria-hidden="true"
-                    className={`shrink-0 text-amber-700 transition ${isOpen ? "rotate-180" : ""}`}
+                    className={`shrink-0 text-teal-700 transition ${isOpen ? "rotate-180" : ""}`}
                   >
                     ▼
                   </span>

@@ -19,20 +19,20 @@ export default function PublicSiteHeader() {
         </Link>
 
         <nav className="hidden items-center gap-7 text-sm font-bold text-slate-600 md:flex" aria-label="Navegación principal">
-          <Link href="/#analizar" className="transition hover:text-amber-700">
+          <Link href="/#analizar" className="transition hover:text-teal-700">
             Analizar
           </Link>
-          <Link href="/#como-funciona" className="transition hover:text-amber-700">
+          <Link href="/#como-funciona" className="transition hover:text-teal-700">
             Cómo funciona
           </Link>
-          <Link href="/#faq" className="transition hover:text-amber-700">
+          <Link href="/#faq" className="transition hover:text-teal-700">
             Preguntas
           </Link>
         </nav>
 
         <Link
           href="/#analizar"
-          className="shrink-0 rounded-2xl bg-blue-600 px-4 py-3 text-xs font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-slate-950 sm:text-sm"
+          className="shrink-0 rounded-2xl bg-emerald-700 px-4 py-3 text-xs font-black text-white shadow-lg shadow-emerald-700/20 transition hover:bg-slate-950 sm:text-sm"
         >
           Analizar certificado
         </Link>

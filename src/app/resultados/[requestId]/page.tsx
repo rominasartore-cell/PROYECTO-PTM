@@ -73,7 +73,7 @@ function getStatusCopy(status: NormalizedStatus, hasConfirmedRecord: boolean): S
       badge: "Aprobado",
       message: "Tu compra fue registrada correctamente.",
       detail:
-        "El comprobante quedó asociado a esta solicitud. El informe completo y los borradores se enviarán al correo registrado cuando estén disponibles.",
+        "El comprobante quedó asociado a esta solicitud. El informe completo y los solicitudes editables se enviarán al correo registrado cuando estén disponibles.",
       panelClass: "border-emerald-200 bg-emerald-50 text-emerald-950",
       badgeClass: "border-emerald-300 bg-emerald-100 text-emerald-900",
     };
@@ -86,8 +86,8 @@ function getStatusCopy(status: NormalizedStatus, hasConfirmedRecord: boolean): S
       message: "Mercado Pago no aprobó la operación.",
       detail:
         "Puedes volver al resultado preliminar e intentar nuevamente. Si el banco sí descontó dinero, revisa el comprobante de Mercado Pago antes de repetir el pago.",
-      panelClass: "border-red-200 bg-red-50 text-red-950",
-      badgeClass: "border-red-300 bg-red-100 text-red-900",
+      panelClass: "border-emerald-200 bg-emerald-50 text-emerald-950",
+      badgeClass: "border-emerald-300 bg-emerald-100 text-emerald-900",
     };
   }
 
@@ -110,8 +110,8 @@ function getStatusCopy(status: NormalizedStatus, hasConfirmedRecord: boolean): S
       message: "Mercado Pago todavía está procesando la operación.",
       detail:
         "Actualiza esta página en unos minutos. Si el estado cambia a aprobado, el sistema lo registrará internamente y no dependerá del texto de la URL.",
-      panelClass: "border-amber-200 bg-amber-50 text-amber-950",
-      badgeClass: "border-amber-300 bg-amber-100 text-amber-900",
+      panelClass: "border-teal-200 bg-teal-50 text-teal-950",
+      badgeClass: "border-emerald-300 bg-emerald-100 text-emerald-900",
     };
   }
 
@@ -121,8 +121,8 @@ function getStatusCopy(status: NormalizedStatus, hasConfirmedRecord: boolean): S
     message: "Todavía no encontramos una confirmación de pago aprobada.",
     detail:
       "Este estado se toma desde el registro interno del proyecto, no solo desde el parámetro de retorno de Mercado Pago. Si ya pagaste, actualiza la página o contacta soporte con el código de solicitud.",
-    panelClass: "border-amber-200 bg-amber-50 text-amber-950",
-    badgeClass: "border-amber-300 bg-amber-100 text-amber-900",
+    panelClass: "border-teal-200 bg-teal-50 text-teal-950",
+    badgeClass: "border-emerald-300 bg-emerald-100 text-emerald-900",
   };
 }
 
@@ -249,12 +249,12 @@ function ResultadosContent() {
   )}`;
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-slate-100 px-4 py-10 text-slate-950 sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-slate-100 px-4 py-10 text-slate-950 sm:px-6 lg:px-8">
       <section className="mx-auto max-w-4xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-xl shadow-slate-200/60">
         <div className="border-b border-slate-200 bg-slate-950 p-6 text-white sm:p-8">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.25em] text-amber-300">
+              <p className="text-xs font-black uppercase tracking-[0.25em] text-teal-300">
                 Prescribe tu Multa
               </p>
 
@@ -289,7 +289,7 @@ function ResultadosContent() {
           </div>
 
           {data?.error ? (
-            <div className="rounded-3xl border border-red-200 bg-red-50 p-5 text-sm leading-7 text-red-950">
+            <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5 text-sm leading-7 text-emerald-950">
               <p className="font-black">Aviso técnico</p>
               <p className="mt-2">{data.error}</p>
             </div>
@@ -325,7 +325,7 @@ function ResultadosContent() {
             </div>
           )}
 
-          <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm leading-7 text-amber-950">
+          <div className="rounded-3xl border border-teal-200 bg-teal-50 p-5 text-sm leading-7 text-teal-950">
             <p className="font-black">Importante</p>
             <p className="mt-2">
               Revisa spam, promociones y correo no deseado. Si no recibes confirmación, escribe a {SUPPORT_EMAIL} indicando el código de solicitud.
@@ -336,7 +336,7 @@ function ResultadosContent() {
             <button
               type="button"
               onClick={() => setRefreshCount((current) => current + 1)}
-              className="inline-flex items-center justify-center rounded-2xl bg-amber-500 px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center justify-center rounded-2xl bg-teal-500 px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-teal-400 disabled:cursor-not-allowed disabled:opacity-60"
               disabled={loading}
             >
               {loading ? "Consultando..." : "Actualizar estado"}
