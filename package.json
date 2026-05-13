@@ -14,9 +14,9 @@
     "@supabase/supabase-js": "^2.105.3",
     "clsx": "^2.1.0",
     "mercadopago": "^2.12.0",
-    "next": "^15.0.0",
+    "next": "^15.5.18",
     "pdf-parse": "^1.1.4",
-    "pdfjs-dist": "^4.0.379",
+    "pdfjs-dist": "^4.2.67",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "uuid": "^14.0.0"
@@ -30,5 +30,10 @@
     "postcss": "^8.4.32",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.3.3"
+  },
+  "overrides": {
+    "next": {
+      "postcss": "8.5.14"
+    }
   }
 }
