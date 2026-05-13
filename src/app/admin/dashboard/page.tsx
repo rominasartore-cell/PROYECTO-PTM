@@ -26,6 +26,25 @@ type Metrics = {
   sandboxPayments?: number;
 };
 
+type AdminPayment = {
+  requestId?: string;
+  externalReference?: string | null;
+  status?: string | null;
+  amount?: number | string | null;
+  paidAt?: string | null;
+  paymentId?: string | number | null;
+  preferenceId?: string | null;
+  customerEmail?: string | null;
+  customerName?: string | null;
+  plate?: string | null;
+  product?: string | null;
+  mock?: boolean | null;
+  sandbox?: boolean | null;
+  checkoutUrl?: string | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+};
+
 type AdminRequest = {
   id?: string;
   request_id?: string;
@@ -62,6 +81,7 @@ type AdminRequest = {
   sandbox?: boolean;
   payment_supabase_record?: boolean;
   paymentSupabaseRecord?: boolean;
+  has_supabase_payment?: boolean;
   payment_local_record?: boolean;
   paymentLocalRecord?: boolean;
   local_only?: boolean;
@@ -70,6 +90,7 @@ type AdminRequest = {
   createdAt?: string | null;
   updated_at?: string | null;
   updatedAt?: string | null;
+  payment?: AdminPayment | null;
 };
 
 type ApiResponse = {
@@ -149,11 +170,16 @@ function dateText(value?: string | null): string {
 }
 
 function getRequestId(item: AdminRequest): string {
-  return String(item.request_id || item.requestId || item.id || "");
+  return String(item.request_id || item.requestId || item.payment?.requestId || item.id || "");
 }
 
 function getCustomerName(item: AdminRequest): string {
-  return String(item.customer_name || item.customerName || "Cliente sin nombre");
+  return String(
+    item.customer_name ||
+      item.customerName ||
+      item.payment?.customerName ||
+      "Cliente sin nombre"
+  );
 }
 
 function getCustomerEmail(item: AdminRequest): string {
@@ -162,32 +188,53 @@ function getCustomerEmail(item: AdminRequest): string {
       item.customerEmail ||
       item.payment_customer_email ||
       item.paymentCustomerEmail ||
+      item.payment?.customerEmail ||
       "Sin correo"
   );
 }
 
 function getPlate(item: AdminRequest): string {
-  return String(item.vehicle_plate || item.vehiclePlate || item.plate || "Sin patente");
+  return String(item.vehicle_plate || item.vehiclePlate || item.plate || item.payment?.plate || "Sin patente");
 }
 
 function getPaymentStatus(item: AdminRequest): string {
-  return String(item.payment_status || item.paymentStatus || item.purchase_status || item.purchaseStatus || item.status || "").toLowerCase();
+  return String(
+    item.payment_status ||
+      item.paymentStatus ||
+      item.payment?.status ||
+      item.purchase_status ||
+      item.purchaseStatus ||
+      item.status ||
+      ""
+  ).toLowerCase();
 }
 
 function getPreferenceId(item: AdminRequest): string {
-  return String(item.preference_id || item.preferenceId || "");
+  return String(item.preference_id || item.preferenceId || item.payment?.preferenceId || "");
+}
+
+function getPaymentId(item: AdminRequest): string {
+  return String(item.payment_id || item.paymentId || item.payment?.paymentId || "");
 }
 
 function getPaymentAmount(item: AdminRequest): number {
-  return numberValue(item.payment_amount || item.paymentAmount || item.amount || 0);
+  return numberValue(item.payment_amount || item.paymentAmount || item.payment?.amount || item.amount || 0);
 }
 
 function getCreatedAt(item: AdminRequest): string | null | undefined {
-  return item.created_at || item.createdAt;
+  return item.created_at || item.createdAt || item.payment?.createdAt;
+}
+
+function getUpdatedAt(item: AdminRequest): string | null | undefined {
+  return item.updated_at || item.updatedAt || item.payment?.updatedAt;
 }
 
 function getPaidAt(item: AdminRequest): string | null | undefined {
-  return item.payment_paid_at || item.paymentPaidAt;
+  return item.payment_paid_at || item.paymentPaidAt || item.payment?.paidAt;
+}
+
+function getCheckoutUrl(item: AdminRequest): string {
+  return String(item.payment?.checkoutUrl || "");
 }
 
 function isPaymentOnly(item: AdminRequest): boolean {
@@ -195,15 +242,15 @@ function isPaymentOnly(item: AdminRequest): boolean {
 }
 
 function isMock(item: AdminRequest): boolean {
-  return Boolean(item.payment_mock || item.paymentMock || item.mock);
+  return Boolean(item.payment_mock || item.paymentMock || item.mock || item.payment?.mock);
 }
 
 function isSandbox(item: AdminRequest): boolean {
-  return Boolean(item.payment_sandbox || item.paymentSandbox || item.sandbox);
+  return Boolean(item.payment_sandbox || item.paymentSandbox || item.sandbox || item.payment?.sandbox);
 }
 
 function isSupabaseRecord(item: AdminRequest): boolean {
-  return Boolean(item.payment_supabase_record || item.paymentSupabaseRecord);
+  return Boolean(item.payment_supabase_record || item.paymentSupabaseRecord || item.has_supabase_payment);
 }
 
 function isLocalOnly(item: AdminRequest): boolean {
@@ -213,14 +260,13 @@ function isLocalOnly(item: AdminRequest): boolean {
 function statusLabel(value?: string | null): string {
   const status = String(value || "").toLowerCase();
 
-  if (status === "approved" || status === "paid") return "Pago aprobado";
+  if (status === "approved" || status === "paid" || status === "completed") return "Pago aprobado";
   if (status === "pending" || status === "created" || status === "processing" || status === "in_process") {
     return "Pendiente";
   }
   if (status === "rejected" || status === "failed" || status === "cancelled" || status === "canceled") {
     return "Rechazado";
   }
-  if (status === "completed") return "Completado";
 
   return status || "Sin estado";
 }
@@ -240,15 +286,49 @@ function statusClass(value?: string | null): string {
 }
 
 function Badge({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <span className={`rounded-full border px-2 py-1 text-xs font-semibold ${className}`}>{children}</span>;
+  return <span className={`rounded-full border px-2.5 py-1 text-xs font-bold ${className}`}>{children}</span>;
 }
 
-function MetricCard({ label, value, tone = "text-white" }: { label: string; value: ReactNode; tone?: string }) {
+function MetricCard({
+  label,
+  value,
+  hint,
+  tone = "text-white",
+}: {
+  label: string;
+  value: ReactNode;
+  hint?: string;
+  tone?: string;
+}) {
   return (
     <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-sm">
-      <p className="text-sm text-slate-400">{label}</p>
+      <p className="text-sm font-semibold text-slate-400">{label}</p>
       <p className={`mt-2 text-3xl font-black ${tone}`}>{value}</p>
+      {hint ? <p className="mt-2 text-xs text-slate-500">{hint}</p> : null}
     </div>
+  );
+}
+
+function SmallButton({
+  children,
+  onClick,
+  disabled,
+  className = "",
+}: {
+  children: ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`rounded-xl px-3 py-2 text-xs font-black transition disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -263,13 +343,22 @@ export default function AdminDashboardPage() {
   const [submittedSearch, setSubmittedSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [actionMessage, setActionMessage] = useState("");
+  const [resendingId, setResendingId] = useState("");
 
   const activeFilter = useMemo(() => FILTERS.find((item) => item.key === filter) || FILTERS[0], [filter]);
+
+  const approvedVisibleAmount = useMemo(() => {
+    return requests
+      .filter((item) => ["approved", "paid", "completed"].includes(getPaymentStatus(item)))
+      .reduce((sum, item) => sum + getPaymentAmount(item), 0);
+  }, [requests]);
 
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
+      setActionMessage("");
 
       const stamp = Date.now();
       const query = new URLSearchParams({ limit: "100", ts: String(stamp) });
@@ -331,6 +420,44 @@ export default function AdminDashboardPage() {
     setSubmittedSearch("");
   }
 
+  async function copyText(value: string, label: string) {
+    if (!value) return;
+
+    try {
+      await navigator.clipboard.writeText(value);
+      setActionMessage(`${label} copiado.`);
+    } catch {
+      setActionMessage(`No se pudo copiar ${label}.`);
+    }
+  }
+
+  async function resendEmail(requestId: string) {
+    if (!requestId) return;
+
+    try {
+      setResendingId(requestId);
+      setActionMessage("");
+
+      const response = await fetch(`/api/admin/requests/${encodeURIComponent(requestId)}/resend-email?ts=${Date.now()}`, {
+        method: "POST",
+        cache: "no-store",
+        headers: buildAdminHeaders(),
+      });
+
+      const json = await readJson<ApiResponse>(response);
+
+      if (!response.ok || json.ok === false) {
+        throw new Error(json.error || json.message || "No se pudo reenviar el correo");
+      }
+
+      setActionMessage(`Correo reenviado correctamente para ${requestId}.`);
+    } catch (err: unknown) {
+      setActionMessage(getErrorMessage(err));
+    } finally {
+      setResendingId("");
+    }
+  }
+
   if (!authReady) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4 text-white">
@@ -349,7 +476,7 @@ export default function AdminDashboardPage() {
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">Prescribe tu Multa</p>
             <h1 className="mt-2 text-3xl font-black">Dashboard administrativo</h1>
             <p className="mt-2 text-sm text-slate-300">
-              Vista unificada de solicitudes, preferencias Mercado Pago y pagos registrados en Supabase.
+              Control de ventas, pagos aprobados, solicitudes y reenvío de confirmaciones.
             </p>
           </div>
 
@@ -358,7 +485,7 @@ export default function AdminDashboardPage() {
               type="button"
               onClick={() => void loadData()}
               disabled={loading}
-              className="rounded-xl bg-cyan-400 px-5 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-xl bg-cyan-400 px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? "Actualizando..." : "Actualizar"}
             </button>
@@ -368,27 +495,33 @@ export default function AdminDashboardPage() {
                 window.localStorage.removeItem(ADMIN_TOKEN_KEY);
                 router.replace("/admin");
               }}
-              className="rounded-xl border border-slate-700 px-5 py-3 text-sm font-bold text-slate-200 transition hover:bg-slate-800"
+              className="rounded-xl border border-slate-700 px-5 py-3 text-sm font-black text-slate-200 transition hover:bg-slate-800"
             >
               Salir
             </button>
           </div>
         </header>
 
-        {error && <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-100">{error}</div>}
+        {error ? <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-100">{error}</div> : null}
+
+        {actionMessage ? (
+          <div className="rounded-xl border border-cyan-500/40 bg-cyan-500/10 p-4 text-sm font-bold text-cyan-100">
+            {actionMessage}
+          </div>
+        ) : null}
 
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <MetricCard label="Total registros" value={metrics?.total ?? "—"} />
-          <MetricCard label="Pendientes" value={metrics?.paymentPending ?? metrics?.pending ?? "—"} tone="text-yellow-300" />
-          <MetricCard label="Pagadas" value={metrics?.paid ?? metrics?.paymentApproved ?? "—"} tone="text-emerald-300" />
-          <MetricCard label="Ingresos aprobados" value={money(metrics?.paidAmount || 0)} tone="text-emerald-300" />
+          <MetricCard label="Total registros" value={metrics?.total ?? "—"} hint="Solicitudes + pagos registrados" />
+          <MetricCard label="Pendientes" value={metrics?.paymentPending ?? metrics?.pending ?? "—"} tone="text-yellow-300" hint="Sin pago aprobado" />
+          <MetricCard label="Pagadas" value={metrics?.paid ?? metrics?.paymentApproved ?? "—"} tone="text-emerald-300" hint="purchase_status = paid" />
+          <MetricCard label="Ingresos aprobados" value={money(metrics?.paidAmount || 0)} tone="text-emerald-300" hint="Monto total vendido" />
         </section>
 
         <section className="grid gap-4 md:grid-cols-4">
-          <MetricCard label="Supabase pagos" value={metrics?.supabasePaymentRecords ?? 0} />
-          <MetricCard label="Mock" value={metrics?.mockPayments ?? 0} />
-          <MetricCard label="Sandbox" value={metrics?.sandboxPayments ?? 0} />
-          <MetricCard label="Solo local" value={metrics?.localOnlyPayments ?? 0} />
+          <MetricCard label="Supabase pagos" value={metrics?.supabasePaymentRecords ?? 0} hint="Persistencia durable" />
+          <MetricCard label="Mock" value={metrics?.mockPayments ?? 0} hint="Pagos de prueba" />
+          <MetricCard label="Sandbox" value={metrics?.sandboxPayments ?? 0} hint="Entorno prueba" />
+          <MetricCard label="Visible filtrado" value={money(approvedVisibleAmount)} tone="text-emerald-300" hint="Solo resultados cargados" />
         </section>
 
         <section className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
@@ -399,7 +532,7 @@ export default function AdminDashboardPage() {
                   key={item.key}
                   type="button"
                   onClick={() => setFilter(item.key)}
-                  className={`rounded-xl px-4 py-2 text-sm font-bold transition ${
+                  className={`rounded-xl px-4 py-2 text-sm font-black transition ${
                     filter === item.key ? "bg-cyan-400 text-slate-950" : "bg-slate-800 text-slate-200 hover:bg-slate-700"
                   }`}
                 >
@@ -415,14 +548,14 @@ export default function AdminDashboardPage() {
                 placeholder="Buscar correo, patente, requestId o preferenceId"
                 className="w-full min-w-0 rounded-xl border border-slate-700 bg-slate-950 px-4 py-2 text-sm text-white outline-none focus:border-cyan-400 sm:min-w-[320px]"
               />
-              <button type="submit" className="rounded-xl bg-slate-700 px-4 py-2 text-sm font-bold hover:bg-slate-600">
+              <button type="submit" className="rounded-xl bg-slate-700 px-4 py-2 text-sm font-black hover:bg-slate-600">
                 Buscar
               </button>
               {(search || submittedSearch) && (
                 <button
                   type="button"
                   onClick={handleClearSearch}
-                  className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-slate-800"
+                  className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-black text-slate-200 hover:bg-slate-800"
                 >
                   Limpiar
                 </button>
@@ -435,7 +568,7 @@ export default function AdminDashboardPage() {
           <div className="border-b border-slate-800 p-5">
             <h2 className="text-xl font-black">Solicitudes y pagos</h2>
             <p className="mt-1 text-sm text-slate-400">
-              Las preferencias creadas en Mercado Pago sin análisis vinculado se muestran como pendientes.
+              Los pagos aprobados muestran confirmación, monto, origen y acciones rápidas.
             </p>
           </div>
 
@@ -449,22 +582,19 @@ export default function AdminDashboardPage() {
                 const requestId = getRequestId(item);
                 const paymentStatus = getPaymentStatus(item);
                 const preferenceId = getPreferenceId(item);
+                const paymentId = getPaymentId(item);
+                const checkoutUrl = getCheckoutUrl(item);
                 const rowKey = requestId || preferenceId || `request-${index}`;
+                const approved = ["approved", "paid", "completed"].includes(paymentStatus);
 
                 return (
-                  <button
-                    key={rowKey}
-                    type="button"
-                    onClick={() => requestId && router.push(`/admin/request/${encodeURIComponent(requestId)}`)}
-                    disabled={!requestId}
-                    className="block w-full p-5 text-left transition hover:bg-slate-800/70 disabled:cursor-not-allowed disabled:opacity-70"
-                  >
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                      <div className="min-w-0 space-y-2">
+                  <article key={rowKey} className="p-5 transition hover:bg-slate-800/40">
+                    <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                      <div className="min-w-0 space-y-3">
                         <div className="flex flex-wrap items-center gap-2">
                           <Badge className={statusClass(paymentStatus)}>{statusLabel(paymentStatus)}</Badge>
 
-                          {isPaymentOnly(item) && <Badge className="border-purple-500/40 bg-purple-500/10 text-purple-200">Pago sin análisis vinculado</Badge>}
+                          {isPaymentOnly(item) && <Badge className="border-purple-500/40 bg-purple-500/10 text-purple-200">Pago sin análisis</Badge>}
                           {isMock(item) && <Badge className="border-blue-500/40 bg-blue-500/10 text-blue-200">Mock</Badge>}
                           {isSandbox(item) && <Badge className="border-orange-500/40 bg-orange-500/10 text-orange-200">Sandbox</Badge>}
                           {!isMock(item) && !isSandbox(item) && preferenceId && (
@@ -474,23 +604,61 @@ export default function AdminDashboardPage() {
                           {isLocalOnly(item) && <Badge className="border-slate-500/40 bg-slate-500/10 text-slate-200">Solo local</Badge>}
                         </div>
 
-                        <h3 className="truncate text-lg font-bold">{getCustomerName(item)}</h3>
+                        <h3 className="truncate text-lg font-black">{getCustomerName(item)}</h3>
 
                         <div className="grid gap-1 text-sm text-slate-400 md:grid-cols-2">
                           <p>Correo: {getCustomerEmail(item)}</p>
                           <p>Patente: {getPlate(item)}</p>
                           <p className="break-all">Request ID: {requestId || "Sin requestId"}</p>
                           <p className="break-all">Preference ID: {preferenceId || "Sin preference_id"}</p>
+                          <p className="break-all">Payment ID: {paymentId || "Sin payment_id"}</p>
+                          <p>Actualizado: {dateText(getUpdatedAt(item))}</p>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2 pt-2">
+                          <SmallButton
+                            onClick={() => requestId && router.push(`/admin/request/${encodeURIComponent(requestId)}`)}
+                            disabled={!requestId}
+                            className="bg-slate-700 text-white hover:bg-slate-600"
+                          >
+                            Ver detalle
+                          </SmallButton>
+
+                          <SmallButton
+                            onClick={() => requestId && void resendEmail(requestId)}
+                            disabled={!requestId || !approved || resendingId === requestId}
+                            className="bg-emerald-400 text-slate-950 hover:bg-emerald-300"
+                          >
+                            {resendingId === requestId ? "Reenviando..." : "Reenviar correo"}
+                          </SmallButton>
+
+                          <SmallButton
+                            onClick={() => void copyText(requestId, "Request ID")}
+                            disabled={!requestId}
+                            className="bg-slate-800 text-slate-100 hover:bg-slate-700"
+                          >
+                            Copiar ID
+                          </SmallButton>
+
+                          {checkoutUrl ? (
+                            <SmallButton
+                              onClick={() => window.open(checkoutUrl, "_blank", "noopener,noreferrer")}
+                              className="bg-cyan-400 text-slate-950 hover:bg-cyan-300"
+                            >
+                              Abrir resultado
+                            </SmallButton>
+                          ) : null}
                         </div>
                       </div>
 
-                      <div className="text-left lg:text-right">
-                        <p className="text-2xl font-black">{money(getPaymentAmount(item))}</p>
-                        <p className="mt-1 text-sm text-slate-400">Creado: {dateText(getCreatedAt(item))}</p>
+                      <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4 text-left xl:min-w-[240px] xl:text-right">
+                        <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Monto</p>
+                        <p className="mt-2 text-3xl font-black">{money(getPaymentAmount(item))}</p>
+                        <p className="mt-2 text-sm text-slate-400">Creado: {dateText(getCreatedAt(item))}</p>
                         <p className="mt-1 text-sm text-slate-400">Pago: {getPaidAt(item) ? dateText(getPaidAt(item)) : "No aprobado"}</p>
                       </div>
                     </div>
-                  </button>
+                  </article>
                 );
               })}
             </div>
