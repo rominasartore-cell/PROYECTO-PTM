@@ -288,18 +288,70 @@ export default function AdminRequestDetailPage() {
       setActionState(INITIAL_ACTION_STATE);
 
       const stamp = Date.now();
-      const response = await fetch(`/api/admin/requests/${encodeURIComponent(requestId)}?ts=${stamp}`, {
+      const query = new URLSearchParams({
+        search: requestId,
+        limit: "100",
+        ts: String(stamp),
+      });
+
+      const response = await fetch(`/api/admin/requests?${query.toString()}`, {
         cache: "no-store",
         headers: buildAdminHeaders(),
       });
 
-      const json = await readJson<ApiResponse>(response);
+      const json = await readJson<any>(response);
 
       if (!response.ok || json.ok === false) {
         throw new Error(json.error || json.message || "No se pudo cargar el detalle de la solicitud");
       }
 
-      setPayload(json);
+      const rows = Array.isArray(json.requests)
+        ? json.requests
+        : Array.isArray(json.data)
+          ? json.data
+          : json.data
+            ? [json.data]
+            : [];
+
+      const found =
+        rows.find((row: any) => {
+          const payment = asRecord(row?.payment);
+
+          const candidates = [
+            row?.request_id,
+            row?.requestId,
+            row?.id,
+            row?.external_reference,
+            row?.externalReference,
+            payment.requestId,
+            payment.externalReference,
+          ];
+
+          return candidates.some((value) => String(value || "").trim() === requestId);
+        }) ||
+        rows[0] ||
+        null;
+
+      if (!found) {
+        throw new Error("No se encontró la solicitud en el listado administrativo.");
+      }
+
+      const analysis = asRecord(
+        found.raw_analysis_json ||
+          found.analysisResult ||
+          found.preliminaryResult ||
+          found.analysis ||
+          found.result
+      );
+
+      setPayload({
+        ok: true,
+        data: found,
+        request: found,
+        payment: asRecord(found.payment),
+        analysis,
+        result: analysis,
+      });
     } catch (err: unknown) {
       setPayload(null);
       setError(getErrorMessage(err));
