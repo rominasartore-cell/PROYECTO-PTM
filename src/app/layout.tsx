@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
 
 const siteUrl = "https://www.prescribetumulta.cl";
+const googleTagId = process.env.NEXT_PUBLIC_GOOGLE_TAG_ID;
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -68,7 +70,26 @@ export default function RootLayout({
         <meta charSet="utf-8" />
         <meta name="theme-color" content="#047857" />
       </head>
-      <body>{children}</body>
+      <body>
+        {googleTagId ? (
+          <>
+            <Script
+              src={`https://www.googletagmanager.com/gtag/js?id=${googleTagId}`}
+              strategy="afterInteractive"
+            />
+            <Script id="google-tag" strategy="afterInteractive">
+              {`
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                gtag('js', new Date());
+                gtag('config', '${googleTagId}');
+              `}
+            </Script>
+          </>
+        ) : null}
+
+        {children}
+      </body>
     </html>
   );
 }

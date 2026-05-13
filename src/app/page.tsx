@@ -1,5 +1,7 @@
 "use client";
 
+import { trackAnalysisCompleted, trackAnalysisStarted } from "@/lib/analytics";
+
 import PreliminaryResultCard from '@/components/ptm/PreliminaryResultCard';
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
@@ -531,6 +533,11 @@ function AnalysisForm({
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
+    trackAnalysisStarted({
+      has_file: Boolean(file),
+      plate_length: plate.trim().length,
+    });
+
     if (!canSubmit || !file) {
       setError("Completa todos los campos y acepta el consentimiento.");
       return;
@@ -561,6 +568,13 @@ function AnalysisForm({
 
       const normalized = normalizeAnalysisResult(raw);
       setResult(normalized);
+
+      trackAnalysisCompleted({
+        total_multas: normalized.totalMultas,
+        multas_susceptibles: normalized.multasSusceptibles,
+        monto_potencial: normalized.montoPotencial,
+        eligible: normalized.eligible,
+      });
 
       window.setTimeout(() => {
         resultRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { trackPaymentRedirect, trackPurchaseClicked } from "@/lib/analytics";
 
 type ProductDetailModalProps = {
   open: boolean;
@@ -97,6 +98,11 @@ export default function ProductDetailModal({
 
   async function handlePay() {
     try {
+      trackPurchaseClicked({
+        product: "informe-completo-prescripcion",
+        amount: PRODUCT_PRICE_CLP,
+        request_id: paymentRequestId || paymentQuoteToken || "",
+      });
       setPaying(true);
       setError("");
 
@@ -167,6 +173,12 @@ export default function ProductDetailModal({
           );
         }
       }
+
+      trackPaymentRedirect({
+        product: "informe-completo-prescripcion",
+        amount: PRODUCT_PRICE_CLP,
+        request_id: paymentRequestId || paymentQuoteToken || "",
+      });
 
       window.location.href = paymentUrl;
     } catch (err) {
