@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { fetchAdminMetrics } from "@/lib/admin/payment-admin";
 
 export const runtime = "nodejs";

@@ -1,4 +1,4 @@
-﻿import { promises as fs } from 'fs';
+import { promises as fs } from 'fs';
 import { join } from 'path';
 
 const EMAILS_OUTBOX = './emails_outbox';
@@ -43,7 +43,7 @@ function generateHtmlEmail(subject: string, body: string): string {
     </div>
     <div class="footer">
       <p>© 2026 Prescribe Tu Multa. Todos los derechos reservados.</p>
-      <p>Contacto: soporte@prescribetumulta.cl</p>
+      <p>Contacto: contacto@prescribetumulta.cl</p>
     </div>
   </div>
 </body>

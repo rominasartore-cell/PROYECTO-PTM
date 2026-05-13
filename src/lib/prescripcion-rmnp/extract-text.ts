@@ -1,4 +1,4 @@
-﻿import { normalizeCertificateText } from './normalize';
+import { normalizeCertificateText } from './normalize';
 
 export interface ExtractionResult {
   text: string;

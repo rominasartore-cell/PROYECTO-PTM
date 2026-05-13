@@ -1,52 +1,25 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { NextResponse } from "next/server";
+import { fetchAdminMetrics } from "@/lib/admin/payment-admin";
 
-export const dynamic = 'force-dynamic';
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-type RouteContext = {
-  params: Promise<{ requestId: string }>;
-};
-
-export async function POST(request: NextRequest, context: RouteContext) {
+export async function GET() {
   try {
-    const { requestId } = await context.params;
-    const body = await request.json();
-    const { note } = body;
-
-    if (!note || typeof note !== 'string' || !note.trim()) {
-      return NextResponse.json(
-        { ok: false, error: 'Note is required' },
-        { status: 400 }
-      );
-    }
-
-    const { data, error } = await supabaseAdmin
-      .from('admin_notes')
-      .insert([
-        {
-          request_id: requestId,
-          note: note.trim(),
-          created_at: new Date().toISOString(),
-        },
-      ])
-      .select()
-      .single();
-
-    if (error) {
-      return NextResponse.json(
-        { ok: false, error: error.message },
-        { status: 500 }
-      );
-    }
+    const metrics = await fetchAdminMetrics();
 
     return NextResponse.json({
       ok: true,
-      data,
+      metrics,
     });
   } catch (error: any) {
-    console.error('[api/admin/requests/[requestId]/notes] Error:', error);
+    console.error("[api/admin/metrics] Error:", error);
+
     return NextResponse.json(
-      { ok: false, error: error?.message || 'Error adding note' },
+      {
+        ok: false,
+        error: error?.message || "Error fetching metrics",
+      },
       { status: 500 }
     );
   }

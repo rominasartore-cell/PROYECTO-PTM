@@ -1,8 +1,5 @@
 "use client";
 
-import PublicSiteHeader from "@/components/ptm/PublicSiteHeader";
-
-
 import PreliminaryResultCard from '@/components/ptm/PreliminaryResultCard';
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
@@ -100,7 +97,7 @@ function normalizeAnalysisResult(input: unknown): AnalysisResult {
 
   const reviewableFromLogs = logs.filter((fine: any) => {
     return (
-      fine?.prescripcionPorFecha === true ||
+      fine?.prescripciónPorFecha === true ||
       fine?.estado === "POTENCIALMENTE_PRESCRITA" ||
       fine?.status === "reviewable" ||
       fine?.isReviewable === true ||
@@ -253,7 +250,7 @@ function MetricCard({
       ? "border-emerald-100 bg-emerald-50 text-emerald-700"
       : accent === "amber"
         ? "border-amber-100 bg-amber-50 text-amber-700"
-        : "border-blue-100 bg-blue-50 text-blue-700";
+        : "border-amber-100 bg-amber-50 text-amber-700";
 
   return (
     <div className={"rounded-3xl border p-4 text-center " + color}>
@@ -294,58 +291,234 @@ function TextField({
         placeholder={placeholder}
         autoComplete={autoComplete}
         maxLength={maxLength}
-        className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+        className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-amber-500 focus:ring-4 focus:ring-amber-100"
       />
     </label>
   );
 }
 
 function Header() {
+  const navItems = [
+    { label: "Cómo funciona", href: "#como-funciona" },
+    { label: "Precio", href: "#servicio" },
+    { label: "Preguntas frecuentes", href: "#preguntas" },
+    { label: "Contacto", href: "/contacto" },
+  ];
+
   return (
-    <PublicSiteHeader />
+    <header className="sticky top-0 z-50 border-b border-slate-200/70 bg-white/95 backdrop-blur">
+      <div className="mx-auto flex h-20 w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+        <a href="/" className="flex items-center">
+          <Image
+            src="/logo-prescribe-tu-multa.png"
+            alt="Prescribe tu Multa"
+            width={260}
+            height={99}
+            priority
+            className="h-12 w-auto object-contain sm:h-14"
+          />
+        </a>
+
+        <nav className="hidden items-center gap-8 lg:flex">
+          {navItems.map((item) => (
+            <a
+              key={item.href}
+              href={item.href}
+              className="text-sm font-black text-slate-700 transition hover:text-orange-600"
+            >
+              {item.label}
+            </a>
+          ))}
+        </nav>
+
+        <a
+          href="#analizar"
+          className="hidden rounded-2xl bg-orange-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-orange-600/20 transition hover:bg-orange-700 sm:inline-flex"
+        >
+          Analizar mi multa
+        </a>
+      </div>
+    </header>
   );
 }
 
 function Hero({ result }: { result: AnalysisResult | null }) {
+  const benefits = [
+    { icon: "🛡️", title: "100% online", text: "Sin trámites presenciales" },
+    { icon: "⏱️", title: "Resultados rápidos", text: "En pocos minutos" },
+    { icon: "🔒", title: "Seguro y confidencial", text: "Protegemos tus datos" },
+  ];
+
+  const serviceCards = [
+    {
+      icon: "📄",
+      title: "Análisis legal experto",
+      text: "Evaluamos tus multas según la normativa chilena vigente.",
+    },
+    {
+      icon: "✅",
+      title: "Documentos listos",
+      text: "Recibe escritos editables para tu trámite de prescripción.",
+    },
+    {
+      icon: "🕒",
+      title: "Ahorra tiempo y dinero",
+      text: "Evitamos gestiones innecesarias. Nosotros hacemos el análisis por ti.",
+    },
+    {
+      icon: "🧭",
+      title: "Acompañamiento claro",
+      text: "Te orientamos en cada paso del proceso con transparencia.",
+    },
+  ];
+
   return (
-    <section className="bg-gradient-to-br from-blue-50 via-white to-emerald-50 px-4 py-12 sm:px-6 lg:px-8">
-      <div className="mx-auto grid max-w-7xl gap-8">
-        <div>
-          <div className="mb-4 inline-flex rounded-full border border-blue-200 bg-white px-3 py-1.5 text-xs font-black uppercase tracking-widest text-blue-700 shadow-sm">
-            {"\u2713"} Multas de transito informadas al Registro
+    <section className="relative overflow-hidden bg-white">
+      <div className="absolute inset-0 bg-gradient-to-br from-orange-50 via-white to-slate-100" />
+      <div className="absolute right-0 top-0 hidden h-full w-1/2 bg-gradient-to-l from-slate-200/70 via-orange-100/30 to-transparent lg:block" />
+      <div className="absolute right-[-12rem] top-[-10rem] hidden h-[32rem] w-[32rem] rounded-full bg-orange-200/30 blur-3xl lg:block" />
+
+      <div className="relative mx-auto w-full max-w-7xl px-4 pb-8 pt-10 sm:px-6 lg:px-8 lg:pb-12 lg:pt-14">
+        <div className="grid items-center gap-10 lg:grid-cols-[1.12fr_0.88fr]">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/85 px-4 py-2 text-xs font-black text-slate-700 shadow-sm">
+              <span className="text-orange-600">⚖</span>
+              Servicio legal especializado en multas de tránsito en Chile
+            </div>
+
+            <h1 className="mt-7 max-w-4xl text-5xl font-black leading-[0.95] tracking-tight text-slate-950 sm:text-6xl lg:text-7xl">
+              Analizamos tus multas de tránsito no pagadas
+            </h1>
+
+            <p className="mt-4 text-2xl font-black leading-tight text-orange-600 sm:text-3xl">
+              y te ayudamos a recuperar tu tranquilidad
+            </p>
+
+            <p className="mt-5 max-w-2xl text-base font-semibold leading-8 text-slate-700 sm:text-lg">
+              Verificamos si tus multas pueden prescribir según la ley chilena. Obtén un informe preliminar y los documentos necesarios para iniciar el trámite.
+            </p>
+
+            <div className="mt-7 grid gap-4 sm:grid-cols-3">
+              {benefits.map((item) => (
+                <div key={item.title} className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-lg text-white">
+                    {item.icon}
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-black text-slate-950">
+                      {item.title}
+                    </p>
+                    <p className="text-xs font-semibold text-slate-500">
+                      {item.text}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <a
+                href="#analizar"
+                className="inline-flex items-center justify-center rounded-2xl bg-orange-600 px-7 py-4 text-sm font-black text-white shadow-xl shadow-orange-600/20 transition hover:bg-orange-700"
+              >
+                Analizar mi multa ahora →
+              </a>
+
+              <a
+                href="#como-funciona"
+                className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white/80 px-7 py-4 text-sm font-black text-slate-900 transition hover:border-orange-300 hover:bg-orange-50"
+              >
+                Cómo funciona →
+              </a>
+            </div>
           </div>
 
-          <h1 className="w-full max-w-7xl text-5xl font-black leading-none tracking-tight text-slate-950 sm:text-6xl lg:text-7xl">
-            Tienes multas que podrian estar <span className="text-blue-600">prescritas</span>
-          </h1>
+          <div className="relative">
+            <div className="rounded-[2rem] border border-slate-200 bg-white/95 p-7 shadow-2xl shadow-slate-950/10 backdrop-blur">
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-950 text-xl text-white">
+                  ✓
+                </div>
 
-          <p className="mt-6 w-full max-w-5xl text-left text-lg font-semibold leading-8 text-slate-600 sm:text-xl">Descubre el monto asociado y obten tu informe para solicitar la prescripcion personalmente.</p>
+                <div>
+                  <p className="text-lg font-black text-slate-950">
+                    {result ? "Resultado preliminar" : "Análisis preliminar"}
+                  </p>
 
-          <div className="mt-6 flex flex-wrap gap-2 text-xs font-black text-slate-600">
-            {["Sin promesas falsas", "Basado en tu certificado", "Producto descargable", "Soporte de entrega post-compra"].map((item) => (
-              <span key={item} className="rounded-full bg-white px-3 py-2 shadow-sm">
-                {"\u2713"} {item}
-              </span>
-            ))}
+                  <p className="text-sm font-black text-sky-700">
+                    {result ? "Generado" : "Disponible en línea"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="my-7 h-px bg-slate-200" />
+
+              {result ? (
+                <>
+                  <p className="text-2xl font-black leading-tight text-slate-950">
+                    Detectamos{" "}
+                    <span className="text-orange-600">
+                      {result.multasSusceptibles}
+                    </span>{" "}
+                    multas potencialmente prescritas
+                  </p>
+
+                  <p className="mt-6 text-sm font-black text-slate-700">
+                    Monto referencial asociado
+                  </p>
+
+                  <p className="mt-1 text-5xl font-black tracking-tight text-orange-600">
+                    {formatCLP(result.montoPotencial)}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-2xl font-black leading-tight text-slate-950">
+                    Esta multa <span className="text-orange-600">podría</span>{" "}
+                    estar <span className="text-orange-600">prescrita</span>
+                  </p>
+
+                  <p className="mt-6 text-sm font-black text-slate-700">
+                    Resultado estimado
+                  </p>
+
+                  <p className="mt-1 text-5xl font-black tracking-tight text-orange-600">
+                    En minutos
+                  </p>
+                </>
+              )}
+
+              <a
+                href="#analizar"
+                className="mt-7 inline-flex w-full items-center justify-center rounded-2xl bg-orange-50 px-5 py-4 text-sm font-black text-slate-950 transition hover:bg-orange-100"
+              >
+                Ver detalles del análisis →
+              </a>
+            </div>
           </div>
         </div>
 
-        <div className="rounded-[2rem] bg-white p-6 shadow-xl shadow-slate-900/10">
-          {result ? (
-            <div>
-              <p className="text-xs font-black uppercase tracking-widest text-emerald-700">Podrias ahorrarte en multas</p>
-              <p className="mt-2 text-5xl font-black tracking-tight text-emerald-600">{formatCLP(result.montoPotencial)}</p>
-              <p className="mt-2 text-sm font-bold text-slate-600">
-                Monto referencial calculado con las multas revisables del certificado.
-              </p>
+        <div className="mt-10 grid overflow-hidden rounded-[2rem] border border-orange-100 bg-white/90 shadow-xl shadow-slate-950/5 backdrop-blur sm:grid-cols-2 lg:grid-cols-4">
+          {serviceCards.map((item, index) => (
+            <div
+              key={item.title}
+              className={`flex gap-4 p-6 ${
+                index > 0 ? "border-t border-orange-100 sm:border-l sm:border-t-0" : ""
+              }`}
+            >
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-orange-50 text-2xl text-orange-600">
+                {item.icon}
+              </div>
+
+              <div>
+                <p className="font-black text-slate-950">{item.title}</p>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  {item.text}
+                </p>
+              </div>
             </div>
-          ) : (
-            <div>
-              <p className="text-xs font-black uppercase tracking-widest text-emerald-700"></p>
-              <p className="mt-2 text-3xl font-black text-slate-950"></p>
-              <p className="mt-2 text-sm font-bold text-slate-600"></p>
-            </div>
-          )}
+          ))}
         </div>
       </div>
     </section>
@@ -394,7 +567,7 @@ function AnalysisForm({
 
     if (selectedFile.size > MAX_FILE_SIZE_BYTES) {
       setFile(null);
-      setError("El archivo supera el maximo de 10 MB.");
+      setError("El archivo supera el máximo de 10 MB.");
       return;
     }
 
@@ -439,7 +612,7 @@ function AnalysisForm({
         resultRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       }, 150);
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : "Ocurrio un error al analizar el certificado.");
+      setError(caughtError instanceof Error ? caughtError.message : "Ocurrió un error al analizar el certificado.");
     } finally {
       setIsAnalyzing(false);
     }
@@ -449,39 +622,40 @@ function AnalysisForm({
     <section id="analizar" className="space-y-6">
       <div className="mx-auto w-full max-w-2xl rounded-[2rem] border border-slate-200 bg-white p-5 shadow-xl shadow-slate-900/5 sm:p-7">
       <div>
-        <div className="mb-2 inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-black uppercase tracking-widest text-blue-700">
-          Analisis preliminar
+        <div className="mb-2 inline-flex rounded-full bg-amber-50 px-3 py-1 text-xs font-black uppercase tracking-widest text-amber-700">
+          Análisis preliminar
         </div>
         <h2 className="text-2xl font-black tracking-tight text-slate-950">Analiza gratis tu certificado</h2>
         <p className="mt-2 text-sm leading-relaxed text-slate-500">
-          Carga el certificado y revisa si existen multas que podrian solicitar prescripcion.
+          Carga el certificado y revisa si existen multas respecto de las cuales podrías solicitar prescripción.
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-        <TextField id="name" label="Nombre completo" value={name} onChange={setName} placeholder="Ej: Juan Perez" autoComplete="name" />
-        <TextField id="email" label="Correo electronico" value={email} onChange={setEmail} placeholder="ejemplo@correo.com" type="email" autoComplete="email" />
+        <TextField id="name" label="Nombre completo" value={name} onChange={setName} placeholder="Ej: Juan Pérez" autoComplete="name" />
+        <TextField id="email" label="Correo electrónico" value={email} onChange={setEmail} placeholder="ejemplo@correo.com" type="email" autoComplete="email" />
         <TextField id="plate" label="Patente" value={plate} onChange={(value) => setPlate(formatPlate(value))} placeholder="Ej: ABCD12" maxLength={7} />
 
-        <label htmlFor="certificate" className="group flex cursor-pointer flex-col justify-center rounded-3xl border-2 border-dashed border-blue-200 bg-blue-50/40 p-6 text-center transition hover:border-blue-400 hover:bg-blue-50">
-          <div className="mb-3 text-4xl text-slate-400 transition group-hover:text-blue-600">{"\u2b06"}</div>
+        <label htmlFor="certificate" className="group flex cursor-pointer flex-col justify-center rounded-3xl border-2 border-dashed border-amber-200 bg-amber-50/40 p-6 text-center transition hover:border-orange-400 hover:bg-amber-50">
+          <div className="mb-3 text-4xl text-slate-400 transition group-hover:text-amber-600">{"\u2b06"}</div>
           <span className="text-sm font-bold text-slate-800">{file?.name || "Sube tu certificado de multas"}</span>
-          <span className="mt-1 text-xs text-slate-500">Solo PDF. Max. 10 MB.</span>
+          <span className="mt-1 text-xs text-slate-500">Solo PDF. Máx. 10 MB.</span>
           <input id="certificate" name="certificate" type="file" accept="application/pdf" className="sr-only" onChange={handleFileChange} />
         </label>
 
-        <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
-          <p className="text-sm font-black text-slate-900">No tienes el certificado?</p>
-          <p className="mt-1 text-xs leading-relaxed text-slate-500">Puedes obtenerlo en el Registro Civil y luego subirlo aqui para analizarlo.</p>
-          <a href={REGISTRO_CIVIL_URL} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex text-xs font-black text-blue-700">
+        <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4">
+          <p className="text-sm font-black text-slate-900">¿No tienes el certificado?</p>
+          <p className="mt-1 text-xs leading-relaxed text-slate-500">Puedes obténerlo en el Registro Civil y luego subirlo aquí para analizarlo.</p>
+          <a href={REGISTRO_CIVIL_URL} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex text-xs font-black text-amber-700">
             Obtener certificado {"\u2197"}
           </a>
         </div>
 
         <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs leading-5 text-slate-600">
-          <input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600" />
+          <input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} className="mt-1 h-4 w-4 rounded border-slate-300 text-amber-600" />
           <span>
-            Consiento el tratamiento de mis datos personales para realizar el analisis del certificado, generar el informe y enviarlo al correo indicado. Entiendo que no incluye representacion judicial, patrocinio profesional, presentacion ante tribunales, seguimiento ni garantia de resultado.
+            Consiento el tratamiento de mis datos personales para realizar el análisis del certificado, generar el informe y enviarlo al correo indicado.
+Entiendo que no incluye representación judicial, patrocinio profesional, presentación ante tribunales, seguimiento ni garantía de resultado.
           </span>
         </label>
 
@@ -490,13 +664,13 @@ function AnalysisForm({
         <button
           type="submit"
           disabled={!canSubmit || isAnalyzing}
-          className="flex w-full justify-center rounded-2xl bg-blue-600 px-5 py-4 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
+          className="flex w-full justify-center rounded-2xl bg-orange-600 px-5 py-4 text-sm font-black text-white shadow-lg shadow-orange-600/20 transition hover:bg-slate-950 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
         >
           {isAnalyzing ? "Analizando certificado..." : <>Analizar ahora {"\u2192"}</>}
         </button>
 
         <div className="flex justify-center gap-2 text-xs font-semibold text-slate-500">
-          {"\u{1f512}"} Tu informacion se usa solo para este analisis.
+          {"\u{1f512}"} Tu información se usa solo para este análisis.
         </div>
       </form>
       </div>
@@ -544,26 +718,63 @@ function PreliminaryResult({
 
 function HowItWorks() {
   const steps = [
-    { icon: "\u2b06", title: "Sube tu certificado", text: "Carga el certificado de multas de transito no pagadas en formato PDF." },
-    { icon: "\u{1f50e}", title: "Analizamos los antecedentes", text: "El sistema revisa la informacion contenida en el documento y detecta multas revisables." },
-    { icon: "\u{1f4e9}", title: "Obten tu informe", text: "Compra el informe completo y recibe por correo los documentos para solicitar la prescripcion personalmente." },
+    {
+      number: "1",
+      icon: "⬆",
+      title: "Sube tu certificado",
+      text: "Sube tu Certificado de Multas de Tránsito No Pagadas en formato PDF.",
+    },
+    {
+      number: "2",
+      icon: "⌕",
+      title: "Analizamos tu caso",
+      text: "Verificamos si tus multas pueden prescribir según los antecedentes del certificado.",
+    },
+    {
+      number: "3",
+      icon: "⇩",
+      title: "Recibe tu resultado",
+      text: "Obtén tu informe preliminar y, si compras, los documentos para el trámite.",
+    },
   ];
 
   return (
-    <section id="como-funciona" className="bg-white py-16 sm:py-20">
+    <section id="como-funciona" className="bg-white py-14 sm:py-16">
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto w-full max-w-7xl text-center">
-          <p className="text-sm font-black uppercase tracking-widest text-blue-700">Proceso simple</p>
-          <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-5xl">Como funciona</h2>
-          <p className="mt-4 text-base leading-8 text-slate-600">Tres pasos, todo en linea: subes el certificado, compras el informe y lo recibes por correo dentro de 24 horas.</p>
+        <div className="text-center">
+          <h2 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+            ¿Cómo funciona?
+          </h2>
+          <p className="mt-2 text-base font-black text-orange-600">
+            En 3 simples pasos
+          </p>
         </div>
 
-        <div className="mt-10 grid gap-4 md:grid-cols-3">
-          {steps.map((step) => (
-            <div key={step.title} className="rounded-[2rem] border border-slate-100 bg-slate-50 p-6">
-              <div className="text-3xl">{step.icon}</div>
-              <p className="mt-4 text-lg font-black text-slate-950">{step.title}</p>
-              <p className="mt-2 text-sm leading-7 text-slate-600">{step.text}</p>
+        <div className="mt-10 grid gap-5 lg:grid-cols-3">
+          {steps.map((step, index) => (
+            <div key={step.number} className="relative">
+              <article className="h-full rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="flex gap-4">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-950 text-sm font-black text-white">
+                    {step.number}
+                  </div>
+
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-orange-50 text-3xl text-slate-950">
+                    {step.icon}
+                  </div>
+
+                  <div>
+                    <p className="text-base font-black text-slate-950">{step.title}</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">{step.text}</p>
+                  </div>
+                </div>
+              </article>
+
+              {index < steps.length - 1 ? (
+                <div className="absolute -right-5 top-1/2 hidden -translate-y-1/2 text-2xl font-black text-orange-500 lg:block">
+                  →
+                </div>
+              ) : null}
             </div>
           ))}
         </div>
@@ -574,34 +785,41 @@ function HowItWorks() {
 
 function ReportIncludes() {
   const items = [
-    "Analisis del certificado aportado",
-    "Detalle de multas revisables",
-    "",
-    "Borradores editables por tribunal",
-    "Instrucciones basicas de presentacion",
-    "Advertencias y alcance del servicio",
+    "Informe de análisis del certificado aportado",
+    "Detalle de multas detectadas y revisables",
+    "Identificación de multas potencialmente prescritas",
+    "Borrador editable de solicitud de prescripción",
+    "Guía de tramitación personal paso a paso",
+    "Advertencias, límites y alcance del servicio",
   ];
 
   return (
     <section id="servicio" className="bg-slate-50 py-16 sm:py-20">
-      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid gap-10 lg:items-start">
-          <div>
-            <p className="text-sm font-black uppercase tracking-widest text-blue-700">Informe completo</p>
-            <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">Que recibe la persona que compra</h2>
-            <p className="mt-4 text-base leading-8 text-slate-600">Un producto documental preparado con los antecedentes del certificado. No es representacion judicial ni tramitacion completa.</p>
-          </div>
+      <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.8fr_1.2fr] lg:px-8">
+        <div>
+          <p className="text-sm font-black uppercase tracking-widest text-orange-600">
+            Producto
+          </p>
+          <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+            Informe completo + borradores de escritos
+          </h2>
+          <p className="mt-4 text-base leading-8 text-slate-600">
+            Un producto documental preparado con los antecedentes del certificado aportado. No incluye representación judicial ni tramitación completa.
+          </p>
+          <p className="mt-5 text-4xl font-black text-slate-950">
+            $9.990 <span className="text-base font-black text-slate-500">CLP</span>
+          </p>
+        </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            {items.map((item) => (
-              <div key={item} className="flex gap-3 rounded-3xl border border-slate-100 bg-white p-4">
-                <div className="flex h-8 w-8 shrink-0 justify-center rounded-full bg-blue-600 text-white">
-                  {"\u2713"}
-                </div>
-                <p className="font-bold text-slate-800">{item}</p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {items.map((item) => (
+            <div key={item} className="flex gap-3 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-600 text-sm font-black text-white">
+                ✓
               </div>
-            ))}
-          </div>
+              <p className="font-bold leading-6 text-slate-800">{item}</p>
+            </div>
+          ))}
         </div>
       </div>
     </section>
@@ -610,29 +828,46 @@ function ReportIncludes() {
 
 function FAQ() {
   const questions = [
-    { q: "El servicio elimina mis multas?", a: "No. El servicio entrega un informe documental y borradores para solicitar prescripcion. La decision depende del tribunal competente." },
-    { q: "Incluye representacion o presentacion ante tribunales?", a: "No. La persona usuaria debe revisar, completar y presentar personalmente los documentos ante el tribunal correspondiente." },
-    { q: "Sirve solo para multas TAG?", a: "No. Esta pensado para multas de transito informadas al Registro de Multas No Pagadas, incluyendo partes empadronados cuando consten en el certificado." },
-    { q: "Cuando recibo el informe completo?", a: "Una vez realizada la compra, el informe y los borradores se envian al correo electronico indicado dentro de 24 horas. Revisa tambien la carpeta de spam, promociones o correo no deseado." },
-    { q: "Que hago si compre y no recibi el correo?", a: "Primero revisa spam, promociones o correo no deseado. Si el pago fue confirmado y no recibiste el correo, podras usar el soporte de compra para solicitar el reenvio. Ese soporte es solo para incidencias de entrega, no para asesoria legal personalizada." },
-    { q: "Que pasa despues de presentar la solicitud?", a: "La tramitacion posterior depende del tribunal competente. Esto ocurre tanto si la solicitud la presenta una persona natural como si la presenta un abogado." },
+    {
+      q: "¿Este servicio elimina mis multas?",
+      a: "No. El servicio entrega un informe documental y borradores para solicitar la prescripción. La decisión depende del tribunal competente.",
+    },
+    {
+      q: "¿El servicio incluye representación o presentación ante tribunales?",
+      a: "No. La persona usuaria debe revisar, completar y presentar personalmente los documentos ante el tribunal correspondiente.",
+    },
+    {
+      q: "¿Sirve solo para multas TAG?",
+      a: "No. Está pensado para multas de tránsito informadas al Registro de Multas No Pagadas, incluyendo partes empadronados cuando consten en el certificado.",
+    },
+    {
+      q: "¿Cuándo recibo el informe completo?",
+      a: "Una vez realizada la compra, el informe y los borradores se envían al correo electrónico indicado. Revisa también la carpeta de spam, promociones o correo no deseado.",
+    },
+    {
+      q: "¿Qué hago si compré y no recibí el correo?",
+      a: "Primero revisa spam, promociones o correo no deseado. Si el pago fue confirmado y no recibiste el correo, contacta a soporte para solicitar el reenvío.",
+    },
   ];
 
   return (
     <section id="preguntas" className="bg-white py-16 sm:py-20">
-      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto w-full max-w-7xl text-center">
-          <p className="text-sm font-black uppercase tracking-widest text-blue-700">Preguntas</p>
-          <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-5xl">Lo basico, sin letra chica ninja</h2>
-          <p className="mt-4 text-base leading-8 text-slate-600">Respuestas rapidas antes de comprar.</p>
+      <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8">
+        <div className="text-center">
+          <p className="text-sm font-black uppercase tracking-widest text-orange-600">
+            Preguntas frecuentes
+          </p>
+          <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-5xl">
+            Lo básico, sin letra chica
+          </h2>
         </div>
 
         <div className="mt-10 space-y-4">
           {questions.map((item) => (
-            <details key={item.q} className="group rounded-3xl bg-slate-50 p-5 shadow-sm">
+            <details key={item.q} className="group rounded-3xl border border-slate-200 bg-slate-50 p-5 shadow-sm">
               <summary className="flex cursor-pointer list-none justify-between gap-4 text-base font-black text-slate-950">
                 {item.q}
-                <span className="text-slate-400">{"\u2304"}</span>
+                <span className="text-orange-600">⌄</span>
               </summary>
               <p className="mt-3 text-sm leading-7 text-slate-600">{item.a}</p>
             </details>
@@ -645,19 +880,32 @@ function FAQ() {
 
 function Footer() {
   return (
-    <footer className="bg-slate-950 py-12 text-white">
-      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-        <p className="text-lg font-black text-white">Prescribe tu Multa</p>
-        <p className="mt-4 max-w-7xl text-sm leading-7 text-slate-400">
-          Servicio documental automatizado para analizar multas de transito informadas al Registro de Multas No Pagadas sobre la base del certificado aportado por el usuario.
-        </p>
+    <footer className="bg-slate-950 py-10 text-white">
+      <div className="mx-auto grid w-full max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-[1fr_2fr_1fr] lg:px-8">
+        <div>
+          <p className="text-sm font-black text-white">Prescribe tu Multa</p>
+          <p className="mt-2 text-xs leading-6 text-slate-400">
+            Servicio legal documental especializado en multas de tránsito en Chile.
+          </p>
+        </div>
 
-        <p className="mt-6 text-xs leading-6 text-slate-400">
-          No incluye representacion judicial, patrocinio profesional, asesoria personalizada, presentacion ante tribunales, seguimiento del tramite ni garantia de resultado.
-        </p>
+        <div className="flex flex-wrap items-start gap-x-8 gap-y-3 text-xs text-slate-400 lg:justify-center">
+          <a href="/terminos-y-condiciones" className="transition hover:text-white">
+            Términos y Condiciones
+          </a>
+          <a href="/politica-de-privacidad" className="transition hover:text-white">
+            Política de Privacidad
+          </a>
+          <a href="/politica-de-reembolso" className="transition hover:text-white">
+            Política de Reembolso
+          </a>
+          <a href="/contacto" className="transition hover:text-white">
+            Contacto
+          </a>
+        </div>
 
-        <div className="mt-10 border-t border-white/10 pt-6 text-center text-xs text-slate-500">
-          {"\u00a9"} {new Date().getFullYear()} Prescribe tu Multa. Todos los derechos reservados.
+        <div className="text-xs leading-6 text-slate-500 lg:text-right">
+          © {new Date().getFullYear()} Prescribe tu Multa. Todos los derechos reservados.
         </div>
       </div>
     </footer>
@@ -673,7 +921,7 @@ export default function Page() {
       <Header />
       <Hero result={result} />
 
-      <section className="bg-gradient-to-b from-emerald-50 to-white px-4 py-12 sm:px-6 lg:px-8">
+      <section className="bg-gradient-to-b from-orange-50/70 to-white px-4 py-12 sm:px-6 lg:px-8">
         <div className="mx-auto w-full max-w-7xl">
           <AnalysisForm result={result} setResult={setResult} resultRef={resultRef} />
         </div>

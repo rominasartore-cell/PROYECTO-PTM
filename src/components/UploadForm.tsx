@@ -1,103 +1,245 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { type ChangeEvent, type DragEvent, type FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
+
+type FormState = {
+  name: string;
+  email: string;
+  plate: string;
+};
+
+type AnalyzeResponse = {
+  ok?: boolean;
+  error?: string;
+  message?: string;
+  requestId?: string;
+  request_id?: string;
+  id?: string;
+  redirectUrl?: string;
+  url?: string;
+  result?: {
+    requestId?: string;
+    request_id?: string;
+  };
+  analysis?: {
+    requestId?: string;
+    request_id?: string;
+  };
+};
+
+const MAX_FILE_SIZE_MB = 15;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+
+function normalizePlateInput(value: string) {
+  return value
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 6);
+}
+
+function isValidPlate(value: string) {
+  return /^[A-Z]{4}\d{2}$/.test(value) || /^[A-Z]{2}\d{4}$/.test(value);
+}
+
+function isPdfFile(file: File) {
+  const nameLooksPdf = file.name.toLowerCase().endsWith(".pdf");
+  const typeLooksPdf = file.type === "application/pdf" || file.type.includes("pdf");
+
+  return nameLooksPdf || typeLooksPdf;
+}
+
+function getString(...values: unknown[]) {
+  const found = values.find((value) => typeof value === "string" && value.trim().length > 0);
+  return typeof found === "string" ? found.trim() : "";
+}
+
+async function readJsonSafely(response: Response): Promise<AnalyzeResponse | null> {
+  const text = await response.text();
+
+  if (!text) return null;
+
+  try {
+    return JSON.parse(text) as AnalyzeResponse;
+  } catch {
+    return {
+      ok: false,
+      error: text,
+    };
+  }
+}
 
 export function UploadForm() {
   const router = useRouter();
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    plate: '',
+  const [formData, setFormData] = useState<FormState>({
+    name: "",
+    email: "",
+    plate: "",
   });
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [dragActive, setDragActive] = useState(false);
   const [consent, setConsent] = useState(false);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
+  function handleInputChange(event: ChangeEvent<HTMLInputElement>) {
+    const { name, value } = event.target;
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) {
-      setFile(e.target.files[0]);
+    if (!["name", "email", "plate"].includes(name)) return;
+
+    const key = name as keyof FormState;
+
+    setFormData((prev) => ({
+      ...prev,
+      [key]: key === "plate" ? normalizePlateInput(value) : value,
+    }));
+  }
+
+  function setSelectedFile(nextFile?: File) {
+    setError("");
+
+    if (!nextFile) return;
+
+    if (!isPdfFile(nextFile)) {
+      setFile(null);
+      setError("Carga un archivo PDF válido.");
+      return;
     }
-  };
 
-  const handleDrag = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === 'dragenter' || e.type === 'dragover') {
+    if (nextFile.size > MAX_FILE_SIZE_BYTES) {
+      setFile(null);
+      setError(`El PDF no puede superar ${MAX_FILE_SIZE_MB} MB.`);
+      return;
+    }
+
+    setFile(nextFile);
+  }
+
+  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    setSelectedFile(event.target.files?.[0]);
+  }
+
+  function handleDrag(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (event.type === "dragenter" || event.type === "dragover") {
       setDragActive(true);
-    } else if (e.type === 'dragleave') {
+      return;
+    }
+
+    if (event.type === "dragleave") {
       setDragActive(false);
     }
-  };
+  }
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  function handleDrop(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    event.stopPropagation();
     setDragActive(false);
-    if (e.dataTransfer.files?.[0]) {
-      setFile(e.dataTransfer.files[0]);
-    }
-  };
+    setSelectedFile(event.dataTransfer.files?.[0]);
+  }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
 
-    if (!formData.name || !formData.email || !formData.plate || !file || !consent) {
-      setError('Por favor completa todos los campos y acepta los términos.');
+    const name = formData.name.trim();
+    const email = formData.email.trim().toLowerCase();
+    const plate = normalizePlateInput(formData.plate);
+
+    setError("");
+
+    if (!name || !email || !plate || !file) {
+      setError("Completa nombre, correo, patente y PDF.");
       return;
     }
 
-    if (!file.type.includes('pdf')) {
-      setError('Por favor carga un archivo PDF válido.');
+    if (!isValidPlate(plate)) {
+      setError("Ingresa una patente chilena válida. Ejemplos: ABCD12 o AB1234.");
       return;
     }
 
-    setLoading(true);
+    if (!consent) {
+      setError("Debes aceptar el tratamiento de datos y las condiciones del análisis.");
+      return;
+    }
+
     try {
-      const formDataToSend = new FormData();
-      formDataToSend.append('file', file);
-      formDataToSend.append('name', formData.name);
-      formDataToSend.append('email', formData.email);
-      formDataToSend.append('plate', formData.plate);
-      formDataToSend.append('consent', consent ? 'true' : 'false');
+      setLoading(true);
 
-      const response = await fetch('/api/analyze', {
-        method: 'POST',
-        body: formDataToSend,
+      const body = new FormData();
+      body.append("file", file);
+      body.append("name", name);
+      body.append("email", email);
+      body.append("plate", plate);
+      body.append("vehiclePlate", plate);
+      body.append("patente", plate);
+      body.append("consent", "true");
+
+      const response = await fetch("/api/analyze-certificate", {
+        method: "POST",
+        body,
+        cache: "no-store",
       });
 
-      if (!response.ok) {
-        throw new Error(await response.text());
+      const payload = await readJsonSafely(response);
+
+      if (!response.ok || payload?.ok === false) {
+        throw new Error(
+          payload?.error ||
+            payload?.message ||
+            "No se pudo procesar el certificado."
+        );
       }
 
-      const result = await response.json();
-      router.push(`/resultados/${result.requestId}`);
-    } catch (err: any) {
-      setError(err.message || 'Error al procesar el certificado');
-    } finally {
+      const redirectUrl = getString(payload?.redirectUrl, payload?.url);
+      const requestId = getString(
+        payload?.requestId,
+        payload?.request_id,
+        payload?.id,
+        payload?.result?.requestId,
+        payload?.result?.request_id,
+        payload?.analysis?.requestId,
+        payload?.analysis?.request_id
+      );
+
+      if (redirectUrl) {
+        router.push(redirectUrl);
+        return;
+      }
+
+      if (requestId) {
+        router.push(`/resultados/${encodeURIComponent(requestId)}`);
+        return;
+      }
+
+      throw new Error("El análisis terminó, pero no se recibió código de solicitud.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al procesar el certificado.");
       setLoading(false);
     }
-  };
+  }
 
   return (
-    <section id="upload-form" className="py-20 bg-gray-50">
+    <section id="upload-form" className="bg-slate-50 py-20">
       <div className="container max-w-2xl">
         <div className="card">
-          <h2 className="text-3xl font-bold mb-8 text-center">Analiza tu Certificado</h2>
+          <div className="mb-8 text-center">
+            <p className="text-sm font-black uppercase tracking-[0.2em] text-amber-700">
+              Análisis preliminar
+            </p>
+            <h2 className="mt-3 text-3xl font-black text-slate-950">
+              Analiza tu certificado
+            </h2>
+            <p className="mt-3 text-sm font-medium leading-6 text-slate-600">
+              Sube el PDF del Certificado de Multas de Tránsito No Pagadas.
+            </p>
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* File Upload */}
             <div
-              className={`border-2 border-dashed rounded-lg p-8 text-center transition cursor-pointer ${
-                dragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
+              className={`rounded-2xl border-2 border-dashed p-8 text-center transition ${
+                dragActive ? "border-blue-500 bg-blue-50" : "border-slate-300 bg-white"
               }`}
               onDragEnter={handleDrag}
               onDragLeave={handleDrag}
@@ -106,86 +248,105 @@ export function UploadForm() {
             >
               <input
                 type="file"
-                accept=".pdf"
+                accept="application/pdf,.pdf"
                 onChange={handleFileChange}
                 className="hidden"
                 id="file-input"
+                disabled={loading}
               />
-              <label htmlFor="file-input" className="cursor-pointer block">
+              <label htmlFor="file-input" className="block cursor-pointer">
                 {file ? (
                   <>
-                    <span className="text-2xl mb-2 block">✅</span>
-                    <p className="text-gray-900 font-semibold">{file.name}</p>
-                    <p className="text-gray-500 text-sm">Click para cambiar</p>
+                    <span className="mb-2 block text-2xl" aria-hidden="true">
+                      ✓
+                    </span>
+                    <p className="font-black text-slate-900">{file.name}</p>
+                    <p className="text-sm text-slate-500">Haz clic para cambiar</p>
                   </>
                 ) : (
                   <>
-                    <span className="text-4xl mb-2 block">📄</span>
-                    <p className="text-gray-900 font-semibold mb-1">Arrastra tu PDF aquí o haz click</p>
-                    <p className="text-gray-500">Carga tu certificado RMNP en formato PDF</p>
+                    <span className="mb-2 block text-4xl" aria-hidden="true">
+                      📄
+                    </span>
+                    <p className="mb-1 font-black text-slate-900">
+                      Arrastra tu PDF aquí o haz clic
+                    </p>
+                    <p className="text-sm text-slate-500">
+                      Máximo {MAX_FILE_SIZE_MB} MB.
+                    </p>
                   </>
                 )}
               </label>
             </div>
 
-            {/* Input Fields */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <input
                 type="text"
                 name="name"
-                placeholder="Tu nombre"
+                placeholder="Nombre"
                 value={formData.name}
                 onChange={handleInputChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={loading}
+                autoComplete="name"
+                className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:opacity-60"
+                required
               />
+
               <input
                 type="email"
                 name="email"
-                placeholder="Tu email"
+                placeholder="Correo electrónico"
                 value={formData.email}
                 onChange={handleInputChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={loading}
+                autoComplete="email"
+                className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:opacity-60"
+                required
               />
             </div>
 
             <input
               type="text"
               name="plate"
-              placeholder="Patente (ej: ABCD1234)"
+              placeholder="Patente. Ej: ABCD12 o AB1234"
               value={formData.plate}
               onChange={handleInputChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={loading}
+              autoComplete="off"
+              inputMode="text"
+              className="w-full rounded-2xl border border-slate-300 px-4 py-3 uppercase outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:opacity-60"
+              required
             />
 
-            {/* Consent Checkbox */}
-            <div className="flex items-start gap-3">
+            <div className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4">
               <input
                 type="checkbox"
                 id="consent"
                 checked={consent}
-                onChange={(e) => setConsent(e.target.checked)}
-                className="w-5 h-5 mt-1"
+                onChange={(event) => setConsent(event.target.checked)}
+                disabled={loading}
+                className="mt-1 h-5 w-5"
               />
-              <label htmlFor="consent" className="text-sm text-gray-700">
-                Entiendo que este es un análisis informativo y no constituye asesoramiento legal. Acepto los
-                términos de privacidad.
+              <label htmlFor="consent" className="text-sm font-medium leading-6 text-slate-700">
+                Entiendo que este es un análisis informativo, que no garantiza resultado favorable y acepto el tratamiento de los datos necesarios para procesar el certificado.
               </label>
             </div>
 
-            {/* Error Message */}
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+            {error ? (
+              <div
+                role="alert"
+                className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700"
+              >
                 {error}
               </div>
-            )}
+            ) : null}
 
-            {/* Submit Button */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-900 text-white font-semibold py-3 rounded-lg hover:bg-blue-800 transition disabled:opacity-50"
+              className="w-full rounded-2xl bg-blue-900 py-4 font-black text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {loading ? 'Analizando...' : 'Analizar Certificado (Gratis)'}
+              {loading ? "Analizando..." : "Analizar certificado gratis"}
             </button>
           </form>
         </div>
@@ -193,3 +354,5 @@ export function UploadForm() {
     </section>
   );
 }
+
+export default UploadForm;

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 
@@ -7,7 +7,7 @@ type PurchaseEmailNoticeProps = {
   initialEmail?: string;
 };
 
-function cleanEmail(value?: string | null) {
+function cleanEmail(value?: string | null): string {
   if (!value) return "";
 
   try {
@@ -26,24 +26,16 @@ export default function PurchaseEmailNotice({
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
 
-    const queryEmail =
-      cleanEmail(params.get("email")) ||
-      cleanEmail(params.get("correo"));
-
-    const keyedEmail = cleanEmail(
-      window.localStorage.getItem(`ptm:purchaseEmail:${requestId}`)
-    );
-
-    const lastEmail = cleanEmail(
-      window.localStorage.getItem("ptm:lastPurchaseEmail")
-    );
+    const queryEmail = cleanEmail(params.get("email")) || cleanEmail(params.get("correo"));
+    const keyedEmail = requestId
+      ? cleanEmail(window.localStorage.getItem(`ptm:purchaseEmail:${requestId}`))
+      : "";
+    const lastEmail = cleanEmail(window.localStorage.getItem("ptm:lastPurchaseEmail"));
 
     setStoredEmail(queryEmail || keyedEmail || lastEmail);
   }, [requestId]);
 
-  const finalEmail = useMemo(() => {
-    return cleanEmail(initialEmail) || storedEmail;
-  }, [initialEmail, storedEmail]);
+  const finalEmail = useMemo(() => cleanEmail(initialEmail) || storedEmail, [initialEmail, storedEmail]);
 
   return (
     <section className="rounded-3xl border border-emerald-200 bg-emerald-50 p-6">
@@ -62,7 +54,7 @@ export default function PurchaseEmailNotice({
       )}
 
       <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">
-        Dentro de las próximas 24 horas recibirás el informe completo, los borradores de escritos y la guía de tramitación personal.
+        Revisa también spam, promociones y correo no deseado. Si no recibes confirmación, escribe a contacto@prescribetumulta.cl con tu código de solicitud.
       </p>
     </section>
   );

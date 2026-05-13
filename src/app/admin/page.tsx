@@ -1,30 +1,34 @@
-'use client';
+"use client";
 
-import { AdminLogin } from '@/components/AdminLogin';
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { AdminLogin } from "@/components/AdminLogin";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+
+const ADMIN_TOKEN_KEY = "ptm-admin-token";
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('ptm-admin-token');
+    const token = window.localStorage.getItem(ADMIN_TOKEN_KEY);
+
     if (token) {
-      setIsAuthenticated(true);
-      router.push('/admin/dashboard');
-    } else {
-      setIsLoading(false);
+      router.replace("/admin/dashboard");
+      return;
     }
+
+    setIsCheckingSession(false);
   }, [router]);
 
-  if (isLoading) {
-    return <div className="flex items-center justify-center min-h-screen">Cargando...</div>;
-  }
-
-  if (isAuthenticated) {
-    return null;
+  if (isCheckingSession) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4 text-white">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/80 px-6 py-4 text-sm text-slate-300 shadow-xl">
+          Cargando acceso administrativo...
+        </div>
+      </main>
+    );
   }
 
   return <AdminLogin />;

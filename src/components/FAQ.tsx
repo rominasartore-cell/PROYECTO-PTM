@@ -1,63 +1,111 @@
-﻿'use client';
+"use client";
 
-import { useState } from 'react';
+import { useState } from "react";
 
 const faqs = [
   {
-    question: '¿Qué es la prescripción de una multa?',
-    answer: 'La prescripción es un mecanismo legal que extingue la obligación de pago después de cierto tiempo. En Chile, las multas de tránsito prescriben después de 3 años desde su ingreso al Registro de Multas No Pagadas (RMNP).',
+    question: "¿Qué es la prescripción de una multa?",
+    answer:
+      "La prescripción es un mecanismo legal que permite solicitar que una multa deje de ser exigible cuando ha transcurrido el plazo legal correspondiente. La decisión final siempre depende del tribunal competente.",
   },
   {
-    question: '¿Cómo obtengo mi certificado RMNP?',
-    answer: 'Puedes obtener tu certificado en el Registro Civil o a través del portal ChileAtiende. Busca "Certificado de Multas de Tránsito No Pagadas" y sigue el proceso online.',
+    question: "¿Cómo obtengo mi certificado de multas?",
+    answer:
+      "Puedes obtener el Certificado de Multas de Tránsito No Pagadas a través del Registro Civil o desde la ficha informativa de ChileAtiende. Luego debes subirlo en formato PDF para realizar el análisis preliminar.",
   },
   {
-    question: '¿Es este análisis vinculante?',
-    answer: 'No. Este análisis es informativo y preliminar. La decisión final sobre prescripción corresponde exclusivamente al tribunal. Te recomendamos consultar con un abogado antes de presentar cualquier solicitud.',
+    question: "¿Prescribe tu Multa elimina mis multas?",
+    answer:
+      "No. Prescribe tu Multa entrega un análisis documental, un informe y borradores editables para solicitar la prescripción. La eliminación de multas depende exclusivamente del tribunal y/o del organismo correspondiente.",
   },
   {
-    question: '¿Cuánto cuesta el informe completo?',
-    answer: 'El informe completo cuesta $49,900 (pago único). Incluye documentos legales listos para presentar en tribunal según las multas prescritas que encuentres.',
+    question: "¿El resultado está garantizado?",
+    answer:
+      "No. El informe identifica multas potencialmente prescritas según los antecedentes del certificado, pero no garantiza que el tribunal declare la prescripción ni que las multas sean eliminadas del registro.",
   },
   {
-    question: '¿Qué incluye el informe completo?',
-    answer: 'El informe incluye: análisis detallado en HTML/PDF, solicitudes de prescripción personalizadas por tribunal, y toda la documentación necesaria para presentar en juzgados.',
+    question: "¿Cuánto cuesta el informe completo?",
+    answer:
+      "El informe completo cuesta $9.990 CLP, pago único. Incluye análisis del certificado, detalle de multas detectadas, borradores editables y guía de tramitación personal.",
   },
   {
-    question: '¿Es seguro compartir mi certificado?',
-    answer: 'Sí. Tu certificado se procesa localmente y se elimina después del análisis. No compartimos datos con terceros. Consulta nuestra política de privacidad para más detalles.',
+    question: "¿Qué incluye el informe completo?",
+    answer:
+      "Incluye informe de análisis, detalle de multas potencialmente prescritas, borrador editable de solicitud de prescripción y guía de tramitación personal paso a paso.",
+  },
+  {
+    question: "¿Incluye abogado o representación judicial?",
+    answer:
+      "No. El producto no incluye patrocinio, representación judicial, presentación de escritos ni seguimiento del expediente. Es un servicio documental para tramitación personal.",
+  },
+  {
+    question: "¿Es seguro compartir mi certificado?",
+    answer:
+      "La información se usa para realizar el análisis y generar los documentos asociados al servicio. No vendemos tus datos personales ni los usamos para fines ajenos al producto contratado.",
+  },
+  {
+    question: "¿Qué hago si compré y no recibí el correo?",
+    answer:
+      "Revisa spam, promociones o correo no deseado. Si no aparece, escríbenos a contacto@prescribetumulta.cl indicando tu nombre, correo, patente y código de solicitud si lo tienes.",
   },
 ];
 
 export function FAQ() {
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const [openIndex, setOpenIndex] = useState<number | null>(0);
 
   return (
-    <section id="faq" className="py-16 bg-white">
+    <section id="faq" className="bg-white py-16">
       <div className="container max-w-3xl">
-        <h2 className="text-3xl font-bold mb-12 text-center">Preguntas Frecuentes</h2>
+        <div className="mb-12 text-center">
+          <p className="text-sm font-black uppercase tracking-[0.2em] text-amber-700">
+            Dudas frecuentes
+          </p>
+          <h2 className="mt-3 text-3xl font-black text-slate-950">
+            Preguntas frecuentes
+          </h2>
+        </div>
+
         <div className="space-y-4">
-          {faqs.map((faq, index) => (
-            <div key={index} className="border border-gray-300 rounded-lg overflow-hidden">
-              <button
-                onClick={() => setOpenIndex(openIndex === index ? null : index)}
-                className="w-full px-6 py-4 text-left font-semibold text-gray-900 hover:bg-gray-50 flex justify-between items-center"
+          {faqs.map((faq, index) => {
+            const isOpen = openIndex === index;
+            const panelId = `faq-panel-${index}`;
+
+            return (
+              <article
+                key={faq.question}
+                className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
               >
-                {faq.question}
-                <span className={`transform transition ${openIndex === index ? 'rotate-180' : ''}`}>
-                  ▼
-                </span>
-              </button>
-              {openIndex === index && (
-                <div className="px-6 py-4 bg-gray-50 border-t text-gray-700">
-                  {faq.answer}
-                </div>
-              )}
-            </div>
-          ))}
+                <button
+                  type="button"
+                  aria-expanded={isOpen}
+                  aria-controls={panelId}
+                  onClick={() => setOpenIndex(isOpen ? null : index)}
+                  className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left text-base font-black text-slate-900 transition hover:bg-amber-50"
+                >
+                  <span>{faq.question}</span>
+                  <span
+                    aria-hidden="true"
+                    className={`shrink-0 text-amber-700 transition ${isOpen ? "rotate-180" : ""}`}
+                  >
+                    ▼
+                  </span>
+                </button>
+
+                {isOpen ? (
+                  <div
+                    id={panelId}
+                    className="border-t border-slate-200 bg-slate-50 px-6 py-5 text-sm font-medium leading-7 text-slate-700"
+                  >
+                    {faq.answer}
+                  </div>
+                ) : null}
+              </article>
+            );
+          })}
         </div>
       </div>
     </section>
   );
 }
 
+export default FAQ;

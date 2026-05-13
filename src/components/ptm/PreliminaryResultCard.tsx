@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useMemo, useState } from "react";
 import ProductDetailModal from "./ProductDetailModal";
@@ -20,7 +20,7 @@ function numberFrom(value: unknown): number {
   if (typeof value === "string") {
     const cleaned = value
       .replace(/[^\d,.-]/g, "")
-      .replace(/\./g, "")
+      .replace(/\.(?=\d{3}(\D|$))/g, "")
       .replace(",", ".");
 
     const parsed = Number(cleaned);
@@ -30,7 +30,15 @@ function numberFrom(value: unknown): number {
   return 0;
 }
 
-function formatCLP(value: number) {
+function textFrom(value: unknown): string {
+  if (typeof value === "string" || typeof value === "number") {
+    return String(value).trim();
+  }
+
+  return "";
+}
+
+function formatCLP(value: number): string {
   return new Intl.NumberFormat("es-CL", {
     style: "currency",
     currency: "CLP",
@@ -38,12 +46,13 @@ function formatCLP(value: number) {
   }).format(Math.max(0, Math.round(value)));
 }
 
-function pick(...values: unknown[]) {
+function pick(...values: unknown[]): unknown {
   return values.find((value) => value !== undefined && value !== null && value !== "");
 }
 
 function normalizeAnalysis(input: any) {
-  const source = input?.result ?? input?.analysis ?? input?.data ?? input ?? {};
+  const source = input?.result ?? input?.analysis ?? input?.analysisResult ?? input?.data ?? input ?? {};
+  const resumen = source?.resumen ?? {};
 
   const multas =
     source.multas ??
@@ -72,15 +81,26 @@ function normalizeAnalysis(input: any) {
       })
     : [];
 
+  const totalCount = numberFrom(
+    pick(
+      source.totalMultas,
+      source.multasTotalesDetectadas,
+      source.totalFines,
+      resumen.totalMultas,
+      resumen.multasTotalesDetectadas,
+      Array.isArray(multas) ? multas.length : 0
+    )
+  );
+
   const prescribedCount = numberFrom(
     pick(
       source.multasSusceptibles,
       source.multasPotencialmentePrescritas,
       source.potentiallyPrescribedCount,
       source.prescribedCount,
-      source.resumen?.multasSusceptibles,
-      source.resumen?.multasPotencialmentePrescritas,
-      source.resumen?.prescritas,
+      resumen.multasSusceptibles,
+      resumen.multasPotencialmentePrescritas,
+      resumen.prescritas,
       potentiallyPrescribedList.length
     )
   );
@@ -92,9 +112,9 @@ function normalizeAnalysis(input: any) {
       source.montoAsociadoMultasPrescritas,
       source.montoPrescritoCLP,
       source.potentialSavingsCLP,
-      source.resumen?.montoPotencial,
-      source.resumen?.montoMultasPotencialmentePrescritasCLP,
-      source.resumen?.montoPrescritoCLP
+      resumen.montoPotencial,
+      resumen.montoMultasPotencialmentePrescritasCLP,
+      resumen.montoPrescritoCLP
     )
   );
 
@@ -103,9 +123,11 @@ function normalizeAnalysis(input: any) {
       source.montoPotencialUtm,
       source.totalUtmPrescritas,
       source.sumaUtmPrescritas,
-      source.resumen?.montoPotencialUtm,
-      source.resumen?.totalUtmPrescritas,
-      source.resumen?.sumaUtmPrescritas,
+      source.sumaTotalUtmPrescritas,
+      resumen.montoPotencialUtm,
+      resumen.totalUtmPrescritas,
+      resumen.sumaUtmPrescritas,
+      resumen.sumaTotalUtmPrescritas,
       Array.isArray(potentiallyPrescribedList)
         ? potentiallyPrescribedList.reduce((acc: number, m: any) => {
             return acc + numberFrom(pick(m?.montoUtm, m?.utm, m?.montoMultaUtm));
@@ -117,11 +139,13 @@ function normalizeAnalysis(input: any) {
   const utmClp = numberFrom(
     pick(
       source.valorUtm,
+      source.valorUtmUsado,
       source.utmClp,
       source.UTM_CLP,
-      source.resumen?.valorUtm,
-      source.resumen?.utmClp,
-      process.env.NEXT_PUBLIC_UTM_CLP
+      resumen.valorUtm,
+      resumen.valorUtmUsado,
+      resumen.utmClp,
+      0
     )
   );
 
@@ -133,29 +157,39 @@ function normalizeAnalysis(input: any) {
         : 0;
 
   const lawyerEstimate = numberFrom(
-    pick(source.ahorroTramitacion, source.resumen?.ahorroTramitacion, DEFAULT_LAWYER_ESTIMATE_CLP)
+    pick(source.ahorroTramitacion, resumen.ahorroTramitacion, DEFAULT_LAWYER_ESTIMATE_CLP)
   );
 
   const totalReferential = numberFrom(
     pick(
       source.oportunidadTotalReferencial,
       source.totalReferencial,
-      source.resumen?.oportunidadTotalReferencial,
-      source.resumen?.totalReferencial
+      resumen.oportunidadTotalReferencial,
+      resumen.totalReferencial
     )
   );
 
-  const requestId = String(
-    pick(source.requestId, source.solicitudId, source.id, source.quote?.requestId, "") ?? ""
+  const requestId = textFrom(
+    pick(
+      source.requestId,
+      source.request_id,
+      source.solicitudId,
+      source.id,
+      source.quote?.requestId,
+      source.quote?.request_id
+    )
   );
 
-  const quoteToken = String(
-    pick(source.quoteToken, source.token, source.quote?.quoteToken, requestId, "") ?? ""
+  const quoteToken = textFrom(
+    pick(source.quoteToken, source.quote_token, source.token, source.quote?.quoteToken, requestId)
   );
 
   return {
+    totalCount,
     prescribedCount,
     amount,
+    totalUtm,
+    utmClp,
     lawyerEstimate,
     totalReferential: totalReferential > 0 ? totalReferential : amount + lawyerEstimate,
     requestId,
@@ -178,20 +212,34 @@ export default function PreliminaryResultCard({
     [analysis, result]
   );
 
+  const finalQuoteToken = quoteToken || normalized.quoteToken;
+  const finalRequestId = requestId || normalized.requestId;
+
   const canPurchase =
     typeof eligible === "boolean"
       ? eligible
-      : normalized.prescribedCount > 0 && normalized.amount > 0;
+      : normalized.prescribedCount > 0 && Boolean(finalRequestId || finalQuoteToken);
 
-  const finalQuoteToken = quoteToken ?? normalized.quoteToken;
-  const finalRequestId = requestId ?? normalized.requestId;
+  const modalPayload = useMemo(
+    () => ({
+      ...(paymentPayload ?? {}),
+      requestId: finalRequestId,
+      quoteToken: finalQuoteToken,
+      totalMultas: normalized.totalCount,
+      multasSusceptibles: normalized.prescribedCount,
+      montoPotencial: normalized.amount,
+      montoPotencialUtm: normalized.totalUtm,
+      valorUtm: normalized.utmClp,
+    }),
+    [paymentPayload, finalRequestId, finalQuoteToken, normalized]
+  );
 
   return (
     <>
       <article className="mx-auto mt-6 w-full max-w-[760px] overflow-hidden rounded-[2rem] bg-white shadow-2xl ring-1 ring-slate-200">
-        <header className="bg-gradient-to-br from-emerald-600 via-cyan-700 to-blue-700 px-7 py-9 text-white sm:px-10">
+        <header className="bg-gradient-to-br from-emerald-600 via-cyan-700 to-slate-700 px-7 py-9 text-white sm:px-10">
           <p className="mb-6 flex items-center gap-3 text-sm font-black tracking-[0.18em] text-white/90">
-            <span className="text-2xl">✓</span>
+            <span className="text-2xl" aria-hidden="true">✓</span>
             RESULTADO PRELIMINAR
           </p>
 
@@ -205,21 +253,23 @@ export default function PreliminaryResultCard({
         </header>
 
         <div className="space-y-5 px-6 py-7 sm:px-9 sm:py-9">
-          <section className="relative rounded-3xl border border-emerald-200 bg-emerald-50/30 px-5 pb-7 pt-16 text-center">
-            <div className="absolute left-1/2 top-0 flex h-20 w-20 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-gradient-to-br from-lime-500 to-emerald-600 text-4xl text-white shadow-xl">
-              ▣
+          <section className="grid gap-4 sm:grid-cols-2">
+            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 text-center">
+              <p className="text-sm font-black uppercase tracking-widest text-slate-500">
+                Multas detectadas
+              </p>
+              <p className="mt-3 text-5xl font-black text-slate-950">
+                {normalized.totalCount}
+              </p>
             </div>
 
-            <p className="text-xl font-black tracking-wide text-emerald-700 sm:text-2xl">
-              MULTAS POTENCIALMENTE PRESCRITAS
-            </p>
-
-            <div className="mt-2 flex items-center justify-center gap-5">
-              <span className="h-px w-28 bg-emerald-200" />
-              <p className="text-7xl font-black leading-none text-emerald-600 sm:text-8xl">
+            <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5 text-center">
+              <p className="text-sm font-black uppercase tracking-widest text-emerald-700">
+                Potencialmente prescritas
+              </p>
+              <p className="mt-3 text-5xl font-black text-emerald-700">
                 {normalized.prescribedCount}
               </p>
-              <span className="h-px w-28 bg-emerald-200" />
             </div>
           </section>
 
@@ -261,16 +311,10 @@ export default function PreliminaryResultCard({
             </div>
           </section>
 
-          <section className="flex items-center gap-5 rounded-3xl border border-slate-100 bg-white p-5 shadow-lg">
-            <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-5xl">
-              🛡️
-            </div>
-            <p className="text-xl font-medium leading-snug text-slate-700">
-              Compra tu informe completo, tramita personalmente la prescripción y
-              podrías ahorrarte{" "}
-              <strong className="font-black text-emerald-700">
-                hasta {formatCLP(normalized.totalReferential)}.
-              </strong>
+          <section className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm font-semibold leading-6 text-amber-950">
+            <p className="font-black">Importante</p>
+            <p className="mt-2">
+              El resultado es preliminar y referencial. La prescripción debe solicitarse ante el tribunal competente y la eliminación del RMNP depende de la resolución respectiva.
             </p>
           </section>
 
@@ -284,7 +328,7 @@ export default function PreliminaryResultCard({
           </button>
 
           <a
-            href="https://www.registrocivil.cl/principal/servicios-en-linea/certificado-de-multas-de-transito-no-pagadas"
+            href="https://www.registrocivil.cl/principal/servicios-en-linea/certificado-de-multas-de-tránsito-no-pagadas"
             target="_blank"
             rel="noopener noreferrer"
             className="block w-full rounded-2xl border-2 border-blue-600 px-6 py-4 text-center text-xl font-black text-blue-700 transition hover:bg-blue-50"
@@ -299,7 +343,7 @@ export default function PreliminaryResultCard({
         onClose={() => setModalOpen(false)}
         quoteToken={finalQuoteToken}
         requestId={finalRequestId}
-        paymentPayload={paymentPayload}
+        paymentPayload={modalPayload}
       />
     </>
   );

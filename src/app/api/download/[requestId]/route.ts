@@ -1,236 +1,893 @@
-import { NextRequest } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
-import {
-  generatePrescriptionReport,
-  generatePrescriptionRequestDrafts,
-} from '@/lib/document-generation';
-import type { AnalysisResult } from '@/lib/prescripcion-rmnp/types';
+import { NextRequest, NextResponse } from "next/server";
+import { supabaseAdmin } from "@/lib/supabase-admin";
+import pdfParse from "pdf-parse";
 
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-type RouteContext = {
-  params: Promise<{ requestId: string }>;
+type FineStatus =
+  | "POTENCIALMENTE_PRESCRITA"
+  | "VIGENTE"
+  | "REVISION_MANUAL";
+
+type FineLog = {
+  idMulta: string | null;
+  fechaIngresoRmnp: string | null;
+  fechaPrescripcionReferencial: string | null;
+  prescripcionPorFecha: boolean | null;
+  estado: FineStatus;
+  montoUtm: number | null;
+  montoPesos: number | null;
+  tribunal: string | null;
+  rolCausa: string | null;
+  tipoInfraccion: string | null;
+  observaciones: string[];
 };
 
-function extractBodyContent(fullHtml: string): string {
-  const match = fullHtml.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-  return match ? match[1].trim() : '';
+const DEFAULT_UTM_CLP = 70588;
+const DEFAULT_PRESCRIPTION_YEARS = 3;
+const DEFAULT_REFERENTIAL_LAWYER_FEE_CLP = 250000;
+
+function getEnvNumber(key: string, fallback: number): number {
+  const raw = process.env[key];
+
+  if (!raw) return fallback;
+
+  const parsed = Number(
+    raw
+      .toString()
+      .trim()
+      .replace(/\./g, "")
+      .replace(",", ".")
+  );
+
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-function esc(s: string | null | undefined): string {
-  return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+function stripDiacritics(value: string): string {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
-function formatCLP(value: number): string {
-  return value.toLocaleString('es-CL', {
-    style: 'currency',
-    currency: 'CLP',
-    maximumFractionDigits: 0,
+function normalizeText(text: string): string {
+  return text
+    .replace(/\r/g, "\n")
+    .replace(/\u0000/g, "")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n[ \t]+/g, "\n")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function searchable(text: string): string {
+  return stripDiacritics(normalizeText(text))
+    .replace(/\bR\s*M\s*N\s*P\b/gi, "RMNP")
+    .replace(/\bR\s*M\s*T\s*N\s*P\b/gi, "RMTNP")
+    .replace(/\bU\s*T\s*M\b/gi, "UTM")
+    .replace(/MONTO\s+MULTA\s*[–—-]\s*MONEDA/gi, "MONTO MULTA-MONEDA")
+    .replace(/FECHA\s+DE\s+INGRESO/gi, "FECHA INGRESO")
+    .trim();
+}
+
+function parseUtmNumber(value: string | null): number | null {
+  if (!value) return null;
+
+  let cleaned = value
+    .replace(/[^\d,.-]/g, "")
+    .trim();
+
+  if (!cleaned) return null;
+
+  if (cleaned.includes(",")) {
+    cleaned = cleaned.replace(/\./g, "").replace(",", ".");
+  }
+
+  const parsed = Number(cleaned);
+
+  if (!Number.isFinite(parsed)) return null;
+
+  return parsed;
+}
+
+function parseDateCL(value: string | null): Date | null {
+  if (!value) return null;
+
+  const match = value.match(/(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})/);
+
+  if (!match) return null;
+
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  let year = Number(match[3]);
+
+  if (year < 100) {
+    year = year >= 50 ? 1900 + year : 2000 + year;
+  }
+
+  if (!day || !month || !year) return null;
+
+  const date = new Date(year, month - 1, day);
+
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return null;
+  }
+
+  return date;
+}
+
+function formatDateCL(date: Date | null): string | null {
+  if (!date) return null;
+
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+
+  return `${day}/${month}/${year}`;
+}
+
+function getToday(): Date {
+  const forced = process.env.ANALYSIS_TODAY;
+
+  if (forced) {
+    const forcedDate = new Date(`${forced}T00:00:00`);
+
+    if (!Number.isNaN(forcedDate.getTime())) {
+      return forcedDate;
+    }
+  }
+
+  const now = new Date();
+
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
+function addYears(date: Date, years: number): Date {
+  const result = new Date(date);
+  result.setFullYear(result.getFullYear() + years);
+  return result;
+}
+
+function isPotentiallyPrescribed(
+  fechaIngreso: Date | null,
+  years: number,
+  today: Date
+): boolean | null {
+  if (!fechaIngreso) return null;
+
+  return addYears(fechaIngreso, years) <= today;
+}
+
+function cleanValue(value: string | null | undefined): string | null {
+  if (!value) return null;
+
+  const cleaned = value
+    .replace(/\s+/g, " ")
+    .replace(/^[:;\-. ]+/, "")
+    .replace(/[:;\-. ]+$/, "")
+    .trim();
+
+  if (!cleaned) return null;
+
+  if (
+    /^(FECHA|MONTO|ARANCEL|TOTAL|TRIBUNAL|ROL|CAUSA|TIPO|INFRACCION)$/i.test(
+      cleaned
+    )
+  ) {
+    return null;
+  }
+
+  return cleaned;
+}
+
+function findLabelPositions(text: string, regex: RegExp): number[] {
+  const positions: number[] = [];
+  let match: RegExpExecArray | null;
+
+  regex.lastIndex = 0;
+
+  while ((match = regex.exec(text)) !== null) {
+    positions.push(match.index);
+
+    if (match.index === regex.lastIndex) {
+      regex.lastIndex++;
+    }
+  }
+
+  return positions;
+}
+
+function extractIdMultaFromSlice(slice: string): string | null {
+  const afterLabel = slice.replace(/^\s*ID\s+MULTA\s*/i, "");
+  const match = afterLabel.match(/[:\s\-]*([A-Z0-9][A-Z0-9./_-]{2,})/i);
+
+  return cleanValue(match?.[1]);
+}
+
+function extractMontoUtmFromSlice(slice: string): number | null {
+  const match = slice.match(
+    /MONTO\s+MULTA\s*[-]?\s*MONEDA[\s:.-]*([0-9]{1,4}(?:[,.][0-9]{1,4})?)\s*UTM/i
+  );
+
+  if (!match?.[1]) return null;
+
+  return parseUtmNumber(match[1]);
+}
+
+function extractFechaIngresoFromSlice(slice: string): string | null {
+  const match = slice.match(
+    /FECHA\s+INGRESO\s+(?:AL\s+)?(?:RMNP|RMTNP)[\s:.-]*(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4})/i
+  );
+
+  return cleanValue(match?.[1]);
+}
+
+function extractTextAfterLabel(block: string, labelRegex: RegExp): string | null {
+  const match = block.match(labelRegex);
+
+  if (!match?.index && match?.index !== 0) return null;
+
+  const slice = block.slice(match.index, match.index + 220);
+
+  const knownNextLabel =
+    /(?:ID\s+MULTA|FECHA\s+INGRESO|MONTO\s+MULTA|ARANCEL|TOTAL|TRIBUNAL|JUZGADO|ROL|CAUSA|TIPO\s+INFRACCION|INFRACCION|DESCRIPCION)/i;
+
+  const withoutLabel = slice.replace(labelRegex, "").replace(/^[:\s.-]+/, "");
+  const next = withoutLabel.search(knownNextLabel);
+  const value = next >= 0 ? withoutLabel.slice(0, next) : withoutLabel;
+
+  return cleanValue(value.split("\n")[0]);
+}
+
+function extractIdMulta(block: string): string | null {
+  const s = searchable(block);
+  const pos = s.search(/\bID\s+MULTA\b/i);
+
+  if (pos < 0) return null;
+
+  return extractIdMultaFromSlice(s.slice(pos, pos + 120));
+}
+
+function extractFechaIngresoRmnp(block: string): string | null {
+  const s = searchable(block);
+  const pos = s.search(/\bFECHA\s+INGRESO\s+(?:AL\s+)?(?:RMNP|RMTNP)\b/i);
+
+  if (pos < 0) return null;
+
+  return extractFechaIngresoFromSlice(s.slice(pos, pos + 180));
+}
+
+function extractMontoUtm(block: string): number | null {
+  const s = searchable(block);
+  const pos = s.search(/\bMONTO\s+MULTA\s*[-]?\s*MONEDA\b/i);
+
+  if (pos < 0) return null;
+
+  return extractMontoUtmFromSlice(s.slice(pos, pos + 180));
+}
+
+function extractTribunal(block: string): string | null {
+  const s = searchable(block);
+
+  return (
+    extractTextAfterLabel(s, /\bTRIBUNAL\b/i) ||
+    extractTextAfterLabel(s, /\bJUZGADO\b/i)
+  );
+}
+
+function extractRolCausa(block: string): string | null {
+  const s = searchable(block);
+
+  return (
+    extractTextAfterLabel(s, /\bROL\s+CAUSA\b/i) ||
+    extractTextAfterLabel(s, /\bROL\b/i) ||
+    extractTextAfterLabel(s, /\bCAUSA\b/i)
+  );
+}
+
+function extractTipoInfraccion(block: string): string | null {
+  const s = searchable(block);
+
+  return (
+    extractTextAfterLabel(s, /\bTIPO\s+INFRACCION\b/i) ||
+    extractTextAfterLabel(s, /\bTIPO\s+DE\s+INFRACCION\b/i) ||
+    extractTextAfterLabel(s, /\bDESCRIPCION\s+INFRACCION\b/i) ||
+    extractTextAfterLabel(s, /\bINFRACCION\b/i)
+  );
+}
+
+function splitFineBlocks(text: string): string[] {
+  const s = searchable(text);
+
+  let positions = findLabelPositions(s, /\bID\s+MULTA\b/gi);
+
+  if (positions.length === 0) {
+    positions = findLabelPositions(
+      s,
+      /\bFECHA\s+INGRESO\s+(?:AL\s+)?(?:RMNP|RMTNP)\b/gi
+    );
+  }
+
+  if (positions.length === 0) {
+    positions = findLabelPositions(s, /\bMONTO\s+MULTA\s*[-]?\s*MONEDA\b/gi);
+  }
+
+  if (positions.length === 0) return [];
+
+  const blocks: string[] = [];
+
+  for (let i = 0; i < positions.length; i++) {
+    const start = positions[i];
+    const end = i + 1 < positions.length ? positions[i + 1] : s.length;
+    const block = s.slice(start, end).trim();
+
+    if (block) {
+      blocks.push(block);
+    }
+  }
+
+  return blocks;
+}
+
+function buildFineLogFromValues(args: {
+  idMulta: string | null;
+  fechaIngresoRmnp: string | null;
+  montoUtm: number | null;
+  tribunal: string | null;
+  rolCausa: string | null;
+  tipoInfraccion: string | null;
+  utmClp: number;
+  prescriptionYears: number;
+  today: Date;
+}): FineLog {
+  const observaciones: string[] = [];
+
+  const fechaIngresoDate = parseDateCL(args.fechaIngresoRmnp);
+  const fechaIngresoRmnp = formatDateCL(fechaIngresoDate);
+
+  const prescripcionPorFecha = isPotentiallyPrescribed(
+    fechaIngresoDate,
+    args.prescriptionYears,
+    args.today
+  );
+
+  const fechaPrescripcionReferencial = fechaIngresoDate
+    ? formatDateCL(addYears(fechaIngresoDate, args.prescriptionYears))
+    : null;
+
+  let estado: FineStatus = "REVISION_MANUAL";
+
+  if (prescripcionPorFecha === true) {
+    estado = "POTENCIALMENTE_PRESCRITA";
+  }
+
+  if (prescripcionPorFecha === false) {
+    estado = "VIGENTE";
+  }
+
+  if (!args.idMulta) {
+    observaciones.push("No se pudo extraer ID MULTA.");
+  }
+
+  if (!fechaIngresoRmnp) {
+    observaciones.push("No se pudo extraer FECHA INGRESO RMNP/RMTNP.");
+    estado = "REVISION_MANUAL";
+  }
+
+  if (args.montoUtm === null) {
+    observaciones.push(
+      "No se encontró MONTO MULTA-MONEDA en UTM. Se ignora ARANCEL/TOTAL y no se inventa monto."
+    );
+  }
+
+  if (prescripcionPorFecha === true && args.montoUtm === null) {
+    estado = "REVISION_MANUAL";
+    observaciones.push(
+      "La fecha sugiere prescripción, pero falta monto UTM. Requiere revisión manual."
+    );
+  }
+
+  const montoPesos =
+    prescripcionPorFecha === true && args.montoUtm !== null
+      ? Math.round(args.montoUtm * args.utmClp)
+      : null;
+
+  return {
+    idMulta: args.idMulta,
+    fechaIngresoRmnp,
+    fechaPrescripcionReferencial,
+    prescripcionPorFecha,
+    estado,
+    montoUtm: args.montoUtm,
+    montoPesos,
+    tribunal: args.tribunal,
+    rolCausa: args.rolCausa,
+    tipoInfraccion: args.tipoInfraccion,
+    observaciones,
+  };
+}
+
+function analyzeFineBlock(
+  block: string,
+  options: {
+    utmClp: number;
+    prescriptionYears: number;
+    today: Date;
+  }
+): FineLog {
+  return buildFineLogFromValues({
+    idMulta: extractIdMulta(block),
+    fechaIngresoRmnp: extractFechaIngresoRmnp(block),
+    montoUtm: extractMontoUtm(block),
+    tribunal: extractTribunal(block),
+    rolCausa: extractRolCausa(block),
+    tipoInfraccion: extractTipoInfraccion(block),
+    utmClp: options.utmClp,
+    prescriptionYears: options.prescriptionYears,
+    today: options.today,
   });
 }
 
-export async function GET(_request: NextRequest, context: RouteContext) {
+function collectIds(text: string): (string | null)[] {
+  const s = searchable(text);
+  const positions = findLabelPositions(s, /\bID\s+MULTA\b/gi);
+
+  return positions.map((pos) => extractIdMultaFromSlice(s.slice(pos, pos + 120)));
+}
+
+function collectDates(text: string): (string | null)[] {
+  const s = searchable(text);
+  const positions = findLabelPositions(
+    s,
+    /\bFECHA\s+INGRESO\s+(?:AL\s+)?(?:RMNP|RMTNP)\b/gi
+  );
+
+  return positions.map((pos) =>
+    extractFechaIngresoFromSlice(s.slice(pos, pos + 180))
+  );
+}
+
+function collectAmounts(text: string): (number | null)[] {
+  const s = searchable(text);
+  const positions = findLabelPositions(s, /\bMONTO\s+MULTA\s*[-]?\s*MONEDA\b/gi);
+
+  return positions.map((pos) => extractMontoUtmFromSlice(s.slice(pos, pos + 180)));
+}
+
+function buildLogsFromParallelFields(
+  text: string,
+  options: {
+    utmClp: number;
+    prescriptionYears: number;
+    today: Date;
+  }
+): FineLog[] {
+  const ids = collectIds(text);
+  const dates = collectDates(text);
+  const amounts = collectAmounts(text);
+
+  const count = Math.max(ids.length, dates.length, amounts.length);
+
+  if (count === 0) return [];
+
+  const logs: FineLog[] = [];
+
+  for (let i = 0; i < count; i++) {
+    logs.push(
+      buildFineLogFromValues({
+        idMulta: ids[i] ?? null,
+        fechaIngresoRmnp: dates[i] ?? null,
+        montoUtm: amounts[i] ?? null,
+        tribunal: null,
+        rolCausa: null,
+        tipoInfraccion: null,
+        utmClp: options.utmClp,
+        prescriptionYears: options.prescriptionYears,
+        today: options.today,
+      })
+    );
+  }
+
+  return logs;
+}
+
+function parserScore(logs: FineLog[]): number {
+  return logs.reduce((score, fine) => {
+    let value = score;
+
+    if (fine.idMulta) value += 1;
+    if (fine.fechaIngresoRmnp) value += 4;
+    if (fine.montoUtm !== null) value += 3;
+    if (fine.prescripcionPorFecha !== null) value += 3;
+
+    return value;
+  }, 0);
+}
+
+async function extractPdfText(buffer: Buffer): Promise<string> {
   try {
-    const { requestId } = await context.params;
+    const data = await pdfParse(buffer);
+    return data?.text || "";
+  } catch (error) {
+    console.error("PDF_PARSE_ERROR", error);
 
-    if (!requestId) {
-      return Response.json({ ok: false, error: 'Falta el ID de solicitud' }, { status: 400 });
+    throw new Error(
+      "No se pudo leer el PDF. Si el certificado viene escaneado como imagen, requiere OCR."
+    );
+  }
+}
+
+function buildResponse(logs: FineLog[], debug: Record<string, unknown>) {
+  const utmClp = getEnvNumber("UTM_CLP", DEFAULT_UTM_CLP);
+  const prescriptionYears = getEnvNumber(
+    "PRESCRIPTION_YEARS",
+    DEFAULT_PRESCRIPTION_YEARS
+  );
+  const referentialLawyerFeeClp = getEnvNumber(
+    "REFERENTIAL_LAWYER_FEE_CLP",
+    DEFAULT_REFERENTIAL_LAWYER_FEE_CLP
+  );
+
+  const multasTotalesDetectadas = logs.length;
+
+  const multasPotencialmentePrescritas = logs.filter(
+    (fine) => fine.prescripcionPorFecha === true
+  );
+
+  const multasPrescritasConMonto = logs.filter(
+    (fine) => fine.prescripcionPorFecha === true && fine.montoUtm !== null
+  );
+
+  const multasPrescritasRevisionManual = logs.filter(
+    (fine) => fine.prescripcionPorFecha === true && fine.montoUtm === null
+  );
+
+  const sumaTotalUtmPrescritas = Number(
+    multasPrescritasConMonto
+      .reduce((sum, fine) => sum + (fine.montoUtm ?? 0), 0)
+      .toFixed(2)
+  );
+
+  const montoPotencialPesos = Math.round(sumaTotalUtmPrescritas * utmClp);
+  const totalReferencial = montoPotencialPesos + referentialLawyerFeeClp;
+
+  const resumen = {
+    multasTotalesDetectadas,
+    multasPotencialmentePrescritas: multasPotencialmentePrescritas.length,
+    multasPrescritasConMonto: multasPrescritasConMonto.length,
+    multasPrescritasRevisionManual: multasPrescritasRevisionManual.length,
+    sumaTotalUtmPrescritas,
+    valorUtmUsado: utmClp,
+    montoPotencialPesos,
+    ahorroReferencialTramitacionPersonalAbogado: referentialLawyerFeeClp,
+    totalReferencial,
+    criterioPrescripcionAnios: prescriptionYears,
+  };
+
+  const frontendResult = {
+    multasTotalesDetectadas,
+    totalMultas: multasTotalesDetectadas,
+    multasTotales: multasTotalesDetectadas,
+    totalFines: multasTotalesDetectadas,
+    finesTotal: multasTotalesDetectadas,
+    totalFinesDetected: multasTotalesDetectadas,
+    finesCount: multasTotalesDetectadas,
+
+    multasPotencialmentePrescritas: multasPotencialmentePrescritas.length,
+    multasPrescritas: multasPotencialmentePrescritas.length,
+    prescribedCount: multasPotencialmentePrescritas.length,
+    prescribedFinesCount: multasPotencialmentePrescritas.length,
+    potentiallyPrescribedCount: multasPotencialmentePrescritas.length,
+    potentialPrescribedCount: multasPotencialmentePrescritas.length,
+    expiredFinesCount: multasPotencialmentePrescritas.length,
+    prescriptionCount: multasPotencialmentePrescritas.length,
+
+    multasPrescritasConMonto: multasPrescritasConMonto.length,
+    multasPrescritasRevisionManual: multasPrescritasRevisionManual.length,
+
+    sumaTotalUtmPrescritas,
+    totalUtmPrescritas: sumaTotalUtmPrescritas,
+    totalPrescribedUtm: sumaTotalUtmPrescritas,
+    prescribedUtmTotal: sumaTotalUtmPrescritas,
+    totalUtm: sumaTotalUtmPrescritas,
+    utmTotal: sumaTotalUtmPrescritas,
+
+    valorUtmUsado: utmClp,
+    valorUtmClp: utmClp,
+    utmClp,
+    currentUtmValue: utmClp,
+    usedUtmValue: utmClp,
+
+    montoPotencialPesos,
+    montoPotencialClp: montoPotencialPesos,
+    montoTotalPrescrito: montoPotencialPesos,
+    montoTotalMultasPrescritas: montoPotencialPesos,
+    totalPotentialAmount: montoPotencialPesos,
+    potentialAmount: montoPotencialPesos,
+    amountPotentiallyPrescribed: montoPotencialPesos,
+    potentialSavingsAmount: montoPotencialPesos,
+    totalSavings: montoPotencialPesos,
+    savingsAmount: montoPotencialPesos,
+
+    ahorroReferencial: referentialLawyerFeeClp,
+    ahorroReferencialTramitacionPersonalAbogado: referentialLawyerFeeClp,
+    lawyerFee: referentialLawyerFeeClp,
+    attorneyFee: referentialLawyerFeeClp,
+    honorariosReferenciales: referentialLawyerFeeClp,
+
+    totalReferencial,
+    referentialTotal: totalReferencial,
+    totalWithFees: totalReferencial,
+
+    logs,
+  };
+
+  return {
+    ok: true,
+    success: true,
+
+    resumen,
+
+    result: frontendResult,
+    analysis: frontendResult,
+    analysisResult: frontendResult,
+    preliminaryResult: frontendResult,
+    data: frontendResult,
+
+    ...frontendResult,
+
+    debug: {
+      ...debug,
+      ignoraArancel: true,
+      fuenteMontoValida: "MONTO MULTA-MONEDA : X,XX UTM",
+      noUsaArancel: true,
+      noUsaTotal: true,
+      noUsaPesosSueltos: true,
+    },
+  };
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const formData = await request.formData();
+
+    const uploadedFile =
+      formData.get("file") ||
+      formData.get("pdf") ||
+      formData.get("certificate") ||
+      formData.get("certificado");
+
+    if (!uploadedFile || typeof (uploadedFile as File).arrayBuffer !== "function") {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "No se recibió archivo PDF. Envía el archivo en el campo file, pdf, certificate o certificado.",
+        },
+        { status: 400 }
+      );
     }
 
-    const { data, error } = await supabaseAdmin
-      .from('analysis_requests')
-      .select(
-        'customer_name, customer_email, vehicle_plate, fine_count, prescribed_count, total_amount_utm, utm_value_clp, raw_analysis_json'
-      )
-      .eq('request_id', requestId)
-      .maybeSingle();
+    const file = uploadedFile as File;
 
-    if (error) {
-      console.error('[download] DB error:', error);
-      return Response.json({ ok: false, error: 'Error al consultar la solicitud' }, { status: 500 });
-    }
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
 
-    if (!data) {
-      return Response.json({ ok: false, error: 'Solicitud no encontrada' }, { status: 404 });
-    }
+    const rawText = await extractPdfText(buffer);
+    const text = searchable(rawText);
 
-    const raw = data.raw_analysis_json as Record<string, unknown> | null;
-
-    if (!raw || !Array.isArray(raw.fines)) {
-      return Response.json(
-        { ok: false, error: 'No hay análisis disponible para generar el documento.' },
+    if (!text) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "No se pudo extraer texto del PDF. Probablemente es un PDF escaneado y requiere OCR.",
+        },
         { status: 422 }
       );
     }
 
-    const analysis = raw as unknown as AnalysisResult;
+    const utmClp = getEnvNumber("UTM_CLP", DEFAULT_UTM_CLP);
+    const prescriptionYears = getEnvNumber(
+      "PRESCRIPTION_YEARS",
+      DEFAULT_PRESCRIPTION_YEARS
+    );
+    const today = getToday();
 
-    // Reuse existing generation functions
-    const reportBody = extractBodyContent(generatePrescriptionReport(analysis));
-    const drafts = generatePrescriptionRequestDrafts(analysis);
+    const fineBlocks = splitFineBlocks(text);
 
-    const montoCLP =
-      Number(data.total_amount_utm || 0) * Number(data.utm_value_clp || 0);
+    const blockLogs = fineBlocks.map((block) =>
+      analyzeFineBlock(block, {
+        utmClp,
+        prescriptionYears,
+        today,
+      })
+    );
 
-    const safeFilename = (data.vehicle_plate || requestId)
-      .replace(/[^a-z0-9]/gi, '-')
-      .toLowerCase();
-
-    const generatedAt = new Date().toLocaleString('es-CL');
-
-    const draftsHtml = Object.entries(drafts)
-      .map(
-        ([filename, content]) => `
-        <div class="draft-block">
-          <h3 class="draft-title">${esc(filename.replace(/_/g, ' '))}</h3>
-          <pre class="draft-pre">${esc(content)}</pre>
-        </div>`
-      )
-      .join('');
-
-    const html = `<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Informe Completo — ${esc(data.vehicle_plate || requestId)}</title>
-  <style>
-    /* Base */
-    *, *::before, *::after { box-sizing: border-box; }
-    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 24px; }
-    .container { max-width: 900px; margin: 0 auto; }
-    /* Portada */
-    .cover { text-align: center; padding: 60px 20px 40px; border-bottom: 3px solid #1e3a5f; margin-bottom: 48px; page-break-after: always; }
-    .cover h1 { color: #1e3a5f; font-size: 22px; margin: 0 0 8px; }
-    .cover h2 { color: #555; font-size: 15px; font-weight: normal; margin: 0 0 32px; }
-    .cover-table { display: inline-block; text-align: left; background: #f5f5f5; border: 1px solid #ddd; padding: 20px 32px; border-radius: 6px; }
-    .cover-table p { margin: 5px 0; font-size: 14px; }
-    .cover-table strong { display: inline-block; min-width: 150px; color: #1e3a5f; }
-    .cover-ref { margin-top: 24px; font-size: 11px; color: #888; font-style: italic; }
-    /* Section headers */
-    .section-header { color: #1e3a5f; border-left: 4px solid #1e3a5f; padding-left: 14px; margin: 40px 0 16px; font-size: 18px; }
-    /* Summary grid */
-    .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 8px; }
-    .summary-card { background: #eff6ff; border: 1px solid #bfdbfe; padding: 16px; border-radius: 6px; }
-    .summary-card .lbl { font-size: 12px; color: #555; margin-bottom: 4px; }
-    .summary-card .val { font-size: 22px; font-weight: bold; color: #1e3a5f; }
-    .summary-card .val.green { color: #059669; }
-    .summary-card .val.blue  { color: #2563eb; }
-    .summary-note { font-size: 11px; color: #666; margin-top: 6px; }
-    /* Report styles (from generatePrescriptionReport) */
-    .header { border-bottom: 3px solid #1e3a5f; padding-bottom: 20px; margin-bottom: 30px; }
-    .header h1 { color: #1e3a5f; margin: 0; }
-    .section { margin-bottom: 30px; page-break-inside: avoid; }
-    .section h2 { color: #1e3a5f; border-left: 4px solid #1e3a5f; padding-left: 15px; }
-    table { width: 100%; border-collapse: collapse; margin: 15px 0; }
-    th, td { border: 1px solid #ddd; padding: 10px 12px; text-align: left; font-size: 13px; }
-    th { background-color: #f5f5f5; font-weight: bold; }
-    .prescribed     { background-color: #d1fae5; }
-    .not-prescribed { background-color: #fee2e2; }
-    .review         { background-color: #fef3c7; }
-    .summary-box  { background-color: #eff6ff; border: 2px solid #3b82f6; padding: 20px; border-radius: 5px; }
-    .disclaimer   { background-color: #fef3c7; border: 2px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 5px; }
-    .footer       { margin-top: 40px; border-top: 1px solid #ddd; padding-top: 20px; font-size: 12px; color: #666; }
-    /* Drafts */
-    .draft-block { margin-bottom: 28px; page-break-inside: avoid; }
-    .draft-title { color: #1e3a5f; border-bottom: 1px solid #ddd; padding-bottom: 6px; font-size: 15px; }
-    .draft-pre   { white-space: pre-wrap; font-family: Arial, sans-serif; font-size: 13px; line-height: 1.5; background: #f9f9f9; padding: 16px; border: 1px solid #e5e7eb; border-radius: 4px; margin: 0; }
-    /* Limitations */
-    .limitations { background: #fff7ed; border: 2px solid #f97316; padding: 20px 24px; border-radius: 6px; margin: 32px 0; }
-    .limitations h2 { color: #c2410c; margin: 0 0 12px; font-size: 16px; }
-    .limitations ul { margin: 0; padding-left: 20px; }
-    .limitations li { margin-bottom: 8px; font-size: 14px; }
-    /* Print */
-    @media print {
-      .cover { page-break-after: always; }
-      .section, .draft-block { page-break-inside: avoid; }
-    }
-  </style>
-</head>
-<body>
-<div class="container">
-
-  <!-- PORTADA -->
-  <div class="cover">
-    <h1>⚖️ Informe Completo de Análisis + Borradores de Escritos</h1>
-    <h2>Solicitud de prescripción de multas de tránsito</h2>
-    <div class="cover-table">
-      <p><strong>Solicitante:</strong> ${esc(data.customer_name)}</p>
-      <p><strong>Correo:</strong> ${esc(data.customer_email)}</p>
-      <p><strong>Patente:</strong> ${esc(data.vehicle_plate)}</p>
-      <p><strong>Fecha de generación:</strong> ${generatedAt}</p>
-      <p><strong>Referencia:</strong> ${esc(requestId)}</p>
-    </div>
-    <p class="cover-ref">Este documento es de carácter referencial. No constituye asesoramiento legal.</p>
-  </div>
-
-  <!-- RESUMEN -->
-  <h2 class="section-header">📊 Resumen del análisis</h2>
-  <div class="summary-grid">
-    <div class="summary-card">
-      <div class="lbl">Total multas detectadas</div>
-      <div class="val">${data.fine_count ?? '—'}</div>
-    </div>
-    <div class="summary-card">
-      <div class="lbl">Multas potencialmente prescritas</div>
-      <div class="val green">${data.prescribed_count ?? '—'}</div>
-    </div>
-    <div class="summary-card">
-      <div class="lbl">Monto asociado (referencial)</div>
-      <div class="val blue">${montoCLP > 0 ? formatCLP(montoCLP) : '—'}</div>
-    </div>
-    <div class="summary-card">
-      <div class="lbl">Valor UTM utilizado</div>
-      <div class="val">${data.utm_value_clp ? formatCLP(data.utm_value_clp) : '—'}</div>
-    </div>
-  </div>
-  <p class="summary-note">El monto es referencial. La prescripción extingue la obligación de pago; el monto no se descuenta automáticamente del RMNP.</p>
-
-  <!-- INFORME DETALLADO -->
-  <h2 class="section-header">📋 Informe detallado de prescripción</h2>
-  ${reportBody}
-
-  <!-- BORRADORES -->
-  <h2 class="section-header" style="page-break-before:always;">✍️ Borradores de escritos por tribunal</h2>
-  <p style="font-size:14px;color:#555;margin-bottom:20px;">Los siguientes borradores corresponden a multas identificadas como potencialmente prescritas, agrupadas por tribunal. Son modelos tipo que deben completarse con los datos del propietario antes de presentar.</p>
-  ${draftsHtml}
-
-  <!-- LIMITACIONES -->
-  <div class="limitations">
-    <h2>⚠️ Limitaciones y advertencias importantes</h2>
-    <ul>
-      <li>Este producto <strong>no garantiza</strong> resolución favorable del tribunal.</li>
-      <li>La eliminación de multas del RMNP depende exclusivamente del tribunal competente y/o gestiones de la parte interesada.</li>
-      <li>Es <strong>responsabilidad del solicitante</strong> presentar los escritos ante el tribunal que corresponda.</li>
-      <li>Los escritos son modelos tipo. El tribunal podría exigir otras formalidades, documentos adicionales o un formato distinto.</li>
-      <li>El análisis se realiza en base al certificado subido por el usuario. Su exactitud depende de la calidad y vigencia de dicho certificado.</li>
-      <li>Este documento es informativo y <strong>no constituye asesoramiento legal</strong>. Se recomienda consultar con un abogado especializado antes de actuar.</li>
-      <li>Prescribe Tu Multa no representa al usuario ante ningún tribunal ni ejerce patrocinio profesional.</li>
-    </ul>
-  </div>
-
-  <div class="footer">
-    <p>Generado por Prescribe Tu Multa — ${generatedAt}</p>
-    <p>© 2026 Prescribe Tu Multa. Todos los derechos reservados. | soporte@prescribetumulta.cl</p>
-  </div>
-
-</div>
-</body>
-</html>`;
-
-    return new Response(html, {
-      status: 200,
-      headers: {
-        'Content-Type': 'text/html; charset=utf-8',
-        'Content-Disposition': `attachment; filename="informe-prescripcion-${safeFilename}.html"`,
-      },
+    const parallelLogs = buildLogsFromParallelFields(text, {
+      utmClp,
+      prescriptionYears,
+      today,
     });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Error inesperado';
-    console.error('[download] Error:', err);
-    return Response.json(
-      { ok: false, error: `Error al generar la descarga: ${msg}` },
+
+    const blockScore = parserScore(blockLogs);
+    const parallelScore = parserScore(parallelLogs);
+
+    const useParallelParser =
+      parallelLogs.length > 0 &&
+      parallelScore >= blockScore &&
+      parallelLogs.length >= blockLogs.length;
+
+    const logs = useParallelParser ? parallelLogs : blockLogs;
+
+    const analysisResponse = buildResponse(logs, {
+      parserUsado: useParallelParser
+        ? "parallel-fields"
+        : "blocks-by-id-multa",
+      bloquesDetectados: fineBlocks.length,
+      blockScore,
+      parallelScore,
+      idsDetectados: collectIds(text).length,
+      fechasIngresoDetectadas: collectDates(text).length,
+      montosUtmDetectados: collectAmounts(text).length,
+      textoPreview: text.slice(0, 1200),
+    });
+
+    const responseAny = analysisResponse as any;
+    const resultAny =
+      responseAny.result ||
+      responseAny.analysis ||
+      responseAny.analysisResult ||
+      responseAny.preliminaryResult ||
+      responseAny.data ||
+      responseAny;
+
+    const customerName = String(
+      formData.get("name") ||
+        formData.get("fullName") ||
+        formData.get("nombre") ||
+        "Sin nombre"
+    ).trim();
+
+    const customerEmail = String(
+      formData.get("email") ||
+        formData.get("correo") ||
+        formData.get("customer_email") ||
+        ""
+    ).trim();
+
+    const vehiclePlate = String(
+      formData.get("plate") ||
+        formData.get("patente") ||
+        formData.get("vehicle_plate") ||
+        ""
+    )
+      .trim()
+      .toUpperCase();
+
+    const requestId = String(
+      responseAny.requestId ||
+        responseAny.request_id ||
+        resultAny.requestId ||
+        resultAny.request_id ||
+        `ptm-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+    );
+
+    const toNumber = (value: unknown): number => {
+      const numberValue = Number(value);
+      return Number.isFinite(numberValue) ? numberValue : 0;
+    };
+
+    const fineCount = toNumber(
+      resultAny.totalFines ??
+        resultAny.totalMultas ??
+        resultAny.finesTotal ??
+        resultAny.totalFinesDetected ??
+        resultAny.finesCount
+    );
+
+    const prescribedCount = toNumber(
+      resultAny.prescribedCount ??
+        resultAny.multasPotencialmentePrescritas ??
+        resultAny.multasPrescritas ??
+        resultAny.multasSusceptibles ??
+        resultAny.prescribedFinesCount ??
+        resultAny.potentiallyPrescribedCount
+    );
+
+    const totalAmountUtm = toNumber(
+      resultAny.totalPrescribedUtm ??
+        resultAny.sumaTotalUtmPrescritas ??
+        resultAny.totalUtmPrescritas ??
+        resultAny.prescribedUtmTotal ??
+        resultAny.totalUtm ??
+        resultAny.utmTotal
+    );
+
+    const originalFileName = file.name || "certificado.pdf";
+    const safeFileName = originalFileName
+      .replace(/[^a-zA-Z0-9._-]/g, "_")
+      .slice(-120);
+
+    let pdfPath: string | null = null;
+    let pdfUrl: string | null = null;
+
+    try {
+      pdfPath = `${requestId}/${Date.now()}-${safeFileName}`;
+
+      const { error: uploadError } = await supabaseAdmin.storage
+        .from("certificados")
+        .upload(pdfPath, buffer, {
+          contentType: file.type || "application/pdf",
+          upsert: true,
+        });
+
+      if (uploadError) {
+        console.error("[analyze-certificate] Supabase storage upload error:", uploadError);
+        pdfPath = null;
+      }
+    } catch (storageError) {
+      console.error("[analyze-certificate] Unexpected storage error:", storageError);
+      pdfPath = null;
+    }
+
+    const finalResponse = {
+      ...responseAny,
+      requestId,
+      request_id: requestId,
+      pdfPath,
+      pdf_path: pdfPath,
+      pdfFilename: safeFileName,
+      pdf_filename: safeFileName,
+    };
+
+    try {
+      const { error: dbError } = await supabaseAdmin
+        .from("analysis_requests")
+        .upsert(
+          {
+            customer_name: customerName,
+            customer_email: customerEmail,
+            vehicle_plate: vehiclePlate,
+            request_id: requestId,
+            status: "pending",
+            fine_count: fineCount,
+            prescribed_count: prescribedCount,
+            total_amount_utm: totalAmountUtm,
+            utm_value_clp: utmClp,
+            payment_status: "pending",
+            raw_analysis_json: finalResponse,
+            internal_notes: "",
+            pdf_path: pdfPath,
+            pdf_filename: safeFileName,
+            pdf_url: pdfUrl,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "request_id" }
+        );
+
+      if (dbError) {
+        console.error("[analyze-certificate] Supabase upsert error:", dbError);
+      }
+    } catch (dbUnexpectedError) {
+      console.error("[analyze-certificate] Unexpected database error:", dbUnexpectedError);
+    }
+
+    return NextResponse.json(finalResponse);
+  } catch (error) {
+    console.error("ANALYZE_CERTIFICATE_ERROR", error);
+
+    return NextResponse.json(
+      {
+        ok: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Error inesperado al analizar el certificado.",
+      },
       { status: 500 }
     );
   }

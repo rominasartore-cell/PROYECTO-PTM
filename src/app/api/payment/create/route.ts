@@ -1,4 +1,4 @@
-﻿import { randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { savePaymentCreated } from "@/lib/storage/payment-store";
 
 export const runtime = "nodejs";

@@ -1,4 +1,4 @@
-﻿import { promises as fs } from "node:fs";
+import { promises as fs } from "node:fs";
 import { join } from "node:path";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 

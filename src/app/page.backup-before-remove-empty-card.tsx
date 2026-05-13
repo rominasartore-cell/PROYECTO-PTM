@@ -356,10 +356,10 @@ function Hero({ result }: { result: AnalysisResult | null }) {
         <div className="rounded-[2rem] bg-white p-6 shadow-xl shadow-slate-900/10">
           {result ? (
             <div>
-              <p className="text-xs font-black uppercase tracking-widest text-emerald-700">Podrias ahorrarte en multas</p>
+              <p className="text-xs font-black uppercase tracking-widest text-emerald-700">Podrías ahorrar en multas</p>
               <p className="mt-2 text-5xl font-black tracking-tight text-emerald-600">{formatCLP(result.montoPotencial)}</p>
               <p className="mt-2 text-sm font-bold text-slate-600">
-                Monto referencial calculado con las multas revisables del certificado.
+                Monto referencial calculado con las multas contenidas en el certificado.
               </p>
             </div>
           ) : (
@@ -472,11 +472,11 @@ function AnalysisForm({
     <section id="analizar" className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-xl shadow-slate-900/5 sm:p-7">
       <div>
         <div className="mb-2 inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-black uppercase tracking-widest text-blue-700">
-          Analisis preliminar
+          Análisis preliminar
         </div>
         <h2 className="text-2xl font-black tracking-tight text-slate-950">Analiza gratis tu certificado</h2>
         <p className="mt-2 text-sm leading-relaxed text-slate-500">
-          Carga el certificado y revisa si existen multas que podrian solicitar prescripcion.
+          Carga el certificado y revisa si existen multas que podrían prescribir.
         </p>
       </div>
 
@@ -503,7 +503,8 @@ function AnalysisForm({
         <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs leading-5 text-slate-600">
           <input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600" />
           <span>
-            Consiento el tratamiento de mis datos personales para realizar el analisis del certificado, generar el informe y enviarlo al correo indicado. Entiendo que no incluye representacion judicial, patrocinio profesional, presentacion ante tribunales, seguimiento ni garantia de resultado.
+            Consiento el tratamiento de mis datos personales para realizar el análisis del certificado, generar el informe y enviarlo al correo indicado.
+Entiendo que no incluye representación judicial, patrocinio profesional, presentación ante tribunales, seguimiento ni garantía de resultado.
           </span>
         </label>
 
@@ -518,7 +519,7 @@ function AnalysisForm({
         </button>
 
         <div className="flex justify-center gap-2 text-xs font-semibold text-slate-500">
-          {"\u{1f512}"} Tu informacion se usa solo para este analisis.
+          {"\u{1f512}"} Tu información se usa solo para este análisis.
         </div>
       </form>
 
@@ -565,9 +566,9 @@ function PreliminaryResult({
 
 function HowItWorks() {
   const steps = [
-    { icon: "\u2b06", title: "Sube tu certificado", text: "Carga el certificado de multas de transito no pagadas en formato PDF." },
-    { icon: "\u{1f50e}", title: "Analizamos los antecedentes", text: "El sistema revisa la informacion contenida en el documento y detecta multas revisables." },
-    { icon: "\u{1f4e9}", title: "Obten tu informe", text: "Compra el informe completo y recibe por correo los documentos para solicitar la prescripcion personalmente." },
+    { icon: "\u2b06", title: "Sube tu certificado", text: "Carga el certificado de multas de tránsito no pagadas en formato PDF." },
+    { icon: "\u{1f50e}", title: "Analizamos los antecedentes", text: "El sistema revisa la información contenida en el documento y detecta multas revisables." },
+    { icon: "\u{1f4e9}", title: "Obtén tu informe", text: "Compra el informe completo y recibe en tu correo un informe detallado y los escritos para solicitar la prescripción personalmente." },
   ];
 
   return (
@@ -595,11 +596,11 @@ function HowItWorks() {
 
 function ReportIncludes() {
   const items = [
-    "Analisis del certificado aportado",
+    "Análisis del certificado aportado",
     "Detalle de multas revisables",
-    "",
-    "Borradores editables por tribunal",
-    "Instrucciones basicas de presentacion",
+    "Identificación de multas potencialmente prescritas",
+    "Borradores editables de solicitudes de prescripción",
+    "Instrucciones básicas de presentación",
     "Advertencias y alcance del servicio",
   ];
 
@@ -609,8 +610,8 @@ function ReportIncludes() {
         <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
           <div>
             <p className="text-sm font-black uppercase tracking-widest text-blue-700">Informe completo</p>
-            <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">Que recibe la persona que compra</h2>
-            <p className="mt-4 text-base leading-8 text-slate-600">Un producto documental preparado con los antecedentes del certificado. No es representacion judicial ni tramitacion completa.</p>
+            <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">¿Qué recibe la persona que compra?</h2>
+            <p className="mt-4 text-base leading-8 text-slate-600">Un producto documental preparado con los antecedentes del certificado. No es representación judicial ni tramitación completa.</p>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">

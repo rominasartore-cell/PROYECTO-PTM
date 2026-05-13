@@ -1,0 +1,251 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { useParams, useSearchParams } from "next/navigation";
+
+type PaymentStatusResponse = {
+  ok?: boolean;
+  found?: boolean;
+  requestId?: string;
+  status?: string;
+  error?: string;
+  payment?: {
+    status?: string;
+    amount?: number;
+    customerEmail?: string;
+    preferenceId?: string;
+    paymentId?: string;
+    mock?: boolean;
+    sandbox?: boolean;
+  };
+};
+
+function normalizeStatus(value: string | null | undefined): string {
+  if (!value) return "pending";
+
+  const normalized = value.toLowerCase().trim();
+
+  if (["approved", "paid", "success"].includes(normalized)) return "approved";
+  if (["rejected", "failure", "failed"].includes(normalized)) return "rejected";
+  if (["cancelled", "canceled"].includes(normalized)) return "cancelled";
+  if (["in_process", "processing"].includes(normalized)) return "in_process";
+
+  return "pending";
+}
+
+function getStatusCopy(status: string) {
+  switch (status) {
+    case "approved":
+      return {
+        title: "Pago confirmado",
+        badge: "Aprobado",
+        message:
+          "Tu compra fue registrada correctamente. El informe y los borradores serán enviados al correo indicado durante el proceso.",
+        tone: "border-emerald-200 bg-emerald-50 text-emerald-900",
+      };
+
+    case "rejected":
+      return {
+        title: "Pago rechazado",
+        badge: "Rechazado",
+        message:
+          "El pago no fue aprobado. Puedes volver a intentar la compra desde el resultado preliminar.",
+        tone: "border-red-200 bg-red-50 text-red-900",
+      };
+
+    case "cancelled":
+      return {
+        title: "Pago cancelado",
+        badge: "Cancelado",
+        message:
+          "La operación fue cancelada antes de completarse. No se registró una compra aprobada.",
+        tone: "border-slate-200 bg-slate-50 text-slate-900",
+      };
+
+    case "in_process":
+      return {
+        title: "Pago en revisión",
+        badge: "En revisión",
+        message:
+          "Mercado Pago aún está procesando la operación. Actualiza esta página en unos minutos para revisar el estado.",
+        tone: "border-amber-200 bg-amber-50 text-amber-900",
+      };
+
+    default:
+      return {
+        title: "Pago pendiente",
+        badge: "Pendiente",
+        message:
+          "Todavía no encontramos una confirmación de pago aprobada para esta solicitud.",
+        tone: "border-blue-200 bg-blue-50 text-blue-900",
+      };
+  }
+}
+
+function getSingleParam(value: string | string[] | undefined): string {
+  if (Array.isArray(value)) return value[0] ?? "";
+  return value ?? "";
+}
+
+export default function ResultadoPagoPage() {
+  const params = useParams();
+  const searchParams = useSearchParams();
+
+  const requestId = useMemo(() => {
+    const raw = params?.requestId;
+
+    if (Array.isArray(raw)) {
+      return raw[0] ?? "";
+    }
+
+    return typeof raw === "string" ? raw : "";
+  }, [params]);
+
+  const queryStatus = searchParams.get("status");
+  const queryEmail = searchParams.get("email");
+
+  const [data, setData] = useState<PaymentStatusResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!requestId) {
+      setLoading(false);
+      return;
+    }
+
+    let active = true;
+
+    async function loadPaymentStatus() {
+      try {
+        const response = await fetch(
+          `/api/payment/status/${encodeURIComponent(requestId)}?ts=${Date.now()}`,
+          { cache: "no-store" }
+        );
+
+        const json = (await response.json()) as PaymentStatusResponse;
+
+        if (active) {
+          setData(json);
+        }
+      } catch {
+        if (active) {
+          setData({
+            ok: false,
+            found: false,
+            requestId,
+            status: queryStatus ?? "pending",
+            error: "No fue posible consultar el estado del pago.",
+          });
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadPaymentStatus();
+
+    return () => {
+      active = false;
+    };
+  }, [requestId, queryStatus]);
+
+  const status = normalizeStatus(data?.payment?.status ?? data?.status ?? queryStatus);
+  const copy = getStatusCopy(status);
+
+  const email =
+    data?.payment?.customerEmail ??
+    queryEmail ??
+    "";
+
+  return (
+    <main className="min-h-screen bg-slate-50 px-4 py-10 text-slate-950 sm:px-6 lg:px-8">
+      <section className="mx-auto max-w-3xl rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-10">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.25em] text-blue-700">
+              Prescribe tu Multa
+            </p>
+
+            <h1 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+              {loading ? "Consultando estado del pago" : copy.title}
+            </h1>
+          </div>
+
+          <span className={`rounded-full border px-4 py-2 text-xs font-black uppercase tracking-widest ${copy.tone}`}>
+            {loading ? "Consultando" : copy.badge}
+          </span>
+        </div>
+
+        <div className={`mt-8 rounded-3xl border p-5 text-sm leading-7 ${copy.tone}`}>
+          {loading ? (
+            <p>Estamos revisando el estado de tu compra.</p>
+          ) : (
+            <p>{copy.message}</p>
+          )}
+        </div>
+
+        <div className="mt-8 grid gap-4 rounded-3xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-700">
+          <div>
+            <p className="text-xs font-black uppercase tracking-widest text-slate-500">
+              Código de solicitud
+            </p>
+            <p className="mt-1 break-all font-mono text-xs text-slate-900">
+              {requestId || "No disponible"}
+            </p>
+          </div>
+
+          {email ? (
+            <div>
+              <p className="text-xs font-black uppercase tracking-widest text-slate-500">
+                Correo informado
+              </p>
+              <p className="mt-1 break-all font-semibold text-slate-900">
+                {email}
+              </p>
+            </div>
+          ) : null}
+
+          {data?.payment?.amount ? (
+            <div>
+              <p className="text-xs font-black uppercase tracking-widest text-slate-500">
+                Monto registrado
+              </p>
+              <p className="mt-1 font-semibold text-slate-900">
+                {new Intl.NumberFormat("es-CL", {
+                  style: "currency",
+                  currency: "CLP",
+                  maximumFractionDigits: 0,
+                }).format(data.payment.amount)}
+              </p>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="mt-8 rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm leading-7 text-amber-950">
+          <p className="font-black">Importante</p>
+          <p className="mt-2">
+            Revisa también la carpeta de spam, promociones o correo no deseado. Si no recibes la confirmación, guarda el código de solicitud para soporte.
+          </p>
+        </div>
+
+        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+          <a
+            href="/"
+            className="inline-flex items-center justify-center rounded-2xl bg-blue-700 px-5 py-3 text-sm font-black text-white transition hover:bg-blue-800"
+          >
+            Volver al inicio
+          </a>
+
+          <a
+            href="/contacto"
+            className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 py-3 text-sm font-black text-slate-800 transition hover:bg-slate-50"
+          >
+            Contactar soporte
+          </a>
+        </div>
+      </section>
+    </main>
+  );
+}

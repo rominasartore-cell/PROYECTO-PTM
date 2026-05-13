@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { fetchUnifiedRequests } from "@/lib/admin/payment-admin";
 
 export const runtime = "nodejs";

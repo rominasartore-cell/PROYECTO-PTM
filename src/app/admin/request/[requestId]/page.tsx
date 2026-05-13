@@ -1,64 +1,104 @@
-﻿"use client";
+"use client";
 
-import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 
-type AdminRequest = {
-  request_id: string;
-  source?: "analysis" | "payment_only";
-  customer_name?: string | null;
-  customer_email?: string | null;
-  vehicle_plate?: string | null;
-  status?: string | null;
-  fine_count?: number | null;
-  prescribed_count?: number | null;
-  total_amount_utm?: number | null;
-  utm_value_clp?: number | null;
-  payment_status?: string | null;
-  purchase_status?: string | null;
-  payment_amount?: number | null;
-  payment_paid_at?: string | null;
-  payment_id?: string | null;
-  preference_id?: string | null;
-  payment_customer_email?: string | null;
-  payment_mock?: boolean;
-  payment_sandbox?: boolean;
-  payment_supabase_record?: boolean;
-  payment_local_record?: boolean;
-  local_only?: boolean;
-  raw_analysis_json?: unknown;
-  internal_notes?: string | null;
-  pdf_path?: string | null;
-  pdf_filename?: string | null;
-  pdf_url?: string | null;
-  created_at?: string | null;
-  updated_at?: string | null;
-  payment?: {
-    requestId?: string;
-    externalReference?: string | null;
-    status?: string | null;
-    rawStatus?: string | null;
-    statusDetail?: string | null;
-    amount?: number | null;
-    paidAt?: string | null;
-    paymentId?: string | null;
-    preferenceId?: string | null;
-    customerEmail?: string | null;
-    customerName?: string | null;
-    plate?: string | null;
-    product?: string | null;
-    mock?: boolean;
-    sandbox?: boolean;
-    checkoutUrl?: string | null;
-    updatedAt?: string | null;
-    createdAt?: string | null;
-    events?: unknown[];
-  } | null;
+const ADMIN_TOKEN_KEY = "ptm-admin-token";
+
+type JsonRecord = Record<string, unknown>;
+
+type ApiResponse = {
+  ok?: boolean;
+  data?: JsonRecord;
+  request?: JsonRecord;
+  payment?: JsonRecord;
+  analysis?: JsonRecord;
+  result?: JsonRecord;
+  error?: string;
+  message?: string;
 };
 
-function money(value: unknown): string {
-  const amount = Number(value || 0);
-  return amount.toLocaleString("es-CL", {
+type ActionState = {
+  loading: boolean;
+  message: string;
+  error: string;
+};
+
+const INITIAL_ACTION_STATE: ActionState = {
+  loading: false,
+  message: "",
+  error: "",
+};
+
+function getAdminToken(): string {
+  if (typeof window === "undefined") return "";
+  return window.localStorage.getItem(ADMIN_TOKEN_KEY) || "";
+}
+
+function buildAdminHeaders(json = false): HeadersInit {
+  const token = getAdminToken();
+  const headers: Record<string, string> = {};
+
+  if (token) headers.Authorization = `Bearer ${token}`;
+  if (json) headers["Content-Type"] = "application/json";
+
+  return headers;
+}
+
+async function readJson<T>(response: Response): Promise<T> {
+  const text = await response.text();
+
+  try {
+    return (text ? JSON.parse(text) : {}) as T;
+  } catch {
+    throw new Error(`Respuesta no JSON desde ${response.url}`);
+  }
+}
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return "Error inesperado";
+}
+
+function asRecord(value: unknown): JsonRecord {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as JsonRecord) : {};
+}
+
+function pickString(record: JsonRecord, keys: string[], fallback = ""): string {
+  for (const key of keys) {
+    const value = record[key];
+    if (value !== null && value !== undefined && value !== "") return String(value);
+  }
+
+  return fallback;
+}
+
+function pickNumber(record: JsonRecord, keys: string[], fallback = 0): number {
+  for (const key of keys) {
+    const value = record[key];
+    if (value === null || value === undefined || value === "") continue;
+
+    const normalized = typeof value === "string" ? value.replace(/\./g, "").replace(",", ".") : value;
+    const parsed = Number(normalized);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+
+  return fallback;
+}
+
+function pickBoolean(record: JsonRecord, keys: string[]): boolean {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === "boolean") return value;
+    if (typeof value === "string") return value.toLowerCase() === "true";
+  }
+
+  return false;
+}
+
+function money(value: number): string {
+  return value.toLocaleString("es-CL", {
     style: "currency",
     currency: "CLP",
     maximumFractionDigits: 0,
@@ -68,258 +108,356 @@ function money(value: unknown): string {
 function dateText(value?: string | null): string {
   if (!value) return "Sin fecha";
 
-  try {
-    return new Date(value).toLocaleString("es-CL");
-  } catch {
-    return value;
-  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return date.toLocaleString("es-CL", {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
 }
 
 function statusLabel(value?: string | null): string {
   const status = String(value || "").toLowerCase();
 
-  if (status === "approved") return "Aprobado / pagado";
-  if (status === "pending" || status === "created" || status === "processing") return "Pendiente";
-  if (status === "rejected" || status === "failed") return "Rechazado";
+  if (status === "approved" || status === "paid") return "Pago aprobado";
+  if (status === "pending" || status === "created" || status === "processing" || status === "in_process") return "Pendiente";
+  if (status === "rejected" || status === "failed" || status === "cancelled" || status === "canceled") return "Rechazado";
+  if (status === "completed") return "Completado";
 
   return status || "Sin estado";
 }
 
-function Badge({ children }: { children: React.ReactNode }) {
+function statusClass(value?: string | null): string {
+  const status = String(value || "").toLowerCase();
+
+  if (status === "approved" || status === "paid" || status === "completed") {
+    return "border-emerald-500/40 bg-emerald-500/10 text-emerald-200";
+  }
+
+  if (status === "rejected" || status === "failed" || status === "cancelled" || status === "canceled") {
+    return "border-red-500/40 bg-red-500/10 text-red-200";
+  }
+
+  return "border-yellow-500/40 bg-yellow-500/10 text-yellow-200";
+}
+
+function Badge({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return <span className={`rounded-full border px-2 py-1 text-xs font-semibold ${className}`}>{children}</span>;
+}
+
+function InfoCard({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <span className="rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2 py-1 text-xs font-bold text-cyan-200">
-      {children}
-    </span>
+    <section className="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-sm">
+      <h2 className="text-lg font-black text-white">{title}</h2>
+      <div className="mt-4 space-y-3">{children}</div>
+    </section>
+  );
+}
+
+function Field({ label, value, monospace = false }: { label: string; value: ReactNode; monospace?: boolean }) {
+  return (
+    <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{label}</p>
+      <div className={`mt-1 break-words text-sm text-slate-200 ${monospace ? "font-mono" : ""}`}>{value || "—"}</div>
+    </div>
+  );
+}
+
+function JsonBlock({ value }: { value: unknown }) {
+  return (
+    <pre className="max-h-[420px] overflow-auto rounded-xl border border-slate-800 bg-slate-950 p-4 text-xs text-slate-300">
+      {JSON.stringify(value, null, 2)}
+    </pre>
   );
 }
 
 export default function AdminRequestDetailPage() {
-  const params = useParams<{ requestId: string }>();
   const router = useRouter();
+  const params = useParams<{ requestId?: string | string[] }>();
 
-  const requestId = params?.requestId;
-  const [request, setRequest] = useState<AdminRequest | null>(null);
-  const [notes, setNotes] = useState<unknown[]>([]);
+  const requestId = useMemo(() => {
+    const raw = params?.requestId;
+    const value = Array.isArray(raw) ? raw[0] : raw;
+    return value ? decodeURIComponent(value) : "";
+  }, [params]);
+
+  const [authReady, setAuthReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [payload, setPayload] = useState<ApiResponse | null>(null);
+  const [actionState, setActionState] = useState<ActionState>(INITIAL_ACTION_STATE);
 
-  async function loadRequest() {
+  const request = useMemo(() => {
+    const root = asRecord(payload?.data || payload?.request || payload || {});
+    const nestedPayment = asRecord(payload?.payment);
+    const nestedAnalysis = asRecord(payload?.analysis || payload?.result);
+
+    return {
+      root,
+      payment: nestedPayment,
+      analysis: nestedAnalysis,
+      merged: {
+        ...nestedAnalysis,
+        ...nestedPayment,
+        ...root,
+      } as JsonRecord,
+    };
+  }, [payload]);
+
+  const merged = request.merged;
+  const status = pickString(merged, ["payment_status", "paymentStatus", "purchase_status", "purchaseStatus", "status"], "pending");
+  const customerName = pickString(merged, ["customer_name", "customerName", "name", "payer_name", "payerName"], "Cliente sin nombre");
+  const customerEmail = pickString(merged, ["customer_email", "customerEmail", "payment_customer_email", "paymentCustomerEmail", "email", "payer_email", "payerEmail"], "Sin correo");
+  const plate = pickString(merged, ["vehicle_plate", "vehiclePlate", "plate", "patente"], "Sin patente");
+  const amount = pickNumber(merged, ["payment_amount", "paymentAmount", "amount", "transaction_amount"], 0);
+  const preferenceId = pickString(merged, ["preference_id", "preferenceId"], "");
+  const paymentId = pickString(merged, ["payment_id", "paymentId", "mercado_pago_payment_id", "mercadoPagoPaymentId"], "");
+  const createdAt = pickString(merged, ["created_at", "createdAt"], "");
+  const updatedAt = pickString(merged, ["updated_at", "updatedAt"], "");
+  const paidAt = pickString(merged, ["payment_paid_at", "paymentPaidAt", "paid_at", "paidAt"], "");
+  const source = pickString(merged, ["source"], "");
+  const isMock = pickBoolean(merged, ["payment_mock", "paymentMock", "mock"]);
+  const isSandbox = pickBoolean(merged, ["payment_sandbox", "paymentSandbox", "sandbox"]);
+  const isSupabase = pickBoolean(merged, ["payment_supabase_record", "paymentSupabaseRecord", "supabase_record", "supabaseRecord"]);
+  const isLocalOnly = pickBoolean(merged, ["local_only", "localOnly"]);
+
+  const loadRequest = useCallback(async () => {
     if (!requestId) return;
 
     try {
       setLoading(true);
       setError("");
+      setActionState(INITIAL_ACTION_STATE);
 
-      const response = await fetch(`/api/admin/requests/${encodeURIComponent(requestId)}?ts=${Date.now()}`, {
+      const stamp = Date.now();
+      const response = await fetch(`/api/admin/requests/${encodeURIComponent(requestId)}?ts=${stamp}`, {
         cache: "no-store",
+        headers: buildAdminHeaders(),
       });
+      const json = await readJson<ApiResponse>(response);
 
-      const json = await response.json();
-
-      if (!json.ok) {
-        throw new Error(json.error || "No se pudo cargar la solicitud");
+      if (!response.ok || json.ok === false) {
+        throw new Error(json.error || json.message || "No se pudo cargar el detalle de la solicitud");
       }
 
-      setRequest(json.request || json.data || null);
-      setNotes(json.notes || []);
-    } catch (err: any) {
-      setError(err?.message || "Error cargando detalle");
+      setPayload(json);
+    } catch (err: unknown) {
+      setPayload(null);
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
-  }
-
-  useEffect(() => {
-    loadRequest();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requestId]);
 
-  async function resendEmail() {
-    if (!requestId) return;
+  useEffect(() => {
+    const token = getAdminToken();
 
+    if (!token) {
+      router.replace("/admin");
+      return;
+    }
+
+    setAuthReady(true);
+  }, [router]);
+
+  useEffect(() => {
+    if (!authReady || !requestId) return;
+    void loadRequest();
+  }, [authReady, requestId, loadRequest]);
+
+  async function postAction(url: string, successFallback: string) {
     try {
-      const response = await fetch(
-        `/api/admin/requests/${encodeURIComponent(requestId)}/resend-email?ts=${Date.now()}`,
-        { method: "POST" }
-      );
+      setActionState({ loading: true, message: "", error: "" });
 
-      const json = await response.json();
+      const response = await fetch(url, {
+        method: "POST",
+        cache: "no-store",
+        headers: buildAdminHeaders(true),
+      });
+      const json = await readJson<ApiResponse>(response);
 
-      if (!json.ok) {
-        throw new Error(json.error || "No se pudo reenviar correo");
+      if (!response.ok || json.ok === false) {
+        throw new Error(json.error || json.message || "No se pudo completar la acción");
       }
 
-      alert(json.message || "Correo reenviado correctamente");
-    } catch (err: any) {
-      alert(err?.message || "Error reenviando correo");
+      setActionState({ loading: false, message: json.message || successFallback, error: "" });
+      await loadRequest();
+    } catch (err: unknown) {
+      setActionState({ loading: false, message: "", error: getErrorMessage(err) });
     }
   }
 
-  if (loading) {
-    return (
-      <main className="min-h-screen bg-slate-950 p-8 text-white">
-        <p>Cargando...</p>
-      </main>
-    );
+  function openDocument(type: "informe" | "solicitud" | "instructivo") {
+    const url = `/api/admin/requests/${encodeURIComponent(requestId)}/download?type=${encodeURIComponent(type)}`;
+    window.open(url, "_blank", "noopener,noreferrer");
   }
 
-  if (error || !request) {
+  function openClientResult() {
+    window.open(`/resultados/${encodeURIComponent(requestId)}`, "_blank", "noopener,noreferrer");
+  }
+
+  if (!authReady) {
     return (
-      <main className="min-h-screen bg-slate-950 p-8 text-white">
-        <button onClick={() => router.push("/admin/dashboard")} className="mb-4 text-cyan-300">
-          ← Volver
-        </button>
-        <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-5 text-red-100">
-          {error || "Solicitud no encontrada"}
+      <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4 text-white">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/80 px-6 py-4 text-sm text-slate-300 shadow-xl">
+          Verificando sesión administrativa...
         </div>
       </main>
     );
   }
 
-  const isPaymentOnly = request.source === "payment_only";
-  const events = request.payment?.events || [];
-
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-8 text-white">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <button
-          onClick={() => router.push("/admin/dashboard")}
-          className="rounded-xl bg-slate-800 px-4 py-2 text-sm font-bold hover:bg-slate-700"
-        >
-          ← Volver al dashboard
-        </button>
-
-        <header className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <header className="rounded-2xl border border-slate-800 bg-slate-900/80 p-6 shadow-xl">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <p className="text-sm uppercase tracking-[0.2em] text-cyan-300">Detalle interno</p>
-              <h1 className="mt-2 text-2xl font-black">{request.customer_name || "Cliente"}</h1>
-              <p className="mt-2 text-sm text-slate-400">Request ID: {request.request_id}</p>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">Prescribe tu Multa</p>
+              <h1 className="mt-2 text-3xl font-black">Detalle administrativo</h1>
+              <p className="mt-2 break-all text-sm text-slate-300">Request ID: {requestId || "Sin requestId"}</p>
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <Badge>{statusLabel(request.payment_status)}</Badge>
-              {isPaymentOnly && <Badge>Pago sin análisis vinculado</Badge>}
-              {request.payment_mock && <Badge>Mock</Badge>}
-              {request.payment_sandbox && <Badge>Sandbox</Badge>}
-              {!request.payment_mock && !request.payment_sandbox && request.preference_id && <Badge>Mercado Pago real</Badge>}
-              {request.payment_supabase_record && <Badge>Supabase</Badge>}
+              <button
+                type="button"
+                onClick={() => router.push("/admin/dashboard")}
+                className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-bold text-slate-200 transition hover:bg-slate-800"
+              >
+                Volver
+              </button>
+              <button
+                type="button"
+                onClick={() => void loadRequest()}
+                disabled={loading}
+                className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-bold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loading ? "Actualizando..." : "Actualizar"}
+              </button>
             </div>
           </div>
         </header>
 
-        {isPaymentOnly && (
-          <section className="rounded-2xl border border-purple-500/40 bg-purple-500/10 p-5 text-purple-100">
-            Este registro viene desde <strong>ptm_payments</strong> y no tiene análisis vinculado en <strong>analysis_requests</strong>.
-            Debe gestionarse como preferencia/pago creado sin expediente interno asociado.
+        {error && <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-100">{error}</div>}
+        {actionState.error && <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-100">{actionState.error}</div>}
+        {actionState.message && <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4 text-sm text-emerald-100">{actionState.message}</div>}
+
+        {loading ? (
+          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center text-slate-400">Cargando detalle...</section>
+        ) : !payload ? (
+          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center text-slate-400">
+            No hay datos para mostrar.
           </section>
-        )}
+        ) : (
+          <>
+            <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+                <p className="text-sm text-slate-400">Estado</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Badge className={statusClass(status)}>{statusLabel(status)}</Badge>
+                  {source === "payment_only" && <Badge className="border-purple-500/40 bg-purple-500/10 text-purple-200">Pago sin análisis</Badge>}
+                  {isMock && <Badge className="border-blue-500/40 bg-blue-500/10 text-blue-200">Mock</Badge>}
+                  {isSandbox && <Badge className="border-orange-500/40 bg-orange-500/10 text-orange-200">Sandbox</Badge>}
+                  {isSupabase && <Badge className="border-cyan-500/40 bg-cyan-500/10 text-cyan-200">Supabase</Badge>}
+                  {isLocalOnly && <Badge className="border-slate-500/40 bg-slate-500/10 text-slate-200">Solo local</Badge>}
+                </div>
+              </div>
 
-        <section className="grid gap-6 lg:grid-cols-2">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-            <h2 className="text-xl font-black">Cliente</h2>
-            <dl className="mt-4 space-y-3 text-sm">
-              <div>
-                <dt className="text-slate-400">Nombre</dt>
-                <dd className="font-semibold">{request.customer_name || "Sin nombre"}</dd>
+              <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+                <p className="text-sm text-slate-400">Monto pagado/creado</p>
+                <p className="mt-2 text-3xl font-black text-emerald-300">{money(amount)}</p>
               </div>
-              <div>
-                <dt className="text-slate-400">Correo</dt>
-                <dd className="font-semibold">{request.customer_email || request.payment_customer_email || "Sin correo"}</dd>
-              </div>
-              <div>
-                <dt className="text-slate-400">Patente</dt>
-                <dd className="font-semibold">{request.vehicle_plate || "Sin patente"}</dd>
-              </div>
-              <div>
-                <dt className="text-slate-400">Creado</dt>
-                <dd className="font-semibold">{dateText(request.created_at)}</dd>
-              </div>
-            </dl>
-          </div>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-            <h2 className="text-xl font-black">Pago</h2>
-            <dl className="mt-4 space-y-3 text-sm">
-              <div>
-                <dt className="text-slate-400">Estado pago</dt>
-                <dd className="font-semibold">{statusLabel(request.payment_status)}</dd>
+              <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+                <p className="text-sm text-slate-400">Cliente</p>
+                <p className="mt-2 truncate text-xl font-black">{customerName}</p>
+                <p className="mt-1 break-all text-sm text-slate-400">{customerEmail}</p>
               </div>
-              <div>
-                <dt className="text-slate-400">Compra</dt>
-                <dd className="font-semibold">{request.purchase_status || "pending"}</dd>
-              </div>
-              <div>
-                <dt className="text-slate-400">Monto</dt>
-                <dd className="font-semibold">{money(request.payment_amount || request.payment?.amount || 0)}</dd>
-              </div>
-              <div>
-                <dt className="text-slate-400">Fecha pago</dt>
-                <dd className="font-semibold">{dateText(request.payment_paid_at || request.payment?.paidAt)}</dd>
-              </div>
-              <div>
-                <dt className="text-slate-400">Preference ID</dt>
-                <dd className="break-all font-semibold">{request.preference_id || request.payment?.preferenceId || "Sin preference_id"}</dd>
-              </div>
-              <div>
-                <dt className="text-slate-400">Payment ID</dt>
-                <dd className="break-all font-semibold">{request.payment_id || request.payment?.paymentId || "Sin payment_id"}</dd>
-              </div>
-            </dl>
 
-            <button
-              type="button"
-              onClick={resendEmail}
-              className="mt-5 rounded-xl bg-cyan-400 px-4 py-2 text-sm font-bold text-slate-950 hover:bg-cyan-300"
-            >
-              Reenviar correo
-            </button>
-          </div>
-        </section>
-
-        {!isPaymentOnly && (
-          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-            <h2 className="text-xl font-black">Análisis</h2>
-            <div className="mt-4 grid gap-4 md:grid-cols-4">
-              <div className="rounded-xl bg-slate-950 p-4">
-                <p className="text-xs text-slate-400">Multas</p>
-                <p className="text-2xl font-black">{request.fine_count ?? "—"}</p>
+              <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+                <p className="text-sm text-slate-400">Patente</p>
+                <p className="mt-2 text-3xl font-black">{plate}</p>
               </div>
-              <div className="rounded-xl bg-slate-950 p-4">
-                <p className="text-xs text-slate-400">Prescribibles</p>
-                <p className="text-2xl font-black">{request.prescribed_count ?? "—"}</p>
-              </div>
-              <div className="rounded-xl bg-slate-950 p-4">
-                <p className="text-xs text-slate-400">Monto UTM</p>
-                <p className="text-2xl font-black">{request.total_amount_utm ?? "—"}</p>
-              </div>
-              <div className="rounded-xl bg-slate-950 p-4">
-                <p className="text-xs text-slate-400">UTM CLP</p>
-                <p className="text-2xl font-black">{request.utm_value_clp ? money(request.utm_value_clp) : "—"}</p>
-              </div>
-            </div>
-          </section>
-        )}
+            </section>
 
-        <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-          <h2 className="text-xl font-black">Eventos de pago</h2>
+            <section className="grid gap-4 lg:grid-cols-2">
+              <InfoCard title="Datos principales">
+                <div className="grid gap-3 md:grid-cols-2">
+                  <Field label="Nombre" value={customerName} />
+                  <Field label="Correo" value={customerEmail} />
+                  <Field label="Patente" value={plate} />
+                  <Field label="Estado de pago" value={statusLabel(status)} />
+                  <Field label="Request ID" value={requestId} monospace />
+                  <Field label="Preference ID" value={preferenceId || "Sin preference_id"} monospace />
+                  <Field label="Payment ID" value={paymentId || "Sin payment_id"} monospace />
+                  <Field label="Monto" value={money(amount)} />
+                  <Field label="Creado" value={dateText(createdAt)} />
+                  <Field label="Actualizado" value={dateText(updatedAt)} />
+                  <Field label="Pagado" value={paidAt ? dateText(paidAt) : "No aprobado"} />
+                  <Field label="Fuente" value={source || "Sin fuente"} />
+                </div>
+              </InfoCard>
 
-          {events.length === 0 ? (
-            <p className="mt-4 text-sm text-slate-400">Sin eventos registrados.</p>
-          ) : (
-            <pre className="mt-4 max-h-[360px] overflow-auto rounded-xl bg-slate-950 p-4 text-xs text-slate-200">
-              {JSON.stringify(events, null, 2)}
-            </pre>
-          )}
-        </section>
+              <InfoCard title="Acciones">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => void postAction(`/api/admin/requests/${encodeURIComponent(requestId)}/resend-email`, "Correo reenviado correctamente")}
+                    disabled={actionState.loading}
+                    className="rounded-xl bg-emerald-500 px-4 py-3 text-sm font-black text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {actionState.loading ? "Procesando..." : "Reenviar correo"}
+                  </button>
 
-        {notes.length > 0 && (
-          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-            <h2 className="text-xl font-black">Notas</h2>
-            <pre className="mt-4 max-h-[260px] overflow-auto rounded-xl bg-slate-950 p-4 text-xs text-slate-200">
-              {JSON.stringify(notes, null, 2)}
-            </pre>
-          </section>
+                  <button
+                    type="button"
+                    onClick={openClientResult}
+                    className="rounded-xl bg-cyan-400 px-4 py-3 text-sm font-black text-slate-950 transition hover:bg-cyan-300"
+                  >
+                    Abrir resultado cliente
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => openDocument("informe")}
+                    className="rounded-xl border border-slate-700 px-4 py-3 text-sm font-bold text-slate-200 transition hover:bg-slate-800"
+                  >
+                    Previsualizar informe
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => openDocument("solicitud")}
+                    className="rounded-xl border border-slate-700 px-4 py-3 text-sm font-bold text-slate-200 transition hover:bg-slate-800"
+                  >
+                    Previsualizar solicitud
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => openDocument("instructivo")}
+                    className="rounded-xl border border-slate-700 px-4 py-3 text-sm font-bold text-slate-200 transition hover:bg-slate-800 sm:col-span-2"
+                  >
+                    Previsualizar instructivo
+                  </button>
+                </div>
+
+                <p className="text-sm text-slate-400">
+                  El reenvío usa el endpoint administrativo de confirmación. Si el pago está aprobado, no debe enviar link directo de descarga.
+                </p>
+              </InfoCard>
+            </section>
+
+            <section className="grid gap-4 lg:grid-cols-2">
+              <InfoCard title="Detalle normalizado">
+                <JsonBlock value={merged} />
+              </InfoCard>
+
+              <InfoCard title="Respuesta completa API">
+                <JsonBlock value={payload} />
+              </InfoCard>
+            </section>
+          </>
         )}
       </div>
     </main>

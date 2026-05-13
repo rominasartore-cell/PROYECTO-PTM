@@ -1,35 +1,63 @@
-'use client';
+"use client";
+
+const CERTIFICATE_LINKS = [
+  {
+    title: "Ficha ChileAtiende",
+    description:
+      "Revisa instrucciones oficiales para solicitar el Certificado de Multas de Tránsito No Pagadas.",
+    href: "https://www.chileatiende.gob.cl/fichas/3439-certificado-de-multas-de-transito-no-pagadas",
+    icon: "📋",
+  },
+  {
+    title: "Registro Civil",
+    description:
+      "Ingresa al sitio del Registro Civil y busca la sección Vehículos / Certificado vehículos de multas.",
+    href: "https://www.registrocivil.cl/principal/servicios-en-linea",
+    icon: "🏛️",
+  },
+];
 
 export function GetCertificateCard() {
   return (
-    <section className="py-16 bg-white">
+    <section className="bg-white py-16">
       <div className="container">
-        <h2 className="text-3xl font-bold mb-12 text-center">¿No tienes tu certificado?</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <a
-            href="https://registromueblesavirtual.registrocivil.cl/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="card text-center hover:shadow-lg"
-          >
-            <div className="text-5xl mb-4">📋</div>
-            <h3 className="text-xl font-bold mb-2">Registro Civil Online</h3>
-            <p className="text-gray-600 mb-4">Solicita tu certificado RMNP en el sitio oficial del Registro Civil</p>
-            <span className="text-blue-600 font-semibold">Ir al sitio →</span>
-          </a>
-          <a
-            href="https://www.chileatiende.gob.cl/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="card text-center hover:shadow-lg"
-          >
-            <div className="text-5xl mb-4">🏛️</div>
-            <h3 className="text-xl font-bold mb-2">ChileAtiende</h3>
-            <p className="text-gray-600 mb-4">Obtén tu certificado a través del portal oficial de trámites de Chile</p>
-            <span className="text-blue-600 font-semibold">Ir al sitio →</span>
-          </a>
+        <div className="mb-12 text-center">
+          <p className="text-sm font-black uppercase tracking-[0.2em] text-amber-700">
+            Paso previo
+          </p>
+          <h2 className="mt-3 text-3xl font-black text-slate-950">
+            ¿No tienes tu certificado?
+          </h2>
+          <p className="mx-auto mt-3 max-w-2xl text-sm font-medium leading-6 text-slate-600">
+            Necesitas el Certificado de Multas de Tránsito No Pagadas en PDF para que el sistema pueda analizarlo.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          {CERTIFICATE_LINKS.map((item) => (
+            <a
+              key={item.title}
+              href={item.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="card text-center transition hover:-translate-y-0.5 hover:shadow-xl"
+            >
+              <div className="mb-4 text-5xl" aria-hidden="true">
+                {item.icon}
+              </div>
+              <h3 className="mb-2 text-xl font-black text-slate-950">
+                {item.title}
+              </h3>
+              <p className="mb-4 text-sm font-medium leading-6 text-slate-600">
+                {item.description}
+              </p>
+              <span className="font-black text-blue-700">Ir al sitio →</span>
+            </a>
+          ))}
         </div>
       </div>
     </section>
   );
 }
+
+export default GetCertificateCard;
