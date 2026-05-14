@@ -1,4 +1,4 @@
-﻿# Dependencias
+# Dependencias
 node_modules/
 
 # Next.js
@@ -46,3 +46,6 @@ Thumbs.db
 *.backup-*
 *backup*
 _backups_fuera_de_next/
+
+# Entregables locales con datos de clientes
+docs/deliveries/
