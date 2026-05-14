@@ -1,47 +1,29 @@
-# BORRADOR DE SOLICITUD DE PRESCRIPCIÓN DE MULTAS
+# BORRADOR DE SOLICITUD DE PRESCRIPCIÓN DE MULTA
 
-> Modelo editable. Debe revisarse y adaptarse al tribunal, antecedentes y caso concreto antes de su presentación.
-
----
-
-**S.J.L. DE POLICÍA LOCAL DE {{COMUNA_TRIBUNAL}}**
-
-**{{NOMBRE_SOLICITANTE}}**, cédula de identidad N° **{{RUT_SOLICITANTE}}**, domiciliado(a) para estos efectos en **{{DOMICILIO_SOLICITANTE}}**, correo electrónico **{{EMAIL_SOLICITANTE}}**, respetuosamente digo:
-
-Que, por este acto, vengo en solicitar se declare la prescripción de la(s) multa(s) asociada(s) al vehículo placa patente **{{PATENTE}}**, según consta en el Certificado de Multas de Tránsito No Pagadas que se acompaña, por estimar que se cumplen los presupuestos legales y temporales correspondientes, sin perjuicio de lo que S.S. determine conforme al mérito de los antecedentes.
+> Formato base PTM.  
+> Este escrito está diseñado para una multa individual. Si existen varias multas potencialmente prescritas, se recomienda generar un escrito por cada multa.
 
 ---
 
-## I. Antecedentes
-
-1. Soy titular, poseedor(a), interesado(a) o compareciente respecto del vehículo placa patente **{{PATENTE}}**.
-
-2. Del certificado acompañado consta la existencia de una o más multas registradas respecto de dicho vehículo.
-
-3. Las multas respecto de las cuales se solicita pronunciamiento son las siguientes:
-
-| N° | Rol / identificación | Fecha relevante | Tribunal / comuna | Monto | Observación |
-|---:|---|---|---|---:|---|
-| 1 | {{ROL_1}} | {{FECHA_1}} | {{TRIBUNAL_1}} | {{MONTO_1}} | {{OBSERVACION_1}} |
-| 2 | {{ROL_2}} | {{FECHA_2}} | {{TRIBUNAL_2}} | {{MONTO_2}} | {{OBSERVACION_2}} |
-
-4. Atendida la antigüedad de los antecedentes y la información contenida en el certificado, se solicita a S.S. revisar la procedencia de declarar prescrita(s) la(s) multa(s) antes individualizada(s), si ello resulta conforme al mérito de autos y a la normativa aplicable.
+**EN LO PRINCIPAL:** SOLICITA PRESCRIPCIÓN SEGÚN ART. 24 DE LA LEY N° 18.287;  
+**PRIMER OTROSÍ:** ACOMPAÑA DOCUMENTOS;  
+**SEGUNDO OTROSÍ:** FORMA DE NOTIFICACIÓN.
 
 ---
 
-## II. Fundamentos
+**S. J. JUZGADO DE POLICÍA LOCAL DE {{COMUNA_TRIBUNAL}} {{NUMERO_TRIBUNAL}}**
 
-La presente solicitud se formula atendido el tiempo transcurrido desde la fecha relevante de la(s) multa(s), su anotación o ingreso en el registro respectivo, y demás antecedentes que constan en el documento acompañado.
+Yo, **{{NOMBRE_SOLICITANTE}}**, profesión u oficio **{{PROFESION_OFICIO}}**, domiciliado(a) en calle **{{DOMICILIO_SOLICITANTE}}**, comuna **{{COMUNA_SOLICITANTE}}**, en la causa ROL N° **{{ROL_CAUSA}}**, asociada al vehículo patente **{{PATENTE}}**, de mi propiedad, a US. respetuosamente expongo:
 
-La prescripción solicitada deberá ser evaluada por el tribunal conforme a las normas aplicables al procedimiento de policía local, legislación de tránsito, antecedentes de la causa, eventuales actuaciones procesales, notificaciones, interrupciones o circunstancias que consten en autos.
+Que, en estos autos, se dictó sentencia condenándome al pago de una multa equivalente a **{{MONTO_MULTA_UTM}} UTM**, por la infracción consistente en: **{{INFRACCION}}**.
 
----
+Que, la referida sentencia se encuentra ejecutoriada y fue informada al Registro de Multas de Tránsito No Pagadas del Servicio de Registro Civil e Identificación, con fecha de ingreso **{{FECHA_INGRESO_RMNP}}**.
 
-## III. Petición
+Que, habiendo transcurrido más de tres años desde el ingreso al registro antes indicado, se encuentra cumplido el plazo de prescripción previsto en el artículo 24 de la Ley N° 18.287.
 
-Por tanto, en mérito de lo expuesto, documentos acompañados y normas legales pertinentes,
+**POR TANTO,**
 
-**RUEGO A S.S.** tener por presentada solicitud de prescripción respecto de la(s) multa(s) individualizada(s), admitirla a tramitación y, en definitiva, declarar su prescripción si ello fuere procedente conforme al mérito de los antecedentes, ordenando las comunicaciones o actuaciones que correspondan.
+**RUEGO A S.S.**, se sirva declarar la prescripción de la multa señalada, conforme a lo dispuesto en el artículo 24 de la Ley N° 18.287, y ordenar la eliminación de la anotación respectiva del Registro de Multas de Tránsito No Pagadas, oficiándose al Servicio de Registro Civil e Identificación para su cumplimiento.
 
 ---
 
@@ -49,25 +31,39 @@ Por tanto, en mérito de lo expuesto, documentos acompañados y normas legales p
 
 Sírvase S.S. tener por acompañados los siguientes documentos:
 
-1. Certificado de Multas de Tránsito No Pagadas.
-2. Copia de cédula de identidad.
-3. {{OTROS_DOCUMENTOS}}
+1. Certificado de Multas de Tránsito No Pagadas del vehículo PPU **{{PATENTE}}**.
+2. Certificado de Inscripción y Anotaciones Vigentes del vehículo PPU **{{PATENTE}}**.
+3. Fotocopia de cédula de identidad del solicitante propietario.
+{{DOCUMENTOS_ADICIONALES}}
 
 ---
 
 ## SEGUNDO OTROSÍ: Forma de notificación
 
-Solicito que las resoluciones dictadas en esta presentación puedan ser notificadas al correo electrónico **{{EMAIL_SOLICITANTE}}**, sin perjuicio de lo que el tribunal estime conforme a derecho.
+Solicito a S.S. que las notificaciones que se dicten en el proceso, o respecto de esta solicitud, se notifiquen por correo electrónico, a la casilla: **{{EMAIL_SOLICITANTE}}**.
 
 ---
 
-**Firma:** _______________________________  
-**Nombre:** {{NOMBRE_SOLICITANTE}}  
-**RUT:** {{RUT_SOLICITANTE}}  
-**Fecha:** {{FECHA_PRESENTACION}}
+___________________________  
+**{{NOMBRE_SOLICITANTE}}**  
+FIRMA SOLICITANTE
 
 ---
 
-## Nota para el usuario
+## Campos variables usados por PTM
 
-Este borrador debe ser revisado antes de presentarse. El tribunal puede exigir otros antecedentes, formalidades o realizar una calificación distinta del caso.
+| Campo | Descripción |
+|---|---|
+| {{COMUNA_TRIBUNAL}} | Comuna del Juzgado de Policía Local |
+| {{NUMERO_TRIBUNAL}} | Número del tribunal, si corresponde. Ej: (1°), (2°), etc. |
+| {{NOMBRE_SOLICITANTE}} | Nombre completo del cliente |
+| {{PROFESION_OFICIO}} | Profesión u oficio del solicitante |
+| {{DOMICILIO_SOLICITANTE}} | Domicilio del solicitante |
+| {{COMUNA_SOLICITANTE}} | Comuna del domicilio |
+| {{ROL_CAUSA}} | Rol o identificador de la causa/multa |
+| {{PATENTE}} | Placa patente única |
+| {{MONTO_MULTA_UTM}} | Monto de la multa en UTM |
+| {{INFRACCION}} | Infracción indicada en el certificado |
+| {{FECHA_INGRESO_RMNP}} | Fecha de ingreso/anotación en el Registro de Multas |
+| {{DOCUMENTOS_ADICIONALES}} | Otros documentos, si corresponde |
+| {{EMAIL_SOLICITANTE}} | Correo electrónico del cliente |
