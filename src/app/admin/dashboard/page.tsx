@@ -1,669 +1,801 @@
 "use client";
 
-import type { FormEvent, ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 
-const ADMIN_TOKEN_KEY = "ptm-admin-token";
+type AnyRecord = Record<string, unknown>;
 
-type Metrics = {
-  total?: number;
-  pending?: number;
-  approved?: number;
-  rejected?: number;
-  processing?: number;
-  completed?: number;
-  failed?: number;
-  paid?: number;
-  paymentApproved?: number;
-  paymentPending?: number;
-  paymentRejected?: number;
-  paidAmount?: number;
-  supabasePaymentRecords?: number;
-  localPaymentRecords?: number;
-  localOnlyPayments?: number;
-  mockPayments?: number;
-  sandboxPayments?: number;
-};
+type ManagementStatus =
+  | "pending_review"
+  | "in_progress"
+  | "documents_sent"
+  | "closed";
 
-type AdminPayment = {
-  requestId?: string;
-  externalReference?: string | null;
-  status?: string | null;
-  amount?: number | string | null;
-  paidAt?: string | null;
-  paymentId?: string | number | null;
-  preferenceId?: string | null;
-  customerEmail?: string | null;
-  customerName?: string | null;
-  plate?: string | null;
-  product?: string | null;
-  mock?: boolean | null;
-  sandbox?: boolean | null;
-  checkoutUrl?: string | null;
+type ManagementStatusInfo = {
+  status: ManagementStatus;
+  label: string;
+  note?: string;
   updatedAt?: string | null;
-  createdAt?: string | null;
 };
 
-type AdminRequest = {
-  id?: string;
-  request_id?: string;
-  requestId?: string;
-  source?: "analysis" | "payment_only" | string;
-  customer_name?: string | null;
-  customerName?: string | null;
-  customer_email?: string | null;
-  customerEmail?: string | null;
-  vehicle_plate?: string | null;
-  vehiclePlate?: string | null;
-  plate?: string | null;
-  status?: string | null;
-  payment_status?: string | null;
-  paymentStatus?: string | null;
-  purchase_status?: string | null;
-  purchaseStatus?: string | null;
-  payment_amount?: number | string | null;
-  paymentAmount?: number | string | null;
-  amount?: number | string | null;
-  payment_paid_at?: string | null;
-  paymentPaidAt?: string | null;
-  payment_id?: string | number | null;
-  paymentId?: string | number | null;
-  preference_id?: string | null;
-  preferenceId?: string | null;
-  payment_customer_email?: string | null;
-  paymentCustomerEmail?: string | null;
-  payment_mock?: boolean;
-  paymentMock?: boolean;
-  mock?: boolean;
-  payment_sandbox?: boolean;
-  paymentSandbox?: boolean;
-  sandbox?: boolean;
-  payment_supabase_record?: boolean;
-  paymentSupabaseRecord?: boolean;
-  has_supabase_payment?: boolean;
-  payment_local_record?: boolean;
-  paymentLocalRecord?: boolean;
-  local_only?: boolean;
-  localOnly?: boolean;
-  created_at?: string | null;
-  createdAt?: string | null;
-  updated_at?: string | null;
-  updatedAt?: string | null;
-  payment?: AdminPayment | null;
+type FilterKey =
+  | "all"
+  | "paid"
+  | "unpaid"
+  | "pending_review"
+  | "in_progress"
+  | "documents_sent"
+  | "closed";
+
+const STATUS_LABELS: Record<ManagementStatus, string> = {
+  pending_review: "Pendiente de revisión",
+  in_progress: "En preparación",
+  documents_sent: "Documentos enviados",
+  closed: "Cerrado",
 };
 
-type ApiResponse = {
-  ok?: boolean;
-  metrics?: Metrics;
-  data?: AdminRequest[];
-  requests?: AdminRequest[];
-  pagination?: {
-    page?: number;
-    limit?: number;
-    total?: number;
-    pages?: number;
-  };
-  error?: string;
-  message?: string;
+const STATUS_CLASSES: Record<ManagementStatus, string> = {
+  pending_review: "border-amber-200 bg-amber-50 text-amber-800",
+  in_progress: "border-teal-200 bg-teal-50 text-teal-800",
+  documents_sent: "border-emerald-200 bg-emerald-50 text-emerald-800",
+  closed: "border-slate-200 bg-slate-100 text-slate-800",
 };
 
-type FilterKey = "all" | "pending" | "approved" | "rejected";
-
-const FILTERS: Array<{ key: FilterKey; label: string; paymentStatus: string }> = [
-  { key: "all", label: "Todas", paymentStatus: "" },
-  { key: "pending", label: "Pendientes", paymentStatus: "pending" },
-  { key: "approved", label: "Pagadas", paymentStatus: "approved" },
-  { key: "rejected", label: "Rechazadas", paymentStatus: "rejected" },
-];
-
-function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  return "Error inesperado cargando el dashboard";
+function asRecord(value: unknown): AnyRecord {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as AnyRecord)
+    : {};
 }
 
-function getAdminToken(): string {
-  if (typeof window === "undefined") return "";
-  return window.localStorage.getItem(ADMIN_TOKEN_KEY) || "";
-}
+function getString(record: AnyRecord, keys: string[]): string {
+  for (const key of keys) {
+    const value = record[key];
 
-function buildAdminHeaders(): HeadersInit {
-  const token = getAdminToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
 
-async function readJson<T>(response: Response): Promise<T> {
-  const text = await response.text();
-
-  try {
-    return (text ? JSON.parse(text) : {}) as T;
-  } catch {
-    throw new Error(`Respuesta no JSON desde ${response.url}`);
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return String(value);
+    }
   }
+
+  return "";
 }
 
-function numberValue(value: unknown): number {
-  if (value === null || value === undefined || value === "") return 0;
-  const normalized = typeof value === "string" ? value.replace(/\./g, "").replace(",", ".") : value;
-  const amount = Number(normalized);
-  return Number.isFinite(amount) ? amount : 0;
+function getNumber(record: AnyRecord, keys: string[]): number {
+  for (const key of keys) {
+    const value = record[key];
+
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return value;
+    }
+
+    if (typeof value === "string" && value.trim()) {
+      const parsed = Number(
+        value
+          .replace(/[^\d.,-]/g, "")
+          .replace(/\./g, "")
+          .replace(",", ".")
+      );
+
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+    }
+  }
+
+  return 0;
 }
 
-function money(value: unknown): string {
-  return numberValue(value).toLocaleString("es-CL", {
-    style: "currency",
-    currency: "CLP",
-    maximumFractionDigits: 0,
-  });
+function extractRows(payload: unknown): AnyRecord[] {
+  if (Array.isArray(payload)) {
+    return payload.map(asRecord);
+  }
+
+  const record = asRecord(payload);
+
+  for (const key of ["requests", "items", "data", "results", "rows"]) {
+    const value = record[key];
+
+    if (Array.isArray(value)) {
+      return value.map(asRecord);
+    }
+  }
+
+  return [];
 }
 
-function dateText(value?: string | null): string {
-  if (!value) return "Sin fecha";
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-
-  return date.toLocaleString("es-CL", {
-    dateStyle: "short",
-    timeStyle: "short",
-  });
+function getNestedPayment(row: AnyRecord): AnyRecord {
+  return asRecord(row.payment);
 }
 
-function getRequestId(item: AdminRequest): string {
-  return String(item.request_id || item.requestId || item.payment?.requestId || item.id || "");
-}
+function getRequestId(row: AnyRecord): string {
+  const payment = getNestedPayment(row);
 
-function getCustomerName(item: AdminRequest): string {
-  return String(
-    item.customer_name ||
-      item.customerName ||
-      item.payment?.customerName ||
-      "Cliente sin nombre"
+  return (
+    getString(row, [
+      "request_id",
+      "requestId",
+      "external_reference",
+      "externalReference",
+      "id",
+    ]) ||
+    getString(payment, [
+      "request_id",
+      "requestId",
+      "external_reference",
+      "externalReference",
+    ])
   );
 }
 
-function getCustomerEmail(item: AdminRequest): string {
-  return String(
-    item.customer_email ||
-      item.customerEmail ||
-      item.payment_customer_email ||
-      item.paymentCustomerEmail ||
-      item.payment?.customerEmail ||
-      "Sin correo"
+function getCustomerName(row: AnyRecord): string {
+  const payment = getNestedPayment(row);
+
+  return (
+    getString(row, [
+      "customer_name",
+      "customerName",
+      "client_name",
+      "clientName",
+      "name",
+    ]) ||
+    getString(payment, ["customer_name", "customerName", "name"]) ||
+    "Sin nombre"
   );
 }
 
-function getPlate(item: AdminRequest): string {
-  return String(item.vehicle_plate || item.vehiclePlate || item.plate || item.payment?.plate || "Sin patente");
+function getEmail(row: AnyRecord): string {
+  const payment = getNestedPayment(row);
+
+  return (
+    getString(row, [
+      "customer_email",
+      "customerEmail",
+      "client_email",
+      "clientEmail",
+      "email",
+    ]) ||
+    getString(payment, ["customer_email", "customerEmail", "email"]) ||
+    "Sin correo"
+  );
 }
 
-function getPaymentStatus(item: AdminRequest): string {
-  return String(
-    item.payment_status ||
-      item.paymentStatus ||
-      item.payment?.status ||
-      item.purchase_status ||
-      item.purchaseStatus ||
-      item.status ||
-      ""
+function getPlate(row: AnyRecord): string {
+  const payment = getNestedPayment(row);
+
+  return (
+    getString(row, ["plate", "patente", "vehicle_plate", "vehiclePlate"]) ||
+    getString(payment, ["plate", "patente", "vehicle_plate", "vehiclePlate"]) ||
+    "Sin patente"
+  );
+}
+
+function getAmount(row: AnyRecord): number {
+  const payment = getNestedPayment(row);
+
+  return (
+    getNumber(row, [
+      "payment_amount",
+      "paymentAmount",
+      "amount",
+      "paid_amount",
+      "paidAmount",
+      "total_amount",
+      "totalAmount",
+    ]) ||
+    getNumber(payment, [
+      "payment_amount",
+      "paymentAmount",
+      "amount",
+      "paid_amount",
+      "paidAmount",
+      "total_amount",
+      "totalAmount",
+    ])
+  );
+}
+
+function getPaymentStatus(row: AnyRecord): string {
+  const payment = getNestedPayment(row);
+
+  return (
+    getString(row, [
+      "payment_status",
+      "paymentStatus",
+      "purchase_status",
+      "purchaseStatus",
+      "status",
+    ]) ||
+    getString(payment, [
+      "payment_status",
+      "paymentStatus",
+      "purchase_status",
+      "purchaseStatus",
+      "status",
+    ]) ||
+    "pending"
   ).toLowerCase();
 }
 
-function getPreferenceId(item: AdminRequest): string {
-  return String(item.preference_id || item.preferenceId || item.payment?.preferenceId || "");
-}
+function isPaid(row: AnyRecord): boolean {
+  const payment = getNestedPayment(row);
 
-function getPaymentId(item: AdminRequest): string {
-  return String(item.payment_id || item.paymentId || item.payment?.paymentId || "");
-}
+  const status = getPaymentStatus(row);
+  const purchaseStatus =
+    getString(row, ["purchase_status", "purchaseStatus"]).toLowerCase() ||
+    getString(payment, ["purchase_status", "purchaseStatus"]).toLowerCase();
 
-function getPaymentAmount(item: AdminRequest): number {
-  return numberValue(item.payment_amount || item.paymentAmount || item.payment?.amount || item.amount || 0);
-}
+  const rawStatus =
+    getString(row, ["raw_status", "rawStatus"]).toLowerCase() ||
+    getString(payment, ["raw_status", "rawStatus"]).toLowerCase();
 
-function getCreatedAt(item: AdminRequest): string | null | undefined {
-  return item.created_at || item.createdAt || item.payment?.createdAt;
-}
-
-function getUpdatedAt(item: AdminRequest): string | null | undefined {
-  return item.updated_at || item.updatedAt || item.payment?.updatedAt;
-}
-
-function getPaidAt(item: AdminRequest): string | null | undefined {
-  return item.payment_paid_at || item.paymentPaidAt || item.payment?.paidAt;
-}
-
-function getCheckoutUrl(item: AdminRequest): string {
-  return String(item.payment?.checkoutUrl || "");
-}
-
-function isPaymentOnly(item: AdminRequest): boolean {
-  return item.source === "payment_only";
-}
-
-function isMock(item: AdminRequest): boolean {
-  return Boolean(item.payment_mock || item.paymentMock || item.mock || item.payment?.mock);
-}
-
-function isSandbox(item: AdminRequest): boolean {
-  return Boolean(item.payment_sandbox || item.paymentSandbox || item.sandbox || item.payment?.sandbox);
-}
-
-function isSupabaseRecord(item: AdminRequest): boolean {
-  return Boolean(item.payment_supabase_record || item.paymentSupabaseRecord || item.has_supabase_payment);
-}
-
-function isLocalOnly(item: AdminRequest): boolean {
-  return Boolean(item.local_only || item.localOnly);
-}
-
-function statusLabel(value?: string | null): string {
-  const status = String(value || "").toLowerCase();
-
-  if (status === "approved" || status === "paid" || status === "completed") return "Pago aprobado";
-  if (status === "pending" || status === "created" || status === "processing" || status === "in_process") {
-    return "Pendiente";
-  }
-  if (status === "rejected" || status === "failed" || status === "cancelled" || status === "canceled") {
-    return "Rechazado";
-  }
-
-  return status || "Sin estado";
-}
-
-function statusClass(value?: string | null): string {
-  const status = String(value || "").toLowerCase();
-
-  if (status === "approved" || status === "paid" || status === "completed") {
-    return "border-emerald-500/40 bg-emerald-500/10 text-emerald-200";
-  }
-
-  if (status === "rejected" || status === "failed" || status === "cancelled" || status === "canceled") {
-    return "border-red-500/40 bg-red-500/10 text-red-200";
-  }
-
-  return "border-yellow-500/40 bg-yellow-500/10 text-yellow-200";
-}
-
-function Badge({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <span className={`rounded-full border px-2.5 py-1 text-xs font-bold ${className}`}>{children}</span>;
-}
-
-function MetricCard({
-  label,
-  value,
-  hint,
-  tone = "text-white",
-}: {
-  label: string;
-  value: ReactNode;
-  hint?: string;
-  tone?: string;
-}) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-sm">
-      <p className="text-sm font-semibold text-slate-400">{label}</p>
-      <p className={`mt-2 text-3xl font-black ${tone}`}>{value}</p>
-      {hint ? <p className="mt-2 text-xs text-slate-500">{hint}</p> : null}
-    </div>
+    status === "approved" ||
+    status === "paid" ||
+    purchaseStatus === "paid" ||
+    rawStatus === "approved"
   );
 }
 
-function SmallButton({
-  children,
-  onClick,
-  disabled,
-  className = "",
-}: {
-  children: ReactNode;
-  onClick: () => void;
-  disabled?: boolean;
-  className?: string;
-}) {
+function getCreatedAt(row: AnyRecord): string {
+  const payment = getNestedPayment(row);
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={`rounded-xl px-3 py-2 text-xs font-black transition disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
-    >
-      {children}
-    </button>
+    getString(row, ["created_at", "createdAt", "updated_at", "updatedAt"]) ||
+    getString(payment, ["created_at", "createdAt", "updated_at", "updatedAt"])
   );
 }
 
-export default function AdminDashboardPage() {
-  const router = useRouter();
+function formatCLP(value: number): string {
+  return new Intl.NumberFormat("es-CL", {
+    style: "currency",
+    currency: "CLP",
+    maximumFractionDigits: 0,
+  }).format(value || 0);
+}
 
-  const [authReady, setAuthReady] = useState(false);
-  const [metrics, setMetrics] = useState<Metrics | null>(null);
-  const [requests, setRequests] = useState<AdminRequest[]>([]);
-  const [filter, setFilter] = useState<FilterKey>("all");
-  const [search, setSearch] = useState("");
-  const [submittedSearch, setSubmittedSearch] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [actionMessage, setActionMessage] = useState("");
-  const [resendingId, setResendingId] = useState("");
-
-  const activeFilter = useMemo(() => FILTERS.find((item) => item.key === filter) || FILTERS[0], [filter]);
-
-  const approvedVisibleAmount = useMemo(() => {
-    return requests
-      .filter((item) => ["approved", "paid", "completed"].includes(getPaymentStatus(item)))
-      .reduce((sum, item) => sum + getPaymentAmount(item), 0);
-  }, [requests]);
-
-  const loadData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError("");
-      setActionMessage("");
-
-      const stamp = Date.now();
-      const query = new URLSearchParams({ limit: "100", ts: String(stamp) });
-
-      if (activeFilter.paymentStatus) query.set("payment_status", activeFilter.paymentStatus);
-      if (submittedSearch.trim()) query.set("search", submittedSearch.trim());
-
-      const headers = buildAdminHeaders();
-
-      const [metricsResponse, requestsResponse] = await Promise.all([
-        fetch(`/api/admin/metrics?ts=${stamp}`, { cache: "no-store", headers }),
-        fetch(`/api/admin/requests?${query.toString()}`, { cache: "no-store", headers }),
-      ]);
-
-      const metricsJson = await readJson<ApiResponse>(metricsResponse);
-      const requestsJson = await readJson<ApiResponse>(requestsResponse);
-
-      if (!metricsResponse.ok || metricsJson.ok === false) {
-        throw new Error(metricsJson.error || metricsJson.message || "No se pudieron cargar métricas");
-      }
-
-      if (!requestsResponse.ok || requestsJson.ok === false) {
-        throw new Error(requestsJson.error || requestsJson.message || "No se pudieron cargar solicitudes");
-      }
-
-      setMetrics(metricsJson.metrics || null);
-      setRequests(requestsJson.requests || requestsJson.data || []);
-    } catch (err: unknown) {
-      setError(getErrorMessage(err));
-      setRequests([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [activeFilter.paymentStatus, submittedSearch]);
-
-  useEffect(() => {
-    const token = getAdminToken();
-
-    if (!token) {
-      router.replace("/admin");
-      return;
-    }
-
-    setAuthReady(true);
-  }, [router]);
-
-  useEffect(() => {
-    if (!authReady) return;
-    void loadData();
-  }, [authReady, loadData]);
-
-  function handleSearch(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setSubmittedSearch(search.trim());
+function formatDate(value?: string | null): string {
+  if (!value) {
+    return "Sin fecha";
   }
 
-  function handleClearSearch() {
-    setSearch("");
-    setSubmittedSearch("");
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
   }
 
-  async function copyText(value: string, label: string) {
-    if (!value) return;
+  return new Intl.DateTimeFormat("es-CL", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(date);
+}
 
-    try {
-      await navigator.clipboard.writeText(value);
-      setActionMessage(`${label} copiado.`);
-    } catch {
-      setActionMessage(`No se pudo copiar ${label}.`);
+function normalizeStatus(value: unknown): ManagementStatus {
+  const status = String(value || "").trim();
+
+  if (
+    status === "pending_review" ||
+    status === "in_progress" ||
+    status === "documents_sent" ||
+    status === "closed"
+  ) {
+    return status;
+  }
+
+  return "pending_review";
+}
+
+function getStatusInfo(
+  statuses: Record<string, ManagementStatusInfo>,
+  requestId: string
+): ManagementStatusInfo {
+  return (
+    statuses[requestId] || {
+      status: "pending_review",
+      label: STATUS_LABELS.pending_review,
+      note: "",
+      updatedAt: null,
     }
-  }
+  );
+}
 
-  async function resendEmail(requestId: string) {
-    if (!requestId) return;
-
-    try {
-      setResendingId(requestId);
-      setActionMessage("");
-
-      const response = await fetch(`/api/admin/requests/${encodeURIComponent(requestId)}/resend-email?ts=${Date.now()}`, {
-        method: "POST",
-        cache: "no-store",
-        headers: buildAdminHeaders(),
-      });
-
-      const json = await readJson<ApiResponse>(response);
-
-      if (!response.ok || json.ok === false) {
-        throw new Error(json.error || json.message || "No se pudo reenviar el correo");
-      }
-
-      setActionMessage(`Correo reenviado correctamente para ${requestId}.`);
-    } catch (err: unknown) {
-      setActionMessage(getErrorMessage(err));
-    } finally {
-      setResendingId("");
-    }
-  }
-
-  if (!authReady) {
+function paymentBadge(row: AnyRecord) {
+  if (isPaid(row)) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4 text-white">
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/80 px-6 py-4 text-sm text-slate-300 shadow-xl">
-          Verificando sesión administrativa...
-        </div>
-      </main>
+      <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-black text-emerald-700">
+        Pagado
+      </span>
+    );
+  }
+
+  const status = getPaymentStatus(row);
+
+  if (status === "rejected") {
+    return (
+      <span className="rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-[11px] font-black text-red-700">
+        Rechazado
+      </span>
     );
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 px-4 py-8 text-white">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <header className="flex flex-col gap-4 rounded-2xl border border-slate-800 bg-slate-900/80 p-6 shadow-xl md:flex-row md:items-center md:justify-between">
+    <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-black text-amber-700">
+      Pendiente
+    </span>
+  );
+}
+
+function statusBadge(info: ManagementStatusInfo) {
+  return (
+    <span
+      className={`rounded-full border px-2.5 py-1 text-[11px] font-black ${STATUS_CLASSES[info.status]}`}
+    >
+      {info.label}
+    </span>
+  );
+}
+
+function formatMetricValue(value: unknown): string {
+  if (typeof value === "number") {
+    return new Intl.NumberFormat("es-CL").format(value);
+  }
+
+  if (typeof value === "boolean") {
+    return value ? "Sí" : "No";
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (value === null || value === undefined) {
+    return "—";
+  }
+
+  return JSON.stringify(value);
+}
+
+export default function AdminDashboardPage() {
+  const [rows, setRows] = useState<AnyRecord[]>([]);
+  const [rawMetrics, setRawMetrics] = useState<AnyRecord | null>(null);
+  const [statuses, setStatuses] = useState<Record<string, ManagementStatusInfo>>({});
+  const [filter, setFilter] = useState<FilterKey>("all");
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  async function loadStatuses(requestIds: string[]) {
+    if (requestIds.length === 0) {
+      setStatuses({});
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/admin/management-status/bulk", {
+        method: "POST",
+        cache: "no-store",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          requestIds,
+        }),
+      });
+
+      const data = (await response.json().catch(() => null)) as AnyRecord | null;
+
+      if (!response.ok || !data?.ok) {
+        throw new Error("Bulk endpoint no disponible.");
+      }
+
+      const rawStatuses = asRecord(data.statuses);
+      const nextStatuses: Record<string, ManagementStatusInfo> = {};
+
+      for (const requestId of requestIds) {
+        const item = asRecord(rawStatuses[requestId]);
+        const status = normalizeStatus(item.status);
+
+        nextStatuses[requestId] = {
+          status,
+          label: getString(item, ["label"]) || STATUS_LABELS[status],
+          note: getString(item, ["note"]),
+          updatedAt: getString(item, ["updatedAt", "updated_at"]) || null,
+        };
+      }
+
+      setStatuses(nextStatuses);
+    } catch {
+      const entries = await Promise.all(
+        requestIds.slice(0, 40).map(async (requestId) => {
+          try {
+            const response = await fetch(
+              `/api/admin/requests/${encodeURIComponent(requestId)}/management-status?ts=${Date.now()}`,
+              {
+                method: "GET",
+                cache: "no-store",
+              }
+            );
+
+            const data = (await response.json().catch(() => null)) as AnyRecord | null;
+            const status = normalizeStatus(data?.status);
+
+            return [
+              requestId,
+              {
+                status,
+                label: getString(asRecord(data), ["label"]) || STATUS_LABELS[status],
+                note: getString(asRecord(data), ["note"]),
+                updatedAt: getString(asRecord(data), ["updatedAt", "updated_at"]) || null,
+              },
+            ] as const;
+          } catch {
+            return [
+              requestId,
+              {
+                status: "pending_review" as ManagementStatus,
+                label: STATUS_LABELS.pending_review,
+                note: "",
+                updatedAt: null,
+              },
+            ] as const;
+          }
+        })
+      );
+
+      setStatuses(Object.fromEntries(entries));
+    }
+  }
+
+  async function loadDashboard() {
+    setLoading(true);
+    setErrorMessage("");
+
+    try {
+      const [requestsResponse, metricsResponse] = await Promise.all([
+        fetch(`/api/admin/requests?limit=100&ts=${Date.now()}`, {
+          method: "GET",
+          cache: "no-store",
+        }),
+        fetch(`/api/admin/metrics?ts=${Date.now()}`, {
+          method: "GET",
+          cache: "no-store",
+        }).catch(() => null),
+      ]);
+
+      const requestsPayload = await requestsResponse.json().catch(() => null);
+
+      if (!requestsResponse.ok) {
+        throw new Error("No se pudieron cargar las solicitudes.");
+      }
+
+      const nextRows = extractRows(requestsPayload);
+      setRows(nextRows);
+
+      if (metricsResponse && metricsResponse.ok) {
+        const metricsPayload = await metricsResponse.json().catch(() => null);
+        setRawMetrics(asRecord(metricsPayload));
+      }
+
+      const requestIds = Array.from(
+        new Set(nextRows.map(getRequestId).filter(Boolean))
+      );
+
+      await loadStatuses(requestIds);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Error inesperado cargando dashboard."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadDashboard();
+  }, []);
+
+  const paidRows = useMemo(() => rows.filter(isPaid), [rows]);
+
+  const income = useMemo(
+    () => paidRows.reduce((total, row) => total + getAmount(row), 0),
+    [paidRows]
+  );
+
+  const managementCounts = useMemo(() => {
+    const counts: Record<ManagementStatus, number> = {
+      pending_review: 0,
+      in_progress: 0,
+      documents_sent: 0,
+      closed: 0,
+    };
+
+    for (const row of rows) {
+      const requestId = getRequestId(row);
+      const info = getStatusInfo(statuses, requestId);
+      counts[info.status] += 1;
+    }
+
+    return counts;
+  }, [rows, statuses]);
+
+  const filteredRows = useMemo(() => {
+    return rows.filter((row) => {
+      const requestId = getRequestId(row);
+      const status = getStatusInfo(statuses, requestId).status;
+
+      if (filter === "all") return true;
+      if (filter === "paid") return isPaid(row);
+      if (filter === "unpaid") return !isPaid(row);
+      return status === filter;
+    });
+  }, [filter, rows, statuses]);
+
+  async function copyText(value: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+    } catch {
+      window.prompt("Copiar:", value);
+    }
+  }
+
+  return (
+    <main className="min-h-screen bg-slate-50 px-4 py-6 text-slate-950 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">Prescribe tu Multa</p>
-            <h1 className="mt-2 text-3xl font-black">Dashboard administrativo</h1>
-            <p className="mt-2 text-sm text-slate-300">
-              Control de ventas, pagos aprobados, solicitudes y reenvío de confirmaciones.
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-teal-700">
+              Prescribe tu Multa
+            </p>
+            <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950">
+              Dashboard administrativo
+            </h1>
+            <p className="mt-1 text-sm text-slate-600">
+              Vista operativa: ventas, gestión interna y entregas.
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => void loadData()}
-              disabled={loading}
-              className="rounded-xl bg-cyan-400 px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {loading ? "Actualizando..." : "Actualizar"}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                window.localStorage.removeItem(ADMIN_TOKEN_KEY);
-                router.replace("/admin");
-              }}
-              className="rounded-xl border border-slate-700 px-5 py-3 text-sm font-black text-slate-200 transition hover:bg-slate-800"
-            >
-              Salir
-            </button>
-          </div>
-        </header>
+          <button
+            type="button"
+            onClick={loadDashboard}
+            disabled={loading}
+            className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-60"
+          >
+            {loading ? "Actualizando..." : "Actualizar"}
+          </button>
+        </div>
 
-        {error ? <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-100">{error}</div> : null}
-
-        {actionMessage ? (
-          <div className="rounded-xl border border-cyan-500/40 bg-cyan-500/10 p-4 text-sm font-bold text-cyan-100">
-            {actionMessage}
+        {errorMessage ? (
+          <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
+            {errorMessage}
           </div>
         ) : null}
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <MetricCard label="Total registros" value={metrics?.total ?? "—"} hint="Solicitudes + pagos registrados" />
-          <MetricCard label="Pendientes" value={metrics?.paymentPending ?? metrics?.pending ?? "—"} tone="text-yellow-300" hint="Sin pago aprobado" />
-          <MetricCard label="Pagadas" value={metrics?.paid ?? metrics?.paymentApproved ?? "—"} tone="text-emerald-300" hint="purchase_status = paid" />
-          <MetricCard label="Ingresos aprobados" value={money(metrics?.paidAmount || 0)} tone="text-emerald-300" hint="Monto total vendido" />
-        </section>
-
-        <section className="grid gap-4 md:grid-cols-4">
-          <MetricCard label="Supabase pagos" value={metrics?.supabasePaymentRecords ?? 0} hint="Persistencia durable" />
-          <MetricCard label="Mock" value={metrics?.mockPayments ?? 0} hint="Pagos de prueba" />
-          <MetricCard label="Sandbox" value={metrics?.sandboxPayments ?? 0} hint="Entorno prueba" />
-          <MetricCard label="Visible filtrado" value={money(approvedVisibleAmount)} tone="text-emerald-300" hint="Solo resultados cargados" />
-        </section>
-
-        <section className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-wrap gap-2">
-              {FILTERS.map((item) => (
-                <button
-                  key={item.key}
-                  type="button"
-                  onClick={() => setFilter(item.key)}
-                  className={`rounded-xl px-4 py-2 text-sm font-black transition ${
-                    filter === item.key ? "bg-cyan-400 text-slate-950" : "bg-slate-800 text-slate-200 hover:bg-slate-700"
-                  }`}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-
-            <form onSubmit={handleSearch} className="flex flex-col gap-2 sm:flex-row">
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Buscar correo, patente, requestId o preferenceId"
-                className="w-full min-w-0 rounded-xl border border-slate-700 bg-slate-950 px-4 py-2 text-sm text-white outline-none focus:border-cyan-400 sm:min-w-[320px]"
-              />
-              <button type="submit" className="rounded-xl bg-slate-700 px-4 py-2 text-sm font-black hover:bg-slate-600">
-                Buscar
-              </button>
-              {(search || submittedSearch) && (
-                <button
-                  type="button"
-                  onClick={handleClearSearch}
-                  className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-black text-slate-200 hover:bg-slate-800"
-                >
-                  Limpiar
-                </button>
-              )}
-            </form>
-          </div>
-        </section>
-
-        <section className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
-          <div className="border-b border-slate-800 p-5">
-            <h2 className="text-xl font-black">Solicitudes y pagos</h2>
-            <p className="mt-1 text-sm text-slate-400">
-              Los pagos aprobados muestran confirmación, monto, origen y acciones rápidas.
+        <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-[11px] font-black uppercase tracking-wide text-slate-500">
+              Compras pagadas
+            </p>
+            <p className="mt-2 text-3xl font-black text-slate-950">
+              {paidRows.length}
+            </p>
+            <p className="mt-1 text-xs font-semibold text-slate-500">
+              Pagos aprobados
             </p>
           </div>
 
-          {loading ? (
-            <div className="p-8 text-center text-slate-400">Cargando...</div>
-          ) : requests.length === 0 ? (
-            <div className="p-8 text-center text-slate-400">No hay registros para este filtro.</div>
-          ) : (
-            <div className="divide-y divide-slate-800">
-              {requests.map((item, index) => {
-                const requestId = getRequestId(item);
-                const paymentStatus = getPaymentStatus(item);
-                const preferenceId = getPreferenceId(item);
-                const paymentId = getPaymentId(item);
-                const checkoutUrl = getCheckoutUrl(item);
-                const rowKey = requestId || preferenceId || `request-${index}`;
-                const approved = ["approved", "paid", "completed"].includes(paymentStatus);
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
+            <p className="text-[11px] font-black uppercase tracking-wide text-emerald-700">
+              Ingresos confirmados
+            </p>
+            <p className="mt-2 text-3xl font-black text-emerald-800">
+              {formatCLP(income)}
+            </p>
+            <p className="mt-1 text-xs font-semibold text-emerald-700">
+              Solo compras pagadas
+            </p>
+          </div>
 
-                return (
-                  <article key={rowKey} className="p-5 transition hover:bg-slate-800/40">
-                    <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                      <div className="min-w-0 space-y-3">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge className={statusClass(paymentStatus)}>{statusLabel(paymentStatus)}</Badge>
+          <div className="rounded-2xl border border-teal-200 bg-teal-50 p-4 shadow-sm">
+            <p className="text-[11px] font-black uppercase tracking-wide text-teal-700">
+              En preparación
+            </p>
+            <p className="mt-2 text-3xl font-black text-teal-800">
+              {managementCounts.in_progress}
+            </p>
+            <p className="mt-1 text-xs font-semibold text-teal-700">
+              Casos en trabajo
+            </p>
+          </div>
 
-                          {isPaymentOnly(item) && <Badge className="border-purple-500/40 bg-purple-500/10 text-purple-200">Pago sin análisis</Badge>}
-                          {isMock(item) && <Badge className="border-blue-500/40 bg-blue-500/10 text-blue-200">Mock</Badge>}
-                          {isSandbox(item) && <Badge className="border-orange-500/40 bg-orange-500/10 text-orange-200">Sandbox</Badge>}
-                          {!isMock(item) && !isSandbox(item) && preferenceId && (
-                            <Badge className="border-emerald-500/40 bg-emerald-500/10 text-emerald-200">Mercado Pago real</Badge>
-                          )}
-                          {isSupabaseRecord(item) && <Badge className="border-cyan-500/40 bg-cyan-500/10 text-cyan-200">Supabase</Badge>}
-                          {isLocalOnly(item) && <Badge className="border-slate-500/40 bg-slate-500/10 text-slate-200">Solo local</Badge>}
-                        </div>
-
-                        <h3 className="truncate text-lg font-black">{getCustomerName(item)}</h3>
-
-                        <div className="grid gap-1 text-sm text-slate-400 md:grid-cols-2">
-                          <p>Correo: {getCustomerEmail(item)}</p>
-                          <p>Patente: {getPlate(item)}</p>
-                          <p className="break-all">Request ID: {requestId || "Sin requestId"}</p>
-                          <p className="break-all">Preference ID: {preferenceId || "Sin preference_id"}</p>
-                          <p className="break-all">Payment ID: {paymentId || "Sin payment_id"}</p>
-                          <p>Actualizado: {dateText(getUpdatedAt(item))}</p>
-                        </div>
-
-                        <div className="flex flex-wrap gap-2 pt-2">
-                          <SmallButton
-                            onClick={() => requestId && router.push(`/admin/request/${encodeURIComponent(requestId)}`)}
-                            disabled={!requestId}
-                            className="bg-slate-700 text-white hover:bg-slate-600"
-                          >
-                            Ver detalle
-                          </SmallButton>
-
-                          <SmallButton
-                            onClick={() => requestId && void resendEmail(requestId)}
-                            disabled={!requestId || !approved || resendingId === requestId}
-                            className="bg-emerald-400 text-slate-950 hover:bg-emerald-300"
-                          >
-                            {resendingId === requestId ? "Reenviando..." : "Reenviar correo"}
-                          </SmallButton>
-
-                          <SmallButton
-                            onClick={() => void copyText(requestId, "Request ID")}
-                            disabled={!requestId}
-                            className="bg-slate-800 text-slate-100 hover:bg-slate-700"
-                          >
-                            Copiar ID
-                          </SmallButton>
-
-                          {checkoutUrl ? (
-                            <SmallButton
-                              onClick={() => window.open(checkoutUrl, "_blank", "noopener,noreferrer")}
-                              className="bg-cyan-400 text-slate-950 hover:bg-cyan-300"
-                            >
-                              Abrir resultado
-                            </SmallButton>
-                          ) : null}
-                        </div>
-                      </div>
-
-                      <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4 text-left xl:min-w-[240px] xl:text-right">
-                        <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Monto</p>
-                        <p className="mt-2 text-3xl font-black">{money(getPaymentAmount(item))}</p>
-                        <p className="mt-2 text-sm text-slate-400">Creado: {dateText(getCreatedAt(item))}</p>
-                        <p className="mt-1 text-sm text-slate-400">Pago: {getPaidAt(item) ? dateText(getPaidAt(item)) : "No aprobado"}</p>
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          )}
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-[11px] font-black uppercase tracking-wide text-slate-500">
+              Documentos enviados
+            </p>
+            <p className="mt-2 text-3xl font-black text-slate-950">
+              {managementCounts.documents_sent}
+            </p>
+            <p className="mt-1 text-xs font-semibold text-slate-500">
+              Entregas registradas
+            </p>
+          </div>
         </section>
+
+        <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h2 className="text-base font-black text-slate-950">
+                Solicitudes
+              </h2>
+              <p className="mt-1 text-xs text-slate-500">
+                {filteredRows.length} visibles de {rows.length} registros cargados.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {[
+                ["all", "Todos"],
+                ["paid", "Pagadas"],
+                ["unpaid", "No pagadas"],
+                ["pending_review", "Pendiente"],
+                ["in_progress", "En preparación"],
+                ["documents_sent", "Enviados"],
+                ["closed", "Cerrados"],
+              ].map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setFilter(key as FilterKey)}
+                  className={
+                    filter === key
+                      ? "rounded-full bg-teal-700 px-3 py-1.5 text-xs font-black text-white"
+                      : "rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-black text-slate-600 hover:bg-slate-50"
+                  }
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-4 overflow-x-auto">
+            <table className="min-w-full border-separate border-spacing-y-2">
+              <thead>
+                <tr className="text-left text-[11px] font-black uppercase tracking-wide text-slate-500">
+                  <th className="px-3 py-2">Cliente</th>
+                  <th className="px-3 py-2">Patente</th>
+                  <th className="px-3 py-2">Pago</th>
+                  <th className="px-3 py-2">Gestión</th>
+                  <th className="px-3 py-2">Monto</th>
+                  <th className="px-3 py-2">Fecha</th>
+                  <th className="px-3 py-2 text-right">Acciones</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {filteredRows.map((row, index) => {
+                  const requestId = getRequestId(row);
+                  const info = getStatusInfo(statuses, requestId);
+                  const amount = getAmount(row);
+
+                  return (
+                    <tr
+                      key={`${requestId}-${index}`}
+                      className="rounded-xl bg-slate-50 text-sm shadow-sm"
+                    >
+                      <td className="rounded-l-xl px-3 py-3">
+                        <p className="font-black text-slate-900">
+                          {getCustomerName(row)}
+                        </p>
+                        <p className="mt-0.5 max-w-[260px] truncate text-xs font-semibold text-slate-500">
+                          {getEmail(row)}
+                        </p>
+                        <p className="mt-0.5 max-w-[260px] truncate text-[11px] text-slate-400">
+                          {requestId || "Sin requestId"}
+                        </p>
+                      </td>
+
+                      <td className="px-3 py-3">
+                        <span className="rounded-lg bg-white px-2.5 py-1 text-xs font-black text-slate-800 ring-1 ring-slate-200">
+                          {getPlate(row)}
+                        </span>
+                      </td>
+
+                      <td className="px-3 py-3">{paymentBadge(row)}</td>
+
+                      <td className="px-3 py-3">{statusBadge(info)}</td>
+
+                      <td className="px-3 py-3">
+                        <p className="text-sm font-black text-slate-900">
+                          {formatCLP(amount)}
+                        </p>
+                      </td>
+
+                      <td className="px-3 py-3">
+                        <p className="text-xs font-bold text-slate-600">
+                          {formatDate(getCreatedAt(row))}
+                        </p>
+                      </td>
+
+                      <td className="rounded-r-xl px-3 py-3">
+                        <div className="flex justify-end gap-2">
+                          <a
+                            href={`/admin/request/${encodeURIComponent(requestId)}`}
+                            className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-black text-white hover:bg-slate-800"
+                          >
+                            Ver
+                          </a>
+
+                          <button
+                            type="button"
+                            onClick={() => copyText(requestId)}
+                            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-50"
+                          >
+                            Copiar
+                          </button>
+
+                          <a
+                            href={`/resultados/${encodeURIComponent(requestId)}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-xs font-black text-teal-700 hover:bg-teal-100"
+                          >
+                            Resultado
+                          </a>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+
+            {!loading && filteredRows.length === 0 ? (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 text-center text-sm font-bold text-slate-500">
+                No hay registros para este filtro.
+              </div>
+            ) : null}
+
+            {loading ? (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 text-center text-sm font-bold text-slate-500">
+                Cargando dashboard...
+              </div>
+            ) : null}
+          </div>
+        </section>
+
+        <details className="mt-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <summary className="cursor-pointer text-sm font-black text-slate-800">
+            Ver métricas técnicas
+          </summary>
+
+          <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+            {rawMetrics
+              ? Object.entries(rawMetrics)
+                  .filter(([key]) => !["ok"].includes(key))
+                  .slice(0, 24)
+                  .map(([key, value]) => (
+                    <div
+                      key={key}
+                      className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"
+                    >
+                      <p className="text-[10px] font-black uppercase tracking-wide text-slate-500">
+                        {key}
+                      </p>
+                      <p className="mt-1 break-all text-xs font-bold text-slate-800">
+                        {formatMetricValue(value)}
+                      </p>
+                    </div>
+                  ))
+              : (
+                <p className="text-sm font-bold text-slate-500">
+                  Sin métricas técnicas cargadas.
+                </p>
+              )}
+          </div>
+        </details>
       </div>
     </main>
   );
