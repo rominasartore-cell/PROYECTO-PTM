@@ -182,11 +182,19 @@ export default function ProductDetailModal({
 
       window.location.href = paymentUrl;
     } catch (err) {
-      setError(
+      const rawMessage =
         err instanceof Error
           ? err.message
-          : "Error inesperado al iniciar el pago."
-      );
+          : "Error inesperado al iniciar el pago.";
+
+      const friendlyMessage =
+        rawMessage === "Load failed" ||
+        rawMessage === "Failed to fetch" ||
+        rawMessage.toLowerCase().includes("network")
+          ? "No se pudo iniciar la compra. Si el certificado no tiene multas potencialmente prescritas, la compra no esta disponible."
+          : rawMessage;
+
+      setError(friendlyMessage);
       setPaying(false);
     }
   }

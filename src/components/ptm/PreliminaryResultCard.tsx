@@ -215,10 +215,12 @@ export default function PreliminaryResultCard({
   const finalQuoteToken = quoteToken || normalized.quoteToken;
   const finalRequestId = requestId || normalized.requestId;
 
+  const hasPaymentReference = Boolean(finalRequestId || finalQuoteToken);
+  const hasEligibleFines = normalized.prescribedCount > 0;
   const canPurchase =
-    typeof eligible === "boolean"
-      ? eligible
-      : normalized.prescribedCount > 0 && Boolean(finalRequestId || finalQuoteToken);
+    hasPaymentReference &&
+    hasEligibleFines &&
+    (typeof eligible === "boolean" ? eligible : true);
 
   const modalPayload = useMemo(
     () => ({
@@ -309,14 +311,25 @@ export default function PreliminaryResultCard({
             </p>
           </section>
 
-          <button
-            type="button"
-            onClick={() => setModalOpen(true)}
-            disabled={!canPurchase}
-            className="w-full rounded-2xl bg-emerald-700 px-6 py-5 text-xl font-black text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-emerald-800 active:translate-y-0 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
-          >
-            {canPurchase ? "Comprar informe completo →" : "Compra no disponible"}
-          </button>
+          <div className="space-y-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (!canPurchase) return;
+                setModalOpen(true);
+              }}
+              disabled={!canPurchase}
+              className="w-full rounded-2xl bg-emerald-700 px-6 py-5 text-xl font-black text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-emerald-800 active:translate-y-0 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
+            >
+              {canPurchase ? "Comprar informe completo →" : "Compra no disponible"}
+            </button>
+
+            {!canPurchase ? (
+              <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm font-bold leading-5 text-amber-800">
+                No hay multas potencialmente prescritas disponibles para comprar este informe.
+              </p>
+            ) : null}
+          </div>
 
           <a
             href="https://www.registrocivil.cl/principal/servicios-en-linea/certificado-de-multas-de-tránsito-no-pagadas"
