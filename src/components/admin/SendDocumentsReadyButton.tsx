@@ -163,8 +163,8 @@ export default function SendDocumentsReadyButton() {
       setState("sent");
       setMessage(
         data.outbox
-          ? "Correo guardado en outbox para envío posterior."
-          : "Correo de documentos listos enviado correctamente."
+          ? "Correo guardado en outbox."
+          : "Correo de documentos listos enviado."
       );
 
       await loadLastEvent();
@@ -184,33 +184,33 @@ export default function SendDocumentsReadyButton() {
   const statusLabel = getStatusLabel(lastEvent);
 
   return (
-    <section className="my-5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-100">
-      <div className="border-b border-slate-100 bg-gradient-to-r from-emerald-50 via-teal-50 to-white px-5 py-4">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+    <section className="my-3 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="border-b border-slate-100 bg-gradient-to-r from-teal-50 via-emerald-50 to-white px-4 py-3">
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black uppercase tracking-wide text-emerald-800">
+              <span className="rounded-full bg-teal-100 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wide text-teal-800">
                 Entrega
               </span>
               <span
                 className={
                   isFailed
-                    ? "rounded-full bg-red-100 px-3 py-1 text-xs font-black text-red-700"
+                    ? "rounded-full bg-red-100 px-2.5 py-0.5 text-[10px] font-black text-red-700"
                     : hasEvent
-                      ? "rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-700"
-                      : "rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-700"
+                      ? "rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-black text-emerald-700"
+                      : "rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-black text-amber-700"
                 }
               >
                 {isLoading ? "Cargando..." : statusLabel}
               </span>
             </div>
 
-            <h2 className="mt-3 text-lg font-black text-slate-950">
-              Estado de entrega al cliente
+            <h2 className="mt-2 text-base font-black text-slate-950">
+              Estado de entrega
             </h2>
 
-            <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">
-              Control del correo de documentos listos. Esta acción no modifica Mercado Pago ni el estado del pago.
+            <p className="mt-0.5 text-xs leading-5 text-slate-600">
+              Control del correo de documentos listos. No modifica pagos.
             </p>
           </div>
 
@@ -218,50 +218,41 @@ export default function SendDocumentsReadyButton() {
             type="button"
             onClick={handleSend}
             disabled={state === "sending" || state === "loading"}
-            className="inline-flex min-w-[220px] items-center justify-center rounded-xl bg-emerald-700 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex min-w-[170px] items-center justify-center rounded-lg bg-teal-700 px-4 py-2 text-xs font-black text-white shadow-sm transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {state === "sending"
               ? "Enviando..."
               : hasEvent
-                ? "Reenviar documentos"
-                : "Enviar documentos"}
+                ? "Reenviar correo"
+                : "Enviar correo"}
           </button>
         </div>
       </div>
 
-      <div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-          <p className="text-xs font-black uppercase tracking-wide text-slate-500">
+      <div className="grid gap-2 p-4 sm:grid-cols-3">
+        <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
+          <p className="text-[10px] font-black uppercase tracking-wide text-slate-500">
             Último correo
           </p>
-          <p className={isFailed ? "mt-2 text-base font-black text-red-700" : "mt-2 text-base font-black text-emerald-700"}>
-            {hasEvent ? statusLabel : "Sin envío registrado"}
+          <p className={isFailed ? "mt-1 text-sm font-black text-red-700" : "mt-1 text-sm font-black text-teal-700"}>
+            {hasEvent ? statusLabel : "Sin envío"}
           </p>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-          <p className="text-xs font-black uppercase tracking-wide text-slate-500">
+        <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
+          <p className="text-[10px] font-black uppercase tracking-wide text-slate-500">
             Fecha
           </p>
-          <p className="mt-2 text-base font-black text-slate-900">
+          <p className="mt-1 text-sm font-black text-slate-900">
             {formatDate(lastEvent?.created_at)}
           </p>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-          <p className="text-xs font-black uppercase tracking-wide text-slate-500">
-            Proveedor
-          </p>
-          <p className="mt-2 text-base font-black text-slate-900">
-            {lastEvent?.provider || "Sin registro"}
-          </p>
-        </div>
-
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-          <p className="text-xs font-black uppercase tracking-wide text-slate-500">
+        <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
+          <p className="text-[10px] font-black uppercase tracking-wide text-slate-500">
             Email
           </p>
-          <p className="mt-2 break-all text-sm font-black text-slate-900">
+          <p className="mt-1 break-all text-xs font-black text-slate-900">
             {lastEvent?.email || "Sin registro"}
           </p>
         </div>
@@ -271,8 +262,8 @@ export default function SendDocumentsReadyButton() {
         <div
           className={
             state === "error"
-              ? "mx-5 mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700"
-              : "mx-5 mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700"
+              ? "mx-4 mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-700"
+              : "mx-4 mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700"
           }
         >
           {message}
