@@ -263,6 +263,46 @@ async function listEmailEvents(
   return data as AnyRecord[];
 }
 
+
+async function markManagementStatusDocumentsSent(
+  supabase: ReturnType<typeof getSupabaseClient>,
+  requestId: string
+): Promise<void> {
+  try {
+    const { data: current } = await supabase
+      .from("ptm_request_management_status")
+      .select("status")
+      .eq("request_id", requestId)
+      .limit(1)
+      .maybeSingle();
+
+    const currentStatus = String((current as AnyRecord | null)?.status || "");
+
+    if (currentStatus === "closed") {
+      return;
+    }
+
+    const now = new Date().toISOString();
+
+    await supabase.from("ptm_request_management_status").upsert(
+      {
+        request_id: requestId,
+        status: "documents_sent",
+        note: "Correo de documentos listos enviado al cliente.",
+        updated_by: "admin",
+        metadata: {
+          source: "send_documents_ready_endpoint",
+        },
+        updated_at: now,
+      },
+      {
+        onConflict: "request_id",
+      }
+    );
+  } catch (error) {
+    console.warn("[PTM_MANAGEMENT_STATUS_AUTO_UPDATE_WARNING]", error);
+  }
+}
 export async function GET(_request: Request, context: RouteContext) {
   try {
     const params = await context.params;
@@ -450,6 +490,7 @@ export async function POST(_request: Request, context: RouteContext) {
       },
     });
 
+    await markManagementStatusDocumentsSent(supabase, requestId);
     const events = await listEmailEvents(supabase, requestId);
 
     return jsonResponse({

@@ -168,6 +168,8 @@ export default function SendDocumentsReadyButton() {
       );
 
       await loadLastEvent();
+
+      window.dispatchEvent(new Event("ptm-management-status-refresh"));
     } catch (error) {
       setState("error");
       setMessage(

@@ -157,6 +157,19 @@ export default function RequestManagementStatusCard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requestId]);
 
+  useEffect(() => {
+    function handleRefresh() {
+      loadStatus();
+    }
+
+    window.addEventListener("ptm-management-status-refresh", handleRefresh);
+
+    return () => {
+      window.removeEventListener("ptm-management-status-refresh", handleRefresh);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestId]);
+
   async function saveStatus() {
     if (!requestId) {
       setErrorMessage("No se detectó requestId.");
