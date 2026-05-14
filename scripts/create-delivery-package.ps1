@@ -1,24 +1,6 @@
 param(
   [Parameter(Mandatory=$true)]
-  [string]$RequestId,
-
-  [Parameter(Mandatory=$true)]
-  [string]$Nombre,
-
-  [Parameter(Mandatory=$true)]
-  [string]$Email,
-
-  [Parameter(Mandatory=$true)]
-  [string]$Patente,
-
-  [Parameter(Mandatory=$false)]
-  [int]$MultasPrescritas = 1,
-
-  [Parameter(Mandatory=$false)]
-  [string]$TotalMultas = "",
-
-  [Parameter(Mandatory=$false)]
-  [string]$MontoReferencial = ""
+  [string]$RequestId
 )
 
 $ErrorActionPreference = "Stop"
@@ -27,65 +9,88 @@ $project = Split-Path -Parent $PSScriptRoot
 $templateDir = Join-Path $project "docs\templates"
 $deliveryRoot = Join-Path $project "docs\deliveries"
 $deliveryDir = Join-Path $deliveryRoot $RequestId
+$dataFile = Join-Path $deliveryDir "delivery-data.json"
 $utf8 = New-Object System.Text.UTF8Encoding($false)
-
-function Write-Utf8File($path, $content) {
-  [System.IO.File]::WriteAllText($path, $content, $utf8)
-}
 
 function Read-File($path) {
   return [System.IO.File]::ReadAllText($path)
 }
 
-function Replace-BaseFields($content) {
-  $fecha = Get-Date -Format "dd-MM-yyyy"
+function Write-Utf8File($path, $content) {
+  [System.IO.File]::WriteAllText($path, $content, $utf8)
+}
 
-  $content = $content.Replace("{{REQUEST_ID}}", $RequestId)
-  $content = $content.Replace("{{NOMBRE_CLIENTE}}", $Nombre)
-  $content = $content.Replace("{{NOMBRE_SOLICITANTE}}", $Nombre)
-  $content = $content.Replace("{{EMAIL_CLIENTE}}", $Email)
-  $content = $content.Replace("{{EMAIL_SOLICITANTE}}", $Email)
-  $content = $content.Replace("{{PATENTE}}", $Patente)
-  $content = $content.Replace("{{FECHA_INFORME}}", $fecha)
-  $content = $content.Replace("{{FECHA_PRESENTACION}}", $fecha)
-  $content = $content.Replace("{{FECHA_COMPRA}}", $fecha)
-
-  if ($TotalMultas -ne "") {
-    $content = $content.Replace("{{TOTAL_MULTAS}}", $TotalMultas)
+function Value-Or-Marker($value, $marker) {
+  if ($null -eq $value) {
+    return $marker
   }
 
-  if ($MultasPrescritas -gt 0) {
-    $content = $content.Replace("{{TOTAL_POTENCIALMENTE_PRESCRITAS}}", [string]$MultasPrescritas)
+  $text = "$value".Trim()
+
+  if ($text -eq "") {
+    return $marker
   }
 
-  if ($TotalMultas -ne "" -and $MultasPrescritas -gt 0) {
-    $noPrescritas = 0
-    try {
-      $noPrescritas = [int]$TotalMultas - $MultasPrescritas
-      if ($noPrescritas -lt 0) { $noPrescritas = 0 }
-      $content = $content.Replace("{{TOTAL_NO_PRESCRITAS}}", [string]$noPrescritas)
-    } catch {
-      $content = $content.Replace("{{TOTAL_NO_PRESCRITAS}}", "")
-    }
-  }
+  return $text
+}
 
-  if ($MontoReferencial -ne "") {
-    $content = $content.Replace("{{MONTO_REFERENCIAL_PRESCRITO}}", $MontoReferencial)
+function Replace-All($content, $map) {
+  foreach ($key in $map.Keys) {
+    $content = $content.Replace($key, $map[$key])
   }
 
   return $content
+}
+
+if (!([System.IO.Directory]::Exists($deliveryDir))) {
+  [System.IO.Directory]::CreateDirectory($deliveryDir) | Out-Null
+}
+
+if (!([System.IO.File]::Exists($dataFile))) {
+  throw "No existe delivery-data.json. Créalo primero en: $dataFile"
 }
 
 if (!([System.IO.Directory]::Exists($templateDir))) {
   throw "No existe carpeta de plantillas: $templateDir"
 }
 
-if (!([System.IO.Directory]::Exists($deliveryRoot))) {
-  [System.IO.Directory]::CreateDirectory($deliveryRoot) | Out-Null
-}
+$data = Get-Content $dataFile | ConvertFrom-Json
 
-if (!([System.IO.Directory]::Exists($deliveryDir))) {
-  [System.IO.Directory]::CreateDirectory($deliveryDir) | Out-Null
+$nombre = Value-Or-Marker $data.nombreCliente "{{NOMBRE_CLIENTE}}"
+$email = Value-Or-Marker $data.emailCliente "{{EMAIL_CLIENTE}}"
+$patente = Value-Or-Marker $data.patente "{{PATENTE}}"
+$fechaInforme = Value-Or-Marker $data.fechaInforme (Get-Date -Format "dd-MM-yyyy")
+$fechaCompra = Value-Or-Marker $data.fechaCompra "{{FECHA_COMPRA}}"
+$totalMultas = Value-Or-Marker $data.totalMultas "{{TOTAL_MULTAS}}"
+$totalPrescritas = Value-Or-Marker $data.totalPotencialmentePrescritas "{{TOTAL_POTENCIALMENTE_PRESCRITAS}}"
+$totalNoPrescritas = Value-Or-Marker $data.totalNoPrescritas "{{TOTAL_NO_PRESCRITAS}}"
+$montoReferencial = Value-Or-Marker $data.montoReferencialPrescrito "{{MONTO_REFERENCIAL_PRESCRITO}}"
+
+$rut = Value-Or-Marker $data.rutSolicitante "{{RUT_SOLICITANTE}}"
+$profesion = Value-Or-Marker $data.profesionOficio "{{PROFESION_OFICIO}}"
+$domicilio = Value-Or-Marker $data.domicilioSolicitante "{{DOMICILIO_SOLICITANTE}}"
+$comunaSolicitante = Value-Or-Marker $data.comunaSolicitante "{{COMUNA_SOLICITANTE}}"
+$documentosAdicionales = Value-Or-Marker $data.documentosAdicionales "{{DOCUMENTOS_ADICIONALES}}"
+
+$baseMap = @{
+  "{{REQUEST_ID}}" = $RequestId
+  "{{NOMBRE_CLIENTE}}" = $nombre
+  "{{NOMBRE_SOLICITANTE}}" = $nombre
+  "{{EMAIL_CLIENTE}}" = $email
+  "{{EMAIL_SOLICITANTE}}" = $email
+  "{{PATENTE}}" = $patente
+  "{{FECHA_INFORME}}" = $fechaInforme
+  "{{FECHA_PRESENTACION}}" = $fechaInforme
+  "{{FECHA_COMPRA}}" = $fechaCompra
+  "{{TOTAL_MULTAS}}" = $totalMultas
+  "{{TOTAL_POTENCIALMENTE_PRESCRITAS}}" = $totalPrescritas
+  "{{TOTAL_NO_PRESCRITAS}}" = $totalNoPrescritas
+  "{{MONTO_REFERENCIAL_PRESCRITO}}" = $montoReferencial
+  "{{RUT_SOLICITANTE}}" = $rut
+  "{{PROFESION_OFICIO}}" = $profesion
+  "{{DOMICILIO_SOLICITANTE}}" = $domicilio
+  "{{COMUNA_SOLICITANTE}}" = $comunaSolicitante
+  "{{DOCUMENTOS_ADICIONALES}}" = $documentosAdicionales
 }
 
 $templates = @{
@@ -103,47 +108,75 @@ foreach ($templateName in $templates.Keys) {
   }
 
   $content = Read-File $templatePath
-  $content = Replace-BaseFields $content
+  $content = Replace-All $content $baseMap
   Write-Utf8File $outputPath $content
 }
 
 $solicitudTemplate = Join-Path $templateDir "solicitud-prescripcion.md"
 
 if (!([System.IO.File]::Exists($solicitudTemplate))) {
-  throw "Falta plantilla de solicitud: $solicitudTemplate"
+  throw "Falta plantilla: $solicitudTemplate"
 }
 
 $solicitudBase = Read-File $solicitudTemplate
-$solicitudBase = Replace-BaseFields $solicitudBase
+$solicitudBase = Replace-All $solicitudBase $baseMap
 
-$solicitudGeneral = Join-Path $deliveryDir "solicitud-prescripcion-base.md"
-Write-Utf8File $solicitudGeneral $solicitudBase
+Write-Utf8File (Join-Path $deliveryDir "solicitud-prescripcion-base.md") $solicitudBase
 
-for ($i = 1; $i -le $MultasPrescritas; $i++) {
-  $num = "{0:D2}" -f $i
-  $outFile = Join-Path $deliveryDir "solicitud-prescripcion-multa-$num.md"
+$multas = @()
 
-  $content = $solicitudBase
-  $content = $content.Replace("{{ROL_CAUSA}}", "{{ROL_CAUSA_MULTA_$num}}")
-  $content = $content.Replace("{{COMUNA_TRIBUNAL}}", "{{COMUNA_TRIBUNAL_MULTA_$num}}")
-  $content = $content.Replace("{{NUMERO_TRIBUNAL}}", "{{NUMERO_TRIBUNAL_MULTA_$num}}")
-  $content = $content.Replace("{{MONTO_MULTA_UTM}}", "{{MONTO_MULTA_UTM_$num}}")
-  $content = $content.Replace("{{INFRACCION}}", "{{INFRACCION_MULTA_$num}}")
-  $content = $content.Replace("{{FECHA_INGRESO_RMNP}}", "{{FECHA_INGRESO_RMNP_MULTA_$num}}")
-
-  Write-Utf8File $outFile $content
+if ($null -ne $data.multasPrescritas) {
+  if ($data.multasPrescritas -is [System.Array]) {
+    $multas = $data.multasPrescritas
+  } else {
+    $multas = @($data.multasPrescritas)
+  }
 }
 
-$readmePath = Join-Path $deliveryDir "README_ENTREGA.md"
+if ($multas.Count -eq 0) {
+  $multas = @(
+    @{
+      numero = "01"
+      comunaTribunal = ""
+      numeroTribunal = ""
+      rolCausa = ""
+      montoMultaUtm = ""
+      infraccion = ""
+      fechaIngresoRmnp = ""
+    }
+  )
+}
+
+foreach ($multa in $multas) {
+  $numero = Value-Or-Marker $multa.numero "01"
+  $num = "{0:D2}" -f [int]$numero
+
+  $fineMap = @{
+    "{{COMUNA_TRIBUNAL}}" = Value-Or-Marker $multa.comunaTribunal "{{COMUNA_TRIBUNAL}}"
+    "{{NUMERO_TRIBUNAL}}" = Value-Or-Marker $multa.numeroTribunal "{{NUMERO_TRIBUNAL}}"
+    "{{ROL_CAUSA}}" = Value-Or-Marker $multa.rolCausa "{{ROL_CAUSA}}"
+    "{{MONTO_MULTA_UTM}}" = Value-Or-Marker $multa.montoMultaUtm "{{MONTO_MULTA_UTM}}"
+    "{{INFRACCION}}" = Value-Or-Marker $multa.infraccion "{{INFRACCION}}"
+    "{{FECHA_INGRESO_RMNP}}" = Value-Or-Marker $multa.fechaIngresoRmnp "{{FECHA_INGRESO_RMNP}}"
+  }
+
+  $content = $solicitudBase
+  $content = Replace-All $content $fineMap
+
+  $outFile = Join-Path $deliveryDir "solicitud-prescripcion-multa-$num.md"
+  Write-Utf8File $outFile $content
+}
 
 $readme = @"
 # Paquete de entrega PTM
 
 **Solicitud:** $RequestId  
-**Cliente:** $Nombre  
-**Correo:** $Email  
-**Patente:** $Patente  
-**Multas potencialmente prescritas:** $MultasPrescritas  
+**Cliente:** $nombre  
+**Correo:** $email  
+**Patente:** $patente  
+**Total multas:** $totalMultas  
+**Multas potencialmente prescritas:** $totalPrescritas  
+**Monto referencial:** $montoReferencial  
 
 ## Archivos generados
 
@@ -151,35 +184,30 @@ $readme = @"
 - instructivo.md
 - checklist.md
 - solicitud-prescripcion-base.md
-- solicitud-prescripcion-multa-01.md ... según cantidad de multas prescritas
+- solicitud-prescripcion-multa-XX.md
 
-## Completar manualmente por cada multa
+## Fuente de datos
 
-En cada archivo solicitud-prescripcion-multa-XX.md reemplazar:
+Este paquete fue generado desde:
 
-- {{COMUNA_TRIBUNAL_MULTA_XX}}
-- {{NUMERO_TRIBUNAL_MULTA_XX}}
-- {{ROL_CAUSA_MULTA_XX}}
-- {{MONTO_MULTA_UTM_XX}}
-- {{INFRACCION_MULTA_XX}}
-- {{FECHA_INGRESO_RMNP_MULTA_XX}}
+- delivery-data.json
+- docs/templates/
 
-## Completar datos del solicitante si faltan
+## Campos pendientes
 
-- {{PROFESION_OFICIO}}
-- {{DOMICILIO_SOLICITANTE}}
-- {{COMUNA_SOLICITANTE}}
-- {{DOCUMENTOS_ADICIONALES}}
+Buscar marcadores con:
 
-## Recordatorio
+Select-String -Path ".\docs\deliveries\$RequestId\*.md" -Pattern "{{"
 
-No subir esta carpeta a GitHub. Contiene datos de cliente.
+## Seguridad
+
+No subir docs/deliveries/ a GitHub. Contiene datos de cliente.
 "@
 
-Write-Utf8File $readmePath $readme
+Write-Utf8File (Join-Path $deliveryDir "README_ENTREGA.md") $readme
 
 Write-Host ""
-Write-Host "OK: paquete de entrega creado"
+Write-Host "OK: paquete generado desde delivery-data.json"
 Write-Host $deliveryDir
 Write-Host ""
 cmd /c dir "$deliveryDir"
