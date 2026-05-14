@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useParams } from "next/navigation";
 
 type SendState = "idle" | "sending" | "sent" | "error";
@@ -29,8 +30,13 @@ export default function SendDocumentsReadyButton() {
   const params = useParams();
   const requestId = useMemo(() => getRequestIdFromParams(params), [params]);
 
+  const [mounted, setMounted] = useState(false);
   const [state, setState] = useState<SendState>("idle");
   const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   async function handleSend() {
     if (!requestId) {
@@ -87,16 +93,22 @@ export default function SendDocumentsReadyButton() {
     }
   }
 
-  return (
+  if (!mounted) {
+    return null;
+  }
+
+  return createPortal(
     <div
       style={{
         position: "fixed",
-        right: 24,
-        bottom: 24,
-        zIndex: 9999,
-        maxWidth: 360,
+        right: "24px",
+        top: "92px",
+        zIndex: 2147483647,
+        width: "360px",
+        maxWidth: "calc(100vw - 32px)",
+        pointerEvents: "auto",
       }}
-      className="rounded-2xl border border-emerald-300 bg-white p-4 shadow-2xl"
+      className="rounded-2xl border-2 border-emerald-400 bg-white p-4 shadow-2xl"
     >
       <p className="text-sm font-black text-emerald-950">
         Entrega al cliente
@@ -130,6 +142,7 @@ export default function SendDocumentsReadyButton() {
           {message}
         </p>
       ) : null}
-    </div>
+    </div>,
+    document.body
   );
 }
