@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import SendDocumentsReadyButton from "@/components/admin/SendDocumentsReadyButton";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 
@@ -711,7 +712,9 @@ export default function AdminRequestDetailPage() {
               </InfoCard>
 
               <details className="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-sm">
-                <summary className="cursor-pointer text-sm font-black uppercase tracking-[0.16em] text-slate-400 transition hover:text-cyan-300">
+                
+          <SendDocumentsReadyButton />
+<summary className="cursor-pointer text-sm font-black uppercase tracking-[0.16em] text-slate-400 transition hover:text-cyan-300">
                   Ver datos técnicos
                 </summary>
 
