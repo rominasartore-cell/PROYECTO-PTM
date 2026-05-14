@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import RequestManagementStatusCard from "@/components/admin/RequestManagementStatusCard";
 import SendDocumentsReadyButton from "@/components/admin/SendDocumentsReadyButton";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -596,6 +597,8 @@ export default function AdminRequestDetailPage() {
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">Prescribe tu Multa</p>
               <h1 className="mt-2 text-3xl font-black">Ficha administrativa</h1>
           <SendDocumentsReadyButton />
+          <RequestManagementStatusCard />
+
 
               <p className="mt-2 break-all text-sm text-slate-300">Request ID: {requestId || "Sin requestId"}</p>
             </div>
