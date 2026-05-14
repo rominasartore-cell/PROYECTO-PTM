@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
-  title: "Resultado de análisis",
   robots: {
     index: false,
     follow: false,
@@ -12,10 +12,10 @@ export const metadata: Metadata = {
   },
 };
 
-export default function ResultadoLayout({
+export default function ResultadosLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return children;
 }
