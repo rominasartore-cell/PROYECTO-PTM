@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import ManualDeliveryCard from "@/components/admin/ManualDeliveryCard";
 import RequestManagementStatusCard from "@/components/admin/RequestManagementStatusCard";
 import SendDocumentsReadyButton from "@/components/admin/SendDocumentsReadyButton";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -598,6 +599,8 @@ export default function AdminRequestDetailPage() {
               <h1 className="mt-2 text-3xl font-black">Ficha administrativa</h1>
           <SendDocumentsReadyButton />
           <RequestManagementStatusCard />
+          <ManualDeliveryCard />
+
 
 
               <p className="mt-2 break-all text-sm text-slate-300">Request ID: {requestId || "Sin requestId"}</p>
