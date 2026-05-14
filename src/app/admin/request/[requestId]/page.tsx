@@ -578,9 +578,7 @@ export default function AdminRequestDetailPage() {
   if (!authReady) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4 text-white">
-        <div className="mb-6">
-          <SendDocumentsReadyButton />
-        </div>
+        
 
         <div className="rounded-2xl border border-slate-800 bg-slate-900/80 px-6 py-4 text-sm text-slate-300 shadow-xl">
           Verificando sesion administrativa...
@@ -597,6 +595,8 @@ export default function AdminRequestDetailPage() {
             <div className="min-w-0">
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">Prescribe tu Multa</p>
               <h1 className="mt-2 text-3xl font-black">Ficha administrativa</h1>
+          <SendDocumentsReadyButton />
+
               <p className="mt-2 break-all text-sm text-slate-300">Request ID: {requestId || "Sin requestId"}</p>
             </div>
 

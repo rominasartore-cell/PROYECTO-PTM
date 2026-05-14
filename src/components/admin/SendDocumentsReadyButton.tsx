@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
+import { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 
 type SendState = "idle" | "sending" | "sent" | "error";
@@ -11,7 +10,6 @@ type ApiResponse = {
   message?: string;
   error?: string;
   provider?: string;
-  type?: string;
   id?: string | null;
   outbox?: boolean;
 };
@@ -30,18 +28,13 @@ export default function SendDocumentsReadyButton() {
   const params = useParams();
   const requestId = useMemo(() => getRequestIdFromParams(params), [params]);
 
-  const [mounted, setMounted] = useState(false);
   const [state, setState] = useState<SendState>("idle");
   const [message, setMessage] = useState("");
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   async function handleSend() {
     if (!requestId) {
       setState("error");
-      setMessage("No se detectó requestId.");
+      setMessage("No se pudo detectar el requestId.");
       return;
     }
 
@@ -58,9 +51,7 @@ export default function SendDocumentsReadyButton() {
 
     try {
       const response = await fetch(
-        `/api/admin/requests/${encodeURIComponent(
-          requestId
-        )}/send-documents-ready?ts=${Date.now()}`,
+        `/api/admin/requests/${encodeURIComponent(requestId)}/send-documents-ready?ts=${Date.now()}`,
         {
           method: "POST",
           cache: "no-store",
@@ -80,8 +71,8 @@ export default function SendDocumentsReadyButton() {
       setState("sent");
       setMessage(
         data.outbox
-          ? "Guardado en outbox."
-          : "Correo enviado correctamente."
+          ? "Correo guardado en outbox para envío posterior."
+          : "Correo de documentos listos enviado correctamente."
       );
     } catch (error) {
       setState("error");
@@ -93,56 +84,43 @@ export default function SendDocumentsReadyButton() {
     }
   }
 
-  if (!mounted) {
-    return null;
-  }
+  return (
+    <div className="my-6 rounded-2xl border-2 border-emerald-500 bg-emerald-50 p-5 shadow-sm">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-black uppercase tracking-wide text-emerald-950">
+            Entrega al cliente
+          </p>
+          <p className="mt-1 text-sm leading-6 text-emerald-900">
+            Envía el correo de <strong>documentos listos</strong> para esta solicitud. No modifica Mercado Pago ni el estado del pago.
+          </p>
+        </div>
 
-  return createPortal(
-    <div
-      style={{
-        position: "fixed",
-        right: "24px",
-        top: "92px",
-        zIndex: 2147483647,
-        width: "360px",
-        maxWidth: "calc(100vw - 32px)",
-        pointerEvents: "auto",
-      }}
-      className="rounded-2xl border-2 border-emerald-400 bg-white p-4 shadow-2xl"
-    >
-      <p className="text-sm font-black text-emerald-950">
-        Entrega al cliente
-      </p>
-
-      <p className="mt-1 text-xs leading-5 text-slate-600">
-        Envía el correo de documentos listos para esta solicitud.
-      </p>
-
-      <button
-        type="button"
-        onClick={handleSend}
-        disabled={state === "sending"}
-        className="mt-3 w-full rounded-xl bg-emerald-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        {state === "sending"
-          ? "Enviando..."
-          : state === "sent"
-            ? "Correo enviado"
-            : "Enviar documentos listos"}
-      </button>
+        <button
+          type="button"
+          onClick={handleSend}
+          disabled={state === "sending"}
+          className="rounded-xl bg-emerald-700 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {state === "sending"
+            ? "Enviando..."
+            : state === "sent"
+              ? "Correo enviado"
+              : "Enviar correo documentos listos"}
+        </button>
+      </div>
 
       {message ? (
         <p
           className={
             state === "error"
-              ? "mt-2 text-xs font-semibold text-red-700"
-              : "mt-2 text-xs font-semibold text-emerald-700"
+              ? "mt-3 text-sm font-bold text-red-700"
+              : "mt-3 text-sm font-bold text-emerald-800"
           }
         >
           {message}
         </p>
       ) : null}
-    </div>,
-    document.body
+    </div>
   );
 }
