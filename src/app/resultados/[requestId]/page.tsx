@@ -15,6 +15,8 @@ type PaymentStatusResponse = {
   error?: string | null;
   payment?: {
     status?: string | null;
+    rawStatus?: string | null;
+    statusDetail?: string | null;
     amount?: number | null;
     customerEmail?: string | null;
     customerName?: string | null;
@@ -85,9 +87,9 @@ function getStatusCopy(status: NormalizedStatus, hasConfirmedRecord: boolean): S
     return {
       title: "Pago rechazado",
       badge: "Rechazado",
-      message: "Mercado Pago no aprobó la operación.",
+      message: "Mercado Pago rechazó la operación.",
       detail:
-        "Puedes volver al resultado preliminar e intentar nuevamente. Si el banco sí descontó dinero, revisa el comprobante de Mercado Pago antes de repetir el pago.",
+        "No se registró una compra aprobada. Puedes intentar nuevamente usando tu medio de pago habitual, otro dispositivo o contactar soporte si tienes dudas.",
       panelClass: "border-emerald-200 bg-emerald-50 text-emerald-950",
       badgeClass: "border-emerald-300 bg-emerald-100 text-emerald-900",
     };
@@ -241,6 +243,8 @@ function ResultadosContent() {
 
   const email = String(data?.payment?.customerEmail || queryEmail || "").trim();
   const amount = data?.payment?.amount ?? null;
+  const rawStatus = String(data?.payment?.rawStatus || "").trim();
+  const statusDetail = String(data?.payment?.statusDetail || "").trim();
   const preferenceId = String(data?.payment?.preferenceId || "").trim();
   const paymentId = String(data?.payment?.paymentId || "").trim();
   const isMock = Boolean(data?.payment?.mock) || queryMock === "true";
@@ -266,10 +270,12 @@ function ResultadosContent() {
       amount: Number(amount || 0),
       status: "approved",
       purchase_status: "paid",
+      mercado_pago_status: rawStatus || "approved",
+      mercado_pago_status_detail: statusDetail || "",
       mock: isMock,
       sandbox: isSandbox,
     });
-  }, [amount, hasConfirmedRecord, isMock, isSandbox, loading, requestId, status]);
+  }, [amount, hasConfirmedRecord, isMock, isSandbox, loading, rawStatus, requestId, status, statusDetail]);
 
   const supportHref = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(
     `Soporte compra PTM ${requestId || "sin codigo"}`
@@ -348,6 +354,18 @@ function ResultadosContent() {
                 <p>
                   <span className="font-black text-slate-950">Sandbox:</span> {isSandbox ? "Sí" : "No"}
                 </p>
+
+                {rawStatus ? (
+                  <p className="break-all">
+                    <span className="font-black text-slate-950">Estado Mercado Pago:</span> {rawStatus}
+                  </p>
+                ) : null}
+
+                {statusDetail ? (
+                  <p className="break-all">
+                    <span className="font-black text-slate-950">Detalle Mercado Pago:</span> {statusDetail}
+                  </p>
+                ) : null}
               </div>
             </div>
           )}

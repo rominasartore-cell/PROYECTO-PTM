@@ -76,6 +76,8 @@ export async function GET(_request: Request, context: RouteContext) {
         requestId: payment.requestId,
         externalReference: payment.externalReference,
         status,
+        rawStatus: payment.rawStatus || null,
+        statusDetail: payment.statusDetail || null,
         amount: payment.amount,
         customerEmail: payment.customerEmail,
         customerName: payment.customerName,
