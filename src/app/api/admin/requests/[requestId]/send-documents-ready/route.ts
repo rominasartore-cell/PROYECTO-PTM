@@ -100,7 +100,7 @@ function isPaidRecord(record: AnyRecord | null | undefined): boolean {
 }
 
 function isUuid(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i.test(
     value
   );
 }
@@ -204,9 +204,106 @@ function mergeRecords(payment: AnyRecord | null, analysis: AnyRecord | null): An
   };
 }
 
+async function insertEmailEvent(
+  supabase: ReturnType<typeof getSupabaseClient>,
+  data: {
+    requestId: string;
+    email: string;
+    type: string;
+    provider?: string | null;
+    providerId?: string | null;
+    outbox?: boolean;
+    status: "sent" | "failed";
+    message?: string | null;
+    error?: string | null;
+    metadata?: AnyRecord;
+  }
+): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await supabase.from("ptm_email_events").insert({
+    request_id: data.requestId,
+    email: data.email,
+    type: data.type,
+    provider: data.provider || null,
+    provider_id: data.providerId || null,
+    outbox: data.outbox || false,
+    status: data.status,
+    message: data.message || null,
+    error: data.error || null,
+    metadata: data.metadata || {},
+  });
+
+  if (error) {
+    return {
+      ok: false,
+      error: error.message,
+    };
+  }
+
+  return {
+    ok: true,
+  };
+}
+
+async function listEmailEvents(
+  supabase: ReturnType<typeof getSupabaseClient>,
+  requestId: string
+): Promise<AnyRecord[]> {
+  const { data, error } = await supabase
+    .from("ptm_email_events")
+    .select("*")
+    .eq("request_id", requestId)
+    .eq("type", "documents_ready")
+    .order("created_at", { ascending: false })
+    .limit(10);
+
+  if (error || !data) {
+    return [];
+  }
+
+  return data as AnyRecord[];
+}
+
+export async function GET(_request: Request, context: RouteContext) {
+  try {
+    const params = await context.params;
+    const requestId = decodeURIComponent(getString(params.requestId));
+
+    if (!requestId) {
+      return jsonResponse(
+        {
+          ok: false,
+          error: "requestId requerido.",
+        },
+        400
+      );
+    }
+
+    const supabase = getSupabaseClient();
+    const events = await listEmailEvents(supabase, requestId);
+
+    return jsonResponse({
+      ok: true,
+      requestId,
+      type: "documents_ready",
+      events,
+      lastEvent: events[0] || null,
+    });
+  } catch (error) {
+    return jsonResponse(
+      {
+        ok: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Error consultando bitácora de correos.",
+      },
+      500
+    );
+  }
+}
 export async function POST(_request: Request, context: RouteContext) {
   try {
-    const params = await Promise.resolve(context.params);
+    const params = await context.params;
     const requestId = decodeURIComponent(getString(params.requestId));
 
     if (!requestId) {
@@ -307,6 +404,22 @@ export async function POST(_request: Request, context: RouteContext) {
     });
 
     if (!result.ok) {
+      const failedLog = await insertEmailEvent(supabase, {
+        requestId,
+        email,
+        type: "documents_ready",
+        provider: result.provider,
+        providerId: result.id || null,
+        outbox: result.outbox || false,
+        status: "failed",
+        error: result.error || "No se pudo enviar el correo.",
+        metadata: {
+          source: paymentRecord ? "ptm_payments" : "analysis_requests",
+          plate: plate || null,
+          amount: amount || null,
+        },
+      });
+
       return jsonResponse(
         {
           ok: false,
@@ -314,10 +427,30 @@ export async function POST(_request: Request, context: RouteContext) {
           email,
           provider: result.provider,
           error: result.error || "No se pudo enviar el correo de documentos listos.",
+          logSaved: failedLog.ok,
+          logError: failedLog.error || null,
         },
         500
       );
     }
+
+    const logResult = await insertEmailEvent(supabase, {
+      requestId,
+      email,
+      type: "documents_ready",
+      provider: result.provider,
+      providerId: result.id || null,
+      outbox: result.outbox || false,
+      status: "sent",
+      message: "Correo de documentos listos enviado correctamente.",
+      metadata: {
+        source: paymentRecord ? "ptm_payments" : "analysis_requests",
+        plate: plate || null,
+        amount: amount || null,
+      },
+    });
+
+    const events = await listEmailEvents(supabase, requestId);
 
     return jsonResponse({
       ok: true,
@@ -328,6 +461,9 @@ export async function POST(_request: Request, context: RouteContext) {
       provider: result.provider,
       id: result.id || null,
       outbox: result.outbox || false,
+      logSaved: logResult.ok,
+      logError: logResult.error || null,
+      lastEvent: events[0] || null,
       message: "Correo de documentos listos enviado correctamente.",
     });
   } catch (error) {
