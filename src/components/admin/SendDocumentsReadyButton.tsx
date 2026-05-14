@@ -35,7 +35,7 @@ export default function SendDocumentsReadyButton() {
   async function handleSend() {
     if (!requestId) {
       setState("error");
-      setMessage("No se pudo detectar el requestId.");
+      setMessage("No se detectó requestId.");
       return;
     }
 
@@ -74,8 +74,8 @@ export default function SendDocumentsReadyButton() {
       setState("sent");
       setMessage(
         data.outbox
-          ? "Correo guardado en outbox para envío posterior."
-          : "Correo de documentos listos enviado correctamente."
+          ? "Guardado en outbox."
+          : "Correo enviado correctamente."
       );
     } catch (error) {
       setState("error");
@@ -87,41 +87,44 @@ export default function SendDocumentsReadyButton() {
     }
   }
 
-  const disabled = state === "sending";
-
   return (
-    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm font-bold text-emerald-950">
-            Entrega al cliente
-          </p>
-          <p className="mt-1 text-xs leading-5 text-emerald-800">
-            Envía el correo de “documentos listos” sin tocar Mercado Pago ni el
-            estado del pago.
-          </p>
-        </div>
+    <div
+      style={{
+        position: "fixed",
+        right: 24,
+        bottom: 24,
+        zIndex: 9999,
+        maxWidth: 360,
+      }}
+      className="rounded-2xl border border-emerald-300 bg-white p-4 shadow-2xl"
+    >
+      <p className="text-sm font-black text-emerald-950">
+        Entrega al cliente
+      </p>
 
-        <button
-          type="button"
-          onClick={handleSend}
-          disabled={disabled}
-          className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {state === "sending"
-            ? "Enviando..."
-            : state === "sent"
-              ? "Correo enviado"
-              : "Enviar correo documentos listos"}
-        </button>
-      </div>
+      <p className="mt-1 text-xs leading-5 text-slate-600">
+        Envía el correo de documentos listos para esta solicitud.
+      </p>
+
+      <button
+        type="button"
+        onClick={handleSend}
+        disabled={state === "sending"}
+        className="mt-3 w-full rounded-xl bg-emerald-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {state === "sending"
+          ? "Enviando..."
+          : state === "sent"
+            ? "Correo enviado"
+            : "Enviar documentos listos"}
+      </button>
 
       {message ? (
         <p
           className={
             state === "error"
-              ? "mt-3 text-xs font-semibold text-red-700"
-              : "mt-3 text-xs font-semibold text-emerald-800"
+              ? "mt-2 text-xs font-semibold text-red-700"
+              : "mt-2 text-xs font-semibold text-emerald-700"
           }
         >
           {message}
