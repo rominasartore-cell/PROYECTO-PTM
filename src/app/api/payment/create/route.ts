@@ -9,11 +9,14 @@ type PaymentBody = {
   quoteToken?: string;
   name?: string;
   nombre?: string;
+  customerName?: string;
   email?: string;
   correo?: string;
   payerEmail?: string;
+  customerEmail?: string;
   plate?: string;
   patente?: string;
+  vehiclePlate?: string;
   totalMultas?: number;
   multasSusceptibles?: number;
   montoPotencial?: number;
@@ -21,8 +24,12 @@ type PaymentBody = {
   valorUtm?: number;
   analysisResult?: any;
   result?: any;
+  analysis?: any;
+  summary?: any;
+  frontendResult?: any;
   product?: string;
   amount?: number;
+  [key: string]: any;
 };
 
 function getEnvNumber(key: string, fallback: number): number {
@@ -139,6 +146,22 @@ function numberFrom(value: unknown, fallback = 0): number {
   return fallback;
 }
 
+function pickPositiveNumber(sources: any[], keys: string[]): number {
+  for (const source of sources) {
+    if (!source || typeof source !== "object") continue;
+
+    for (const key of keys) {
+      const parsed = numberFrom(source[key], Number.NaN);
+
+      if (Number.isFinite(parsed) && parsed > 0) {
+        return parsed;
+      }
+    }
+  }
+
+  return 0;
+}
+
 function createRequestId(body: PaymentBody): string {
   const existing =
     sanitizeText(body.requestId, "") ||
@@ -223,24 +246,92 @@ export async function POST(request: Request) {
 
     const reportPriceClp = getEnvNumber("REPORT_PRICE_CLP", 9990);
 
-    const name = sanitizeText(body.name ?? body.nombre, "Cliente");
-    const email = sanitizeEmail(body.email ?? body.correo ?? body.payerEmail);
-    const plate = sanitizeText(body.plate ?? body.patente, "SIN-PATENTE");
+    const name = sanitizeText(
+      body.name ?? body.nombre ?? body.customerName,
+      "Cliente"
+    );
+
+    const email = sanitizeEmail(
+      body.email ?? body.correo ?? body.payerEmail ?? body.customerEmail
+    );
+
+    const plate = sanitizeText(
+      body.plate ?? body.patente ?? body.vehiclePlate,
+      "SIN-PATENTE"
+    );
+
     const product = sanitizeText(body.product, "informe-completo-prescripcion");
 
     const sourceResult = body.analysisResult || body.result || body;
 
-    const totalMultas = numberFrom(sourceResult.totalMultas ?? body.totalMultas);
-    const multasSusceptibles = numberFrom(
-      sourceResult.multasSusceptibles ?? body.multasSusceptibles
-    );
-    const montoPotencial = numberFrom(
-      sourceResult.montoPotencial ?? body.montoPotencial
-    );
-    const montoPotencialUtm = numberFrom(
-      sourceResult.montoPotencialUtm ?? body.montoPotencialUtm
-    );
-    const valorUtm = numberFrom(sourceResult.valorUtm ?? body.valorUtm);
+    const sources = [
+      body.analysisResult,
+      body.result,
+      body.analysis,
+      body.summary,
+      body.frontendResult,
+      sourceResult,
+      body,
+    ].filter(Boolean);
+
+    const totalMultas = pickPositiveNumber(sources, [
+      "totalMultas",
+      "total_multas",
+      "totalFines",
+      "total_fines",
+      "finesCount",
+      "fines_count",
+      "totalTickets",
+      "total_tickets",
+    ]);
+
+    let multasSusceptibles = pickPositiveNumber(sources, [
+      "multasSusceptibles",
+      "multas_susceptibles",
+      "prescribedCount",
+      "prescribed_count",
+      "potentiallyPrescribed",
+      "potentially_prescribed",
+      "totalPotentiallyPrescribed",
+      "total_potentially_prescribed",
+      "eligibleForPurchase",
+      "eligible_for_purchase",
+      "eligibleFines",
+      "eligible_fines",
+      "revisableFines",
+      "revisable_fines",
+    ]);
+
+    const montoPotencial = pickPositiveNumber(sources, [
+      "montoPotencial",
+      "monto_potencial",
+      "potentialAmount",
+      "potential_amount",
+      "prescribedAmount",
+      "prescribed_amount",
+      "amountPotentiallyPrescribed",
+      "amount_potentially_prescribed",
+    ]);
+
+    const montoPotencialUtm = pickPositiveNumber(sources, [
+      "montoPotencialUtm",
+      "monto_potencial_utm",
+      "totalUtm",
+      "total_utm",
+      "prescribedUtm",
+      "prescribed_utm",
+    ]);
+
+    const valorUtm = pickPositiveNumber(sources, [
+      "valorUtm",
+      "valor_utm",
+      "utmClp",
+      "utm_clp",
+    ]);
+
+    if (multasSusceptibles <= 0 && (montoPotencial > 0 || montoPotencialUtm > 0)) {
+      multasSusceptibles = 1;
+    }
 
     if (!email) {
       return Response.json(
@@ -259,6 +350,13 @@ export async function POST(request: Request) {
           error:
             "No hay multas revisables o potencialmente prescritas. Compra no disponible.",
           requestId,
+          debug: {
+            totalMultas,
+            multasSusceptibles,
+            montoPotencial,
+            montoPotencialUtm,
+            receivedKeys: Object.keys(body || {}),
+          },
         },
         { status: 400 }
       );
@@ -453,6 +551,7 @@ export async function POST(request: Request) {
       external_reference: requestId,
       amount: reportPriceClp,
       urls,
+      metadata: commonMetadata,
       mercadoPago: {
         id: mpData.id,
         init_point: mpData.init_point,
