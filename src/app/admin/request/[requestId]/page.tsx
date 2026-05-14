@@ -578,6 +578,10 @@ export default function AdminRequestDetailPage() {
   if (!authReady) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4 text-white">
+        <div className="mb-6">
+          <SendDocumentsReadyButton />
+        </div>
+
         <div className="rounded-2xl border border-slate-800 bg-slate-900/80 px-6 py-4 text-sm text-slate-300 shadow-xl">
           Verificando sesion administrativa...
         </div>
@@ -713,7 +717,7 @@ export default function AdminRequestDetailPage() {
 
               <details className="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-sm">
                 
-          <SendDocumentsReadyButton />
+          
 <summary className="cursor-pointer text-sm font-black uppercase tracking-[0.16em] text-slate-400 transition hover:text-cyan-300">
                   Ver datos técnicos
                 </summary>
