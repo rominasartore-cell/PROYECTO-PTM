@@ -230,11 +230,17 @@ if (!([System.IO.Directory]::Exists($exportDir))) {
   [System.IO.Directory]::CreateDirectory($exportDir) | Out-Null
 }
 
-$mdFiles = [System.IO.Directory]::GetFiles($deliveryDir, "*.md") |
-  Where-Object {
-    $name = [System.IO.Path]::GetFileName($_)
-    $name -ne "README_ENTREGA.md" -and $name -ne "VALIDACION_ENTREGA.md"
+$allMdFiles = [System.IO.Directory]::GetFiles($deliveryDir, "*.md")
+
+$mdFiles = @()
+
+foreach ($file in $allMdFiles) {
+  $name = [System.IO.Path]::GetFileName($file)
+
+  if ($name -eq "informe.md" -or $name -eq "instructivo.md" -or $name -like "solicitud-prescripcion-multa-*.md") {
+    $mdFiles += $file
   }
+}
 
 foreach ($file in $mdFiles) {
   $name = [System.IO.Path]::GetFileNameWithoutExtension($file)

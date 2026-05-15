@@ -49,21 +49,3 @@ ___________________________
 FIRMA SOLICITANTE
 
 ---
-
-## Campos variables usados por PTM
-
-| Campo | Descripción |
-|---|---|
-| {{COMUNA_TRIBUNAL}} | Comuna del Juzgado de Policía Local |
-| {{NUMERO_TRIBUNAL}} | Número del tribunal, si corresponde. Ej: (1°), (2°), etc. |
-| {{NOMBRE_SOLICITANTE}} | Nombre completo del cliente |
-| {{PROFESION_OFICIO}} | Profesión u oficio del solicitante |
-| {{DOMICILIO_SOLICITANTE}} | Domicilio del solicitante |
-| {{COMUNA_SOLICITANTE}} | Comuna del domicilio |
-| {{ROL_CAUSA}} | Rol o identificador de la causa/multa |
-| {{PATENTE}} | Placa patente única |
-| {{MONTO_MULTA_UTM}} | Monto de la multa en UTM |
-| {{INFRACCION}} | Infracción indicada en el certificado |
-| {{FECHA_INGRESO_RMNP}} | Fecha de ingreso/anotación en el Registro de Multas |
-| {{DOCUMENTOS_ADICIONALES}} | Otros documentos, si corresponde |
-| {{EMAIL_SOLICITANTE}} | Correo electrónico del cliente |
