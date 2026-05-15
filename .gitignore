@@ -51,3 +51,7 @@ _backups_fuera_de_next/
 docs/deliveries/
 
 tmp/
+
+# PTM operational client folders - do not commit client data
+docs/operations/clientes/
+docs/operations/clientes/**
