@@ -1,4 +1,4 @@
-﻿param(
+param(
   [Parameter(Mandatory=$true)]
   [string]$RequestId
 )
@@ -18,9 +18,11 @@ if (!([System.IO.Directory]::Exists($deliveryDir))) {
 }
 
 $patterns = @(
+  "Identificador de multa",
+  "ID multa",
   "Completar",
-  "No informado",
-  "no informado",
+  
+  
   "Tribunal no informado",
   "Rol no informado",
   "ID multa",
