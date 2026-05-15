@@ -174,7 +174,7 @@ function Field({ label, value, monospace = false }: { label: string; value: Reac
   return (
     <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
       <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{label}</p>
-      <div className={`mt-1 break-words text-sm text-slate-200 ${monospace ? "font-mono" : ""}`}>{value || "—"}</div>
+      <div className={`mt-1 break-words text-sm text-slate-200 ${monospace ? "font-mono" : ""}`}>{value || "-"}</div>
     </div>
   );
 }
@@ -196,24 +196,24 @@ function firstValue(record: JsonRecord, keys: string[]): unknown {
   return null;
 }
 
-function textValue(value: unknown, fallback = "—"): string {
+function textValue(value: unknown, fallback = "-"): string {
   if (value === null || value === undefined || value === "") return fallback;
   return String(value);
 }
 
 function optionalMoney(value: unknown): string {
-  if (value === null || value === undefined || value === "") return "—";
+  if (value === null || value === undefined || value === "") return "-";
 
   const normalized = typeof value === "string" ? value.replace(/\./g, "").replace(",", ".") : value;
   const amount = Number(normalized);
 
-  if (!Number.isFinite(amount)) return "—";
+  if (!Number.isFinite(amount)) return "-";
 
   return money(amount);
 }
 
 function optionalNumber(value: unknown): string {
-  if (value === null || value === undefined || value === "") return "—";
+  if (value === null || value === undefined || value === "") return "-";
 
   const amount = Number(value);
 
@@ -283,7 +283,7 @@ function FinesTable({ fines }: { fines: JsonRecord[] }) {
               <th className="px-4 py-3">ID multa</th>
               <th className="px-4 py-3">Estado</th>
               <th className="px-4 py-3">Ingreso RMNP</th>
-              <th className="px-4 py-3">Prescripción ref.</th>
+              <th className="px-4 py-3">Prescripcion ref.</th>
               <th className="px-4 py-3 text-right">UTM</th>
               <th className="px-4 py-3 text-right">Monto</th>
             </tr>
@@ -482,7 +482,7 @@ export default function AdminRequestDetailPage() {
         null;
 
       if (!found) {
-        throw new Error("No se encontró la solicitud en el listado administrativo.");
+        throw new Error("No se encontro la solicitud en el listado administrativo.");
       }
 
       const analysis = asRecord(
@@ -597,13 +597,7 @@ export default function AdminRequestDetailPage() {
             <div className="min-w-0">
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">Prescribe tu Multa</p>
               <h1 className="mt-2 text-3xl font-black">Ficha administrativa</h1>
-          <SendDocumentsReadyButton />
-          <RequestManagementStatusCard />
-          <ManualDeliveryCard />
-
-
-
-              <p className="mt-2 break-all text-sm text-slate-300">Request ID: {requestId || "Sin requestId"}</p>
+<p className="mt-2 break-all text-sm text-slate-300">Request ID: {requestId || "Sin requestId"}</p>
             </div>
 
             <div className="flex flex-wrap gap-2">
@@ -618,6 +612,11 @@ export default function AdminRequestDetailPage() {
         {error ? <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-100">{error}</div> : null}
         {actionState.error ? <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-100">{actionState.error}</div> : null}
         {actionState.message ? <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4 text-sm text-emerald-100">{actionState.message}</div> : null}
+        <section className="grid gap-4 xl:grid-cols-3">
+          <SendDocumentsReadyButton />
+          <RequestManagementStatusCard />
+          <ManualDeliveryCard />
+        </section>
 
         {loading ? (
           <section className="rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center text-slate-400">Cargando detalle...</section>
@@ -725,7 +724,7 @@ export default function AdminRequestDetailPage() {
                 
           
 <summary className="cursor-pointer text-sm font-black uppercase tracking-[0.16em] text-slate-400 transition hover:text-cyan-300">
-                  Ver datos técnicos
+                  Ver datos tecnicos
                 </summary>
 
                 <div className="mt-4 grid gap-4 lg:grid-cols-2">
