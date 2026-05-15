@@ -1,4 +1,4 @@
-param(
+﻿param(
   [Parameter(Mandatory=$true)]
   [string]$RequestId
 )
@@ -34,6 +34,56 @@ function Value-Or-Marker($value, $marker) {
   return $text
 }
 
+function Get-PropValue($object, [string[]]$names, $fallback) {
+  if ($null -eq $object) {
+    return $fallback
+  }
+
+  foreach ($name in $names) {
+    foreach ($prop in $object.PSObject.Properties) {
+      if ($prop.Name -eq $name) {
+        $value = $prop.Value
+
+        if ($null -ne $value) {
+          $text = "$value".Trim()
+
+          if ($text -ne "") {
+            return $text
+          }
+        }
+      }
+    }
+  }
+
+  return $fallback
+}
+
+function Get-ArrayValue($object, [string[]]$names) {
+  if ($null -eq $object) {
+    return @()
+  }
+
+  foreach ($name in $names) {
+    foreach ($prop in $object.PSObject.Properties) {
+      if ($prop.Name -eq $name) {
+        $value = $prop.Value
+
+        if ($null -eq $value) {
+          return @()
+        }
+
+        if ($value -is [System.Array]) {
+          return $value
+        }
+
+        return @($value)
+      }
+    }
+  }
+
+  return @()
+}
+
 function Replace-All($content, $map) {
   foreach ($key in $map.Keys) {
     $content = $content.Replace($key, $map[$key])
@@ -42,12 +92,53 @@ function Replace-All($content, $map) {
   return $content
 }
 
+function Build-FineLine($fine, $index) {
+  $rol = Get-PropValue $fine @("rolCausa", "rol", "role", "caseRole") ("Multa " + $index)
+  $tribunal = Get-PropValue $fine @("tribunal", "court", "juzgado", "comunaTribunal", "courtName") "Tribunal no informado"
+  $fecha = Get-PropValue $fine @("fechaIngresoRmnp", "rmnpDate", "fechaRmnp", "date") "Fecha no informada"
+  $monto = Get-PropValue $fine @("montoMultaUtm", "amountUtm", "monto", "amount") "Monto no informado"
+  $estado = Get-PropValue $fine @("estado", "status") "Potencialmente prescrita"
+
+  return "- Rol $rol, $tribunal, ingreso RMNP $fecha, monto $monto, estado: $estado."
+}
+
+function Build-EmptyLine($text) {
+  return "- $text"
+}
+
+function Build-RowMap($fine, $index) {
+  $prefix = "$index"
+
+  $tribunal = Get-PropValue $fine @("tribunal", "court", "juzgado", "comunaTribunal", "courtName") "Tribunal no informado"
+  $rol = Get-PropValue $fine @("rolCausa", "rol", "role", "caseRole") "Rol no informado"
+  $fecha = Get-PropValue $fine @("fechaIngresoRmnp", "rmnpDate", "fechaRmnp", "date") "Fecha no informada"
+  $monto = Get-PropValue $fine @("montoMultaUtm", "amountUtm", "monto", "amount") "Monto no informado"
+  $estado = Get-PropValue $fine @("estado", "status") "Potencialmente prescrita"
+  $observacion = Get-PropValue $fine @("observacion", "observation", "note") "Revisar antecedentes y fecha de ingreso al RMNP."
+
+  $map = @{}
+  $map["{{TRIBUNAL_$prefix}}"] = $tribunal
+  $map["{{ROL_$prefix}}"] = $rol
+  $map["{{FECHA_$prefix}}"] = $fecha
+  $map["{{MONTO_$prefix}}"] = $monto
+  $map["{{ESTADO_$prefix}}"] = $estado
+  $map["{{OBSERVACION_$prefix}}"] = $observacion
+
+  return $map
+}
+
+function Add-Map($target, $source) {
+  foreach ($key in $source.Keys) {
+    $target[$key] = $source[$key]
+  }
+}
+
 if (!([System.IO.Directory]::Exists($deliveryDir))) {
   [System.IO.Directory]::CreateDirectory($deliveryDir) | Out-Null
 }
 
 if (!([System.IO.File]::Exists($dataFile))) {
-  throw "No existe delivery-data.json. Créalo primero en: $dataFile"
+  throw "No existe delivery-data.json. Crealo primero en: $dataFile"
 }
 
 if (!([System.IO.Directory]::Exists($templateDir))) {
@@ -56,21 +147,51 @@ if (!([System.IO.Directory]::Exists($templateDir))) {
 
 $data = Get-Content $dataFile | ConvertFrom-Json
 
-$nombre = Value-Or-Marker $data.nombreCliente "{{NOMBRE_CLIENTE}}"
-$email = Value-Or-Marker $data.emailCliente "{{EMAIL_CLIENTE}}"
-$patente = Value-Or-Marker $data.patente "{{PATENTE}}"
-$fechaInforme = Value-Or-Marker $data.fechaInforme (Get-Date -Format "dd-MM-yyyy")
-$fechaCompra = Value-Or-Marker $data.fechaCompra "{{FECHA_COMPRA}}"
-$totalMultas = Value-Or-Marker $data.totalMultas "{{TOTAL_MULTAS}}"
-$totalPrescritas = Value-Or-Marker $data.totalPotencialmentePrescritas "{{TOTAL_POTENCIALMENTE_PRESCRITAS}}"
-$totalNoPrescritas = Value-Or-Marker $data.totalNoPrescritas "{{TOTAL_NO_PRESCRITAS}}"
-$montoReferencial = Value-Or-Marker $data.montoReferencialPrescrito "{{MONTO_REFERENCIAL_PRESCRITO}}"
+$nombre = Get-PropValue $data @("nombreCliente", "customerName", "customer_name", "name") "{{NOMBRE_CLIENTE}}"
+$email = Get-PropValue $data @("emailCliente", "customerEmail", "customer_email", "email") "{{EMAIL_CLIENTE}}"
+$patente = Get-PropValue $data @("patente", "plate") "{{PATENTE}}"
+$fechaInforme = Get-PropValue $data @("fechaInforme", "reportDate") (Get-Date -Format "dd-MM-yyyy")
+$fechaCompra = Get-PropValue $data @("fechaCompra", "purchaseDate") "{{FECHA_COMPRA}}"
+$fechaCertificado = Get-PropValue $data @("fechaCertificado", "certificateDate") $fechaInforme
+$totalMultas = Get-PropValue $data @("totalMultas", "totalFines") "{{TOTAL_MULTAS}}"
+$totalPrescritas = Get-PropValue $data @("totalPotencialmentePrescritas", "prescribedCount", "potentiallyPrescribed") "{{TOTAL_POTENCIALMENTE_PRESCRITAS}}"
+$totalNoPrescritas = Get-PropValue $data @("totalNoPrescritas", "nonPrescribedCount") "{{TOTAL_NO_PRESCRITAS}}"
+$montoReferencial = Get-PropValue $data @("montoReferencialPrescrito", "potentialAmount", "amount") "{{MONTO_REFERENCIAL_PRESCRITO}}"
 
-$rut = Value-Or-Marker $data.rutSolicitante "{{RUT_SOLICITANTE}}"
-$profesion = Value-Or-Marker $data.profesionOficio "{{PROFESION_OFICIO}}"
-$domicilio = Value-Or-Marker $data.domicilioSolicitante "{{DOMICILIO_SOLICITANTE}}"
-$comunaSolicitante = Value-Or-Marker $data.comunaSolicitante "{{COMUNA_SOLICITANTE}}"
-$documentosAdicionales = Value-Or-Marker $data.documentosAdicionales "{{DOCUMENTOS_ADICIONALES}}"
+$rut = Get-PropValue $data @("rutSolicitante", "rut") "{{RUT_SOLICITANTE}}"
+$profesion = Get-PropValue $data @("profesionOficio", "profession") "{{PROFESION_OFICIO}}"
+$domicilio = Get-PropValue $data @("domicilioSolicitante", "address") "{{DOMICILIO_SOLICITANTE}}"
+$comunaSolicitante = Get-PropValue $data @("comunaSolicitante", "commune") "{{COMUNA_SOLICITANTE}}"
+$documentosAdicionales = Get-PropValue $data @("documentosAdicionales", "additionalDocuments") "{{DOCUMENTOS_ADICIONALES}}"
+$observacionesInternas = Get-PropValue $data @("observacionesInternas", "internalNotes") "Sin observaciones internas."
+
+$numeroTribunalDefault = Get-PropValue $data @("numeroTribunal", "courtNumber") "2"
+
+$multas = Get-ArrayValue $data @("multasPrescritas", "prescribedFines", "potentiallyPrescribedFines")
+$multasNoPrescritas = Get-ArrayValue $data @("multasNoPrescritas", "nonPrescribedFines", "vigentes", "notPrescribedFines")
+
+$listadoPrescritas = @()
+$listadoNoPrescritas = @()
+
+$idx = 1
+foreach ($multa in $multas) {
+  $listadoPrescritas += Build-FineLine $multa $idx
+  $idx++
+}
+
+$idx = 1
+foreach ($multa in $multasNoPrescritas) {
+  $listadoNoPrescritas += Build-FineLine $multa $idx
+  $idx++
+}
+
+if ($listadoPrescritas.Count -eq 0) {
+  $listadoPrescritas += Build-EmptyLine "No se informaron multas potencialmente prescritas."
+}
+
+if ($listadoNoPrescritas.Count -eq 0) {
+  $listadoNoPrescritas += Build-EmptyLine "No se informaron multas no prescritas o vigentes en esta entrega."
+}
 
 $baseMap = @{
   "{{REQUEST_ID}}" = $RequestId
@@ -82,6 +203,7 @@ $baseMap = @{
   "{{FECHA_INFORME}}" = $fechaInforme
   "{{FECHA_PRESENTACION}}" = $fechaInforme
   "{{FECHA_COMPRA}}" = $fechaCompra
+  "{{FECHA_CERTIFICADO}}" = $fechaCertificado
   "{{TOTAL_MULTAS}}" = $totalMultas
   "{{TOTAL_POTENCIALMENTE_PRESCRITAS}}" = $totalPrescritas
   "{{TOTAL_NO_PRESCRITAS}}" = $totalNoPrescritas
@@ -91,6 +213,23 @@ $baseMap = @{
   "{{DOMICILIO_SOLICITANTE}}" = $domicilio
   "{{COMUNA_SOLICITANTE}}" = $comunaSolicitante
   "{{DOCUMENTOS_ADICIONALES}}" = $documentosAdicionales
+  "{{OBSERVACIONES_INTERNAS}}" = $observacionesInternas
+  "{{LISTADO_MULTAS_POTENCIALMENTE_PRESCRITAS}}" = ($listadoPrescritas -join "`r`n")
+  "{{LISTADO_MULTAS_NO_PRESCRITAS}}" = ($listadoNoPrescritas -join "`r`n")
+}
+
+if ($multas.Count -ge 1) {
+  Add-Map $baseMap (Build-RowMap $multas[0] 1)
+} else {
+  $emptyFine = New-Object PSObject
+  Add-Map $baseMap (Build-RowMap $emptyFine 1)
+}
+
+if ($multas.Count -ge 2) {
+  Add-Map $baseMap (Build-RowMap $multas[1] 2)
+} else {
+  $emptyFine2 = New-Object PSObject
+  Add-Map $baseMap (Build-RowMap $emptyFine2 2)
 }
 
 $templates = @{
@@ -121,62 +260,67 @@ if (!([System.IO.File]::Exists($solicitudTemplate))) {
 $solicitudBase = Read-File $solicitudTemplate
 $solicitudBase = Replace-All $solicitudBase $baseMap
 
-Write-Utf8File (Join-Path $deliveryDir "solicitud-prescripcion-base.md") $solicitudBase
-
-$multas = @()
-
-if ($null -ne $data.multasPrescritas) {
-  if ($data.multasPrescritas -is [System.Array]) {
-    $multas = $data.multasPrescritas
-  } else {
-    $multas = @($data.multasPrescritas)
-  }
-}
+$firstSolicitudContent = $solicitudBase
 
 if ($multas.Count -eq 0) {
   $multas = @(
     @{
-      numero = "01"
-      comunaTribunal = ""
-      numeroTribunal = ""
-      rolCausa = ""
-      montoMultaUtm = ""
-      infraccion = ""
-      fechaIngresoRmnp = ""
+      comunaTribunal = "Comuna no informada"
+      numeroTribunal = $numeroTribunalDefault
+      rolCausa = "Rol no informado"
+      montoMultaUtm = "Monto no informado"
+      infraccion = "Infraccion no informada"
+      fechaIngresoRmnp = "Fecha no informada"
     }
   )
 }
 
+$counter = 1
+
 foreach ($multa in $multas) {
-  $numero = Value-Or-Marker $multa.numero "01"
-  $num = "{0:D2}" -f [int]$numero
+  $numeroRaw = Get-PropValue $multa @("numero", "number", "index") ""
+  $parsed = 0
+
+  if ([int]::TryParse($numeroRaw, [ref]$parsed)) {
+    $num = "{0:D2}" -f $parsed
+  } else {
+    $num = "{0:D2}" -f $counter
+  }
 
   $fineMap = @{
-    "{{COMUNA_TRIBUNAL}}" = Value-Or-Marker $multa.comunaTribunal "{{COMUNA_TRIBUNAL}}"
-    "{{NUMERO_TRIBUNAL}}" = Value-Or-Marker $multa.numeroTribunal "{{NUMERO_TRIBUNAL}}"
-    "{{ROL_CAUSA}}" = Value-Or-Marker $multa.rolCausa "{{ROL_CAUSA}}"
-    "{{MONTO_MULTA_UTM}}" = Value-Or-Marker $multa.montoMultaUtm "{{MONTO_MULTA_UTM}}"
-    "{{INFRACCION}}" = Value-Or-Marker $multa.infraccion "{{INFRACCION}}"
-    "{{FECHA_INGRESO_RMNP}}" = Value-Or-Marker $multa.fechaIngresoRmnp "{{FECHA_INGRESO_RMNP}}"
+    "{{COMUNA_TRIBUNAL}}" = Get-PropValue $multa @("comunaTribunal", "comuna", "tribunalCommune", "courtCommune") "Comuna no informada"
+    "{{NUMERO_TRIBUNAL}}" = Get-PropValue $multa @("numeroTribunal", "courtNumber") $numeroTribunalDefault
+    "{{ROL_CAUSA}}" = Get-PropValue $multa @("rolCausa", "rol", "role", "caseRole") "Rol no informado"
+    "{{MONTO_MULTA_UTM}}" = Get-PropValue $multa @("montoMultaUtm", "amountUtm", "monto", "amount") "Monto no informado"
+    "{{INFRACCION}}" = Get-PropValue $multa @("infraccion", "infraction") "Infraccion no informada"
+    "{{FECHA_INGRESO_RMNP}}" = Get-PropValue $multa @("fechaIngresoRmnp", "rmnpDate", "fechaRmnp", "date") "Fecha no informada"
   }
 
   $content = $solicitudBase
   $content = Replace-All $content $fineMap
 
+  if ($counter -eq 1) {
+    $firstSolicitudContent = $content
+  }
+
   $outFile = Join-Path $deliveryDir "solicitud-prescripcion-multa-$num.md"
   Write-Utf8File $outFile $content
+
+  $counter++
 }
+
+Write-Utf8File (Join-Path $deliveryDir "solicitud-prescripcion-base.md") $firstSolicitudContent
 
 $readme = @"
 # Paquete de entrega PTM
 
-**Solicitud:** $RequestId  
-**Cliente:** $nombre  
-**Correo:** $email  
-**Patente:** $patente  
-**Total multas:** $totalMultas  
-**Multas potencialmente prescritas:** $totalPrescritas  
-**Monto referencial:** $montoReferencial  
+**Solicitud:** $RequestId
+**Cliente:** $nombre
+**Correo:** $email
+**Patente:** $patente
+**Total multas:** $totalMultas
+**Multas potencialmente prescritas:** $totalPrescritas
+**Monto referencial:** $montoReferencial
 
 ## Archivos generados
 
@@ -186,9 +330,7 @@ $readme = @"
 - solicitud-prescripcion-base.md
 - solicitud-prescripcion-multa-XX.md
 
-## Fuente de datos
-
-Este paquete fue generado desde:
+## Fuente
 
 - delivery-data.json
 - docs/templates/
