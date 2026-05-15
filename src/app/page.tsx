@@ -1,7 +1,7 @@
 "use client";
 
 import PublicSiteHeader from "@/components/ptm/PublicSiteHeader";
-
+import TopVisualStrip from "@/components/ptm/TopVisualStrip";
 
 import PreliminaryResultCard from '@/components/ptm/PreliminaryResultCard';
 import Image from "next/image";
@@ -716,6 +716,7 @@ export default function Page() {
   return (
     <main className="min-h-screen bg-white text-slate-950">
       <Header />
+      <TopVisualStrip />
       <Hero result={result} />
 
       <section className="bg-gradient-to-b from-emerald-50 to-white px-4 py-12 sm:px-6 lg:px-8">
