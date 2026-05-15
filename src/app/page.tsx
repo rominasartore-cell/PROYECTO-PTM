@@ -4,7 +4,6 @@ import PreliminaryResultCard from "@/components/ptm/PreliminaryResultCard";
 import { trackAnalysisCompleted, trackAnalysisStarted } from "@/lib/analytics";
 import Image from "next/image";
 import { useRef, useState } from "react";
-import LandingVisualBanner from "@/components/ptm/LandingVisualBanner";
 
 type AnalysisResult = {
   totalMultas: number;
@@ -329,8 +328,8 @@ function Hero({
   resultRef: React.RefObject<HTMLDivElement>;
 }) {
   return (
-    <section className="relative overflow-hidden bg-white">
-      <div className="absolute inset-0 bg-gradient-to-br from-emerald-50 via-white to-teal-50" />
+    <section className="relative overflow-hidden bg-white" style={{ backgroundImage: "linear-gradient(90deg, rgba(255,255,255,0.99) 0%, rgba(255,255,255,0.97) 38%, rgba(255,255,255,0.88) 60%, rgba(255,255,255,0.72) 100%), url('/images/ptm-hero-background.png')", backgroundSize: "cover", backgroundPosition: "center right", backgroundRepeat: "no-repeat" }}>
+      <div className="absolute inset-0 bg-gradient-to-r from-white via-white/95 to-white/55" />
       <div className="absolute right-[-12rem] top-[-10rem] hidden h-[32rem] w-[32rem] rounded-full bg-emerald-200/30 blur-3xl lg:block" />
 
       <div className="relative mx-auto grid w-full max-w-7xl items-start gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[0.92fr_1.08fr] lg:px-8 lg:py-14">
@@ -364,9 +363,7 @@ function Hero({
               El servicio no elimina multas automáticamente ni garantiza resultado. Entrega análisis documental, informe y solicitudes editables para tramitación personal.
             </p>
           </div>
-      <LandingVisualBanner />
-
-          <HowItWorks />
+<HowItWorks />
         </div>
 
         <div id="analizar" className="scroll-mt-28">
@@ -902,7 +899,7 @@ export default function Page() {
   return (
     <main className="min-h-screen bg-white text-slate-950">
       <Header />
-<Hero result={result} setResult={setResult} resultRef={resultRef} />
+      <Hero result={result} setResult={setResult} resultRef={resultRef} />
 
       <section className="bg-gradient-to-b from-emerald-50/70 to-white px-4 py-12 sm:px-6 lg:px-8">
         <div className="mx-auto w-full max-w-7xl" />
