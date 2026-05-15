@@ -1,52 +1,46 @@
-﻿# BORRADOR DE SOLICITUD DE PRESCRIPCIÃ“N DE MULTA
+﻿# BORRADOR DE SOLICITUD DE PRESCRIPCIÓN DE MULTA
 
-> Formato base PTM.  
-> Este escrito estÃ¡ diseÃ±ado para una multa individual. Si existen varias multas potencialmente prescritas, se recomienda generar un escrito por cada multa.
-
----
-
-**EN LO PRINCIPAL:** SOLICITA PRESCRIPCIÃ“N SEGÃšN ART. 24 DE LA LEY NÂ° 18.287;  
-**PRIMER OTROSÃ:** ACOMPAÃ‘A DOCUMENTOS;  
-**SEGUNDO OTROSÃ:** FORMA DE NOTIFICACIÃ“N.
+> Documento editable. Debe ser revisado y completado antes de su presentación.
+> Este escrito está diseñado para una multa individual. Si existen varias multas potencialmente prescritas, se recomienda generar un escrito por cada multa.
 
 ---
 
-**S. J. JUZGADO DE POLICÃA LOCAL DE {{COMUNA_TRIBUNAL}} {{NUMERO_TRIBUNAL}}**
+**EN LO PRINCIPAL:** SOLICITA PRESCRIPCIÓN SEGÚN ART. 24 DE LA LEY N° 18.287;  
+**PRIMER OTROSÍ:** ACOMPAÑA DOCUMENTOS;  
+**SEGUNDO OTROSÍ:** FORMA DE NOTIFICACIÓN.
 
-Yo, **{{NOMBRE_SOLICITANTE}}**, profesiÃ³n u oficio **{{PROFESION_OFICIO}}**, domiciliado(a) en calle **{{DOMICILIO_SOLICITANTE}}**, comuna **{{COMUNA_SOLICITANTE}}**, en la causa ROL NÂ° **{{ROL_CAUSA}}**, asociada al vehÃ­culo patente **{{PATENTE}}**, de mi propiedad, a US. respetuosamente expongo:
+**S. J. {{TRIBUNAL_DESTINO}}**
 
-Que, en estos autos, se dictÃ³ sentencia condenÃ¡ndome al pago de una multa equivalente a **{{MONTO_MULTA_UTM}} UTM**, por la infracciÃ³n consistente en: **{{INFRACCION}}**.
+Yo, **{{NOMBRE_SOLICITANTE}}**, profesión u oficio **{{PROFESION_OFICIO}}**, domiciliado(a) en calle **{{DOMICILIO_SOLICITANTE}}**, comuna **{{COMUNA_SOLICITANTE}}**, en la causa ROL N° **{{ROL_CAUSA}}**, asociada al vehículo patente **{{PATENTE}}**, de mi propiedad, a US. respetuosamente expongo:
 
-Que, la referida sentencia se encuentra ejecutoriada y fue informada al Registro de Multas de TrÃ¡nsito No Pagadas del Servicio de Registro Civil e IdentificaciÃ³n, con fecha de ingreso **{{FECHA_INGRESO_RMNP}}**.
+Que, en estos autos, se dictó sentencia condenándome al pago de una multa equivalente a **{{MONTO_MULTA_UTM}}**, por la infracción consistente en: **{{INFRACCION}}**.
 
-Que, habiendo transcurrido mÃ¡s de tres aÃ±os desde el ingreso al registro antes indicado, se encuentra cumplido el plazo de prescripciÃ³n previsto en el artÃ­culo 24 de la Ley NÂ° 18.287.
+Que, la referida sentencia se encuentra ejecutoriada y fue informada al Registro de Multas de Tránsito No Pagadas del Servicio de Registro Civil e Identificación, con fecha de ingreso **{{FECHA_INGRESO_RMNP}}**.
 
-**POR TANTO,**
+Que, habiendo transcurrido más de tres años desde el ingreso al registro antes indicado, se encuentra cumplido el plazo de prescripción previsto en el artículo 24 de la Ley N° 18.287.
 
-**RUEGO A S.S.**, se sirva declarar la prescripciÃ³n de la multa seÃ±alada, conforme a lo dispuesto en el artÃ­culo 24 de la Ley NÂ° 18.287, y ordenar la eliminaciÃ³n de la anotaciÃ³n respectiva del Registro de Multas de TrÃ¡nsito No Pagadas, oficiÃ¡ndose al Servicio de Registro Civil e IdentificaciÃ³n para su cumplimiento.
+Por tanto,
 
----
-
-## PRIMER OTROSÃ: AcompaÃ±a documentos
-
-SÃ­rvase S.S. tener por acompaÃ±ados los siguientes documentos:
-
-1. Certificado de Multas de TrÃ¡nsito No Pagadas del vehÃ­culo PPU **{{PATENTE}}**.
-2. Certificado de InscripciÃ³n y Anotaciones Vigentes del vehÃ­culo PPU **{{PATENTE}}**.
-3. Fotocopia de cÃ©dula de identidad del solicitante propietario.
-{{DOCUMENTOS_ADICIONALES}}
+**RUEGO A S.S.**, se sirva declarar la prescripción de la multa señalada, conforme a lo dispuesto en el artículo 24 de la Ley N° 18.287, y ordenar la eliminación de la anotación respectiva del Registro de Multas de Tránsito No Pagadas, oficiándose al Servicio de Registro Civil e Identificación para su cumplimiento.
 
 ---
 
-## SEGUNDO OTROSÃ: Forma de notificaciÃ³n
+## PRIMER OTROSÍ: Acompaña documentos
 
-Solicito a S.S. que las notificaciones que se dicten en el proceso, o respecto de esta solicitud, se notifiquen por correo electrÃ³nico, a la casilla: **{{EMAIL_SOLICITANTE}}**.
+Sírvase S.S. tener por acompañados los siguientes documentos:
+
+1. Certificado de Multas de Tránsito No Pagadas del vehículo PPU **{{PATENTE}}**.
+2. Certificado de Inscripción y Anotaciones Vigentes del vehículo PPU **{{PATENTE}}**.
+3. Fotocopia de cédula de identidad del solicitante propietario.
+4. {{DOCUMENTOS_ADICIONALES}}
 
 ---
 
-___________________________  
+## SEGUNDO OTROSÍ: Forma de notificación
+
+Solicito a S.S. que las notificaciones que se dicten en el proceso, o respecto de esta solicitud, se notifiquen por correo electrónico, a la casilla: **{{EMAIL_SOLICITANTE}}**.
+
+---
+
 **{{NOMBRE_SOLICITANTE}}**  
-FIRMA SOLICITANTE
-
----
-
+Firma: _______________________________
