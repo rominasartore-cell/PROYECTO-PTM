@@ -207,7 +207,7 @@ function Build-Fine($fine, $index) {
 
   if ("$rol".Trim() -eq "") {
     if ("$idMulta".Trim() -ne "") {
-      $rol = "Rol y aÃ±o no informado en certificado"
+      $rol = "Rol de causa no informado en certificado"
     } else {
       $rol = "Rol no informado " + $index
     }
