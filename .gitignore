@@ -49,3 +49,5 @@ _backups_fuera_de_next/
 
 # Entregables locales con datos de clientes
 docs/deliveries/
+
+tmp/
