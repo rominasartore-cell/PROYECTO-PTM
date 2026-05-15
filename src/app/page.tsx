@@ -364,6 +364,7 @@ function Hero({
               El servicio no elimina multas automáticamente ni garantiza resultado. Entrega análisis documental, informe y solicitudes editables para tramitación personal.
             </p>
           </div>
+      <LandingVisualBanner />
 
           <HowItWorks />
         </div>
@@ -901,8 +902,7 @@ export default function Page() {
   return (
     <main className="min-h-screen bg-white text-slate-950">
       <Header />
-      <LandingVisualBanner />
-      <Hero result={result} setResult={setResult} resultRef={resultRef} />
+<Hero result={result} setResult={setResult} resultRef={resultRef} />
 
       <section className="bg-gradient-to-b from-emerald-50/70 to-white px-4 py-12 sm:px-6 lg:px-8">
         <div className="mx-auto w-full max-w-7xl" />
