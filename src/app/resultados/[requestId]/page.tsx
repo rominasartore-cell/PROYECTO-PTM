@@ -387,15 +387,16 @@ function ResultadosContent() {
               {loading ? "Consultando..." : "Actualizar estado"}
             </button>
 
+            {status === "approved" && hasConfirmedRecord ? (
+              <a
+                href={`/resultados/${encodeURIComponent(requestId)}/datos`}
+                className="inline-flex items-center justify-center rounded-2xl bg-emerald-400 px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-emerald-300"
+              >
+                Completar datos para documentos
+              </a>
+            ) : null}
+
             <a
-              {status === "approved" && hasConfirmedRecord ? (
-                <a
-                  href={`/resultados/${encodeURIComponent(requestId)}/datos`}
-                  className="inline-flex items-center justify-center rounded-2xl bg-emerald-400 px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-emerald-300"
-                >
-                  Completar datos para documentos
-                </a>
-              ) : null}
               href="/"
               className="inline-flex items-center justify-center rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:bg-slate-800"
             >
