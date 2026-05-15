@@ -207,7 +207,7 @@ function Build-Fine($fine, $index) {
 
   if ("$rol".Trim() -eq "") {
     if ("$idMulta".Trim() -ne "") {
-      $rol = "ID multa " + $idMulta
+      $rol = "Identificador de multa " + $idMulta
     } else {
       $rol = "Rol no informado " + $index
     }
@@ -215,12 +215,12 @@ function Build-Fine($fine, $index) {
 
   $tribunal = Get-Prop $fine @("tribunal", "court", "juzgado") ""
   if ("$tribunal".Trim() -eq "") {
-    $tribunal = "Tribunal no informado"
+    $tribunal = "JUZGADO DE POLICIA LOCAL COMPETENTE"
   }
 
   $comunaTribunal = Get-Prop $fine @("comunaTribunal", "comuna", "tribunalCommune", "courtCommune") ""
   if ("$comunaTribunal".Trim() -eq "") {
-    $comunaTribunal = $tribunal
+    $comunaTribunal = "Competente"
   }
 
   $montoUtm = Normalize-Utm (Get-Prop $fine @("montoUtm", "montoMultaUtm", "amountUtm") "")
@@ -230,7 +230,7 @@ function Build-Fine($fine, $index) {
   $infraccion = Get-Prop $fine @("tipoInfraccion", "infraccion", "infraction") ""
 
   if ("$infraccion".Trim() -eq "") {
-    $infraccion = "Infraccion de transito informada en certificado"
+    $infraccion = "Infraccion de transito indicada en el certificado"
   }
 
   $estado = Get-Prop $fine @("estado", "status") "Estado no informado"
@@ -345,10 +345,10 @@ $delivery = [ordered]@{
   montoReferencialPrescrito = Format-Clp $totalMontoPrescrito
   totalUtm = "$totalUtmPrescrita"
   utmClp = First-Value $objects @("utm_value_clp", "utmClp") "70588"
-  rutSolicitante = "{{RUT_SOLICITANTE}}"
-  profesionOficio = "No informado"
-  domicilioSolicitante = "{{DOMICILIO_SOLICITANTE}}"
-  comunaSolicitante = "{{COMUNA_SOLICITANTE}}"
+  rutSolicitante = "RUT a indicar por el solicitante antes de presentar"
+  profesionOficio = "profesion u oficio a indicar por el solicitante antes de presentar"
+  domicilioSolicitante = "domicilio a indicar por el solicitante antes de presentar"
+  comunaSolicitante = "comuna a indicar por el solicitante antes de presentar"
   documentosAdicionales = "Certificado de multas de transito no pagadas."
   observacionesInternas = "Datos generados automaticamente desde JSON admin. Revisar RUT, domicilio y comuna antes de entrega final."
   multasPrescritas = $multasPrescritas
@@ -370,3 +370,4 @@ Write-Host "No prescritas/vigentes: $($multasNoPrescritas.Count)"
 Write-Host "Monto referencial prescrito: $(Format-Clp $totalMontoPrescrito)"
 Write-Host ""
 cmd /c dir "$deliveryDir"
+

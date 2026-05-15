@@ -92,6 +92,26 @@ function Replace-All($content, $map) {
   return $content
 }
 
+
+function Build-TribunalDestino($fine, $defaultCourtNumber) {
+  $tribunal = Get-PropValue $fine @("tribunal", "court", "juzgado", "courtName") ""
+  $comuna = Get-PropValue $fine @("comunaTribunal", "comuna", "tribunalCommune", "courtCommune") ""
+  $numero = Get-PropValue $fine @("numeroTribunal", "courtNumber") $defaultCourtNumber
+
+  if ($tribunal -and "$tribunal".Trim() -ne "" -and "$tribunal".Trim().ToLowerInvariant() -ne "tribunal no informado") {
+    return "$tribunal"
+  }
+
+  if ($comuna -and "$comuna".Trim() -ne "" -and "$comuna".Trim().ToLowerInvariant() -ne "tribunal no informado" -and "$comuna".Trim().ToLowerInvariant() -ne "competente") {
+    if ($numero -and "$numero".Trim() -ne "") {
+      return "JUZGADO DE POLICIA LOCAL DE $comuna $numero"
+    }
+
+    return "JUZGADO DE POLICIA LOCAL DE $comuna"
+  }
+
+  return "JUZGADO DE POLICIA LOCAL COMPETENTE"
+}
 function Build-FineLine($fine, $index) {
   $rol = Get-PropValue $fine @("rolCausa", "rol", "role", "caseRole") ("Multa " + $index)
   $tribunal = Get-PropValue $fine @("tribunal", "court", "juzgado", "comunaTribunal", "courtName") "Tribunal no informado"
@@ -288,6 +308,7 @@ foreach ($multa in $multas) {
   }
 
   $fineMap = @{
+    "{{TRIBUNAL_DESTINO}}" = Build-TribunalDestino $multa $numeroTribunalDefault
     "{{COMUNA_TRIBUNAL}}" = Get-PropValue $multa @("comunaTribunal", "comuna", "tribunalCommune", "courtCommune") "Comuna no informada"
     "{{NUMERO_TRIBUNAL}}" = Get-PropValue $multa @("numeroTribunal", "courtNumber") $numeroTribunalDefault
     "{{ROL_CAUSA}}" = Get-PropValue $multa @("rolCausa", "rol", "role", "caseRole") "Rol no informado"
@@ -353,3 +374,4 @@ Write-Host "OK: paquete generado desde delivery-data.json"
 Write-Host $deliveryDir
 Write-Host ""
 cmd /c dir "$deliveryDir"
+
