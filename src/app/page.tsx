@@ -4,6 +4,7 @@ import PreliminaryResultCard from "@/components/ptm/PreliminaryResultCard";
 import { trackAnalysisCompleted, trackAnalysisStarted } from "@/lib/analytics";
 import Image from "next/image";
 import { useRef, useState } from "react";
+import LandingVisualBanner from "@/components/ptm/LandingVisualBanner";
 
 type AnalysisResult = {
   totalMultas: number;
@@ -900,6 +901,7 @@ export default function Page() {
   return (
     <main className="min-h-screen bg-white text-slate-950">
       <Header />
+      <LandingVisualBanner />
       <Hero result={result} setResult={setResult} resultRef={resultRef} />
 
       <section className="bg-gradient-to-b from-emerald-50/70 to-white px-4 py-12 sm:px-6 lg:px-8">
