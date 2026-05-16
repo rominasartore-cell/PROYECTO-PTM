@@ -16,8 +16,6 @@ type PreliminaryResultCardProps = {
   paymentPayload?: Record<string, unknown>;
 };
 
-const DEFAULT_LAWYER_ESTIMATE_CLP = 250000;
-
 function numberFrom(value: unknown): number {
   if (typeof value === "number" && Number.isFinite(value)) return value;
 
@@ -40,14 +38,6 @@ function textFrom(value: unknown): string {
   }
 
   return "";
-}
-
-function formatCLP(value: number): string {
-  return new Intl.NumberFormat("es-CL", {
-    style: "currency",
-    currency: "CLP",
-    maximumFractionDigits: 0,
-  }).format(Math.max(0, Math.round(value)));
 }
 
 function pick(...values: unknown[]): unknown {
@@ -163,19 +153,6 @@ function normalizeAnalysis(input: any) {
         ? totalUtm * utmClp
         : 0;
 
-  const lawyerEstimate = numberFrom(
-    pick(source.ahorroTramitacion, resumen.ahorroTramitacion, DEFAULT_LAWYER_ESTIMATE_CLP)
-  );
-
-  const totalReferential = numberFrom(
-    pick(
-      source.oportunidadTotalReferencial,
-      source.totalReferencial,
-      resumen.oportunidadTotalReferencial,
-      resumen.totalReferencial
-    )
-  );
-
   const requestId = textFrom(
     pick(
       source.requestId,
@@ -197,8 +174,6 @@ function normalizeAnalysis(input: any) {
     amount,
     totalUtm,
     utmClp,
-    lawyerEstimate,
-    totalReferential: totalReferential > 0 ? totalReferential : amount + lawyerEstimate,
     requestId,
     quoteToken,
   };
@@ -226,7 +201,7 @@ export default function PreliminaryResultCard({
   const finalRequestId = requestId || normalized.requestId;
 
   const hasPaymentReference = Boolean(finalRequestId || finalQuoteToken);
-  const hasDetectedFines = normalized.totalCount > 0;
+  const hasFineData = normalized.totalCount > 0;
   const hasEligibleFines = normalized.prescribedCount > 0;
 
   const canPurchaseFull =
@@ -236,7 +211,7 @@ export default function PreliminaryResultCard({
 
   const canPurchaseEstimated =
     hasPaymentReference &&
-    hasDetectedFines &&
+    hasFineData &&
     !hasEligibleFines;
 
   function openProduct(product: ProductKind) {
@@ -290,69 +265,22 @@ export default function PreliminaryResultCard({
           </p>
 
           <h2 className="max-w-xl text-3xl font-black leading-tight sm:text-3xl">
-            Se detectaron multas ingresadas al RMNP
+            Resultado de revisión preliminar
           </h2>
 
           <p className="mt-7 max-w-md text-xl leading-snug text-white/90 sm:text-2xl">
-            El análisis preliminar detectó que tu certificado registra:
+            El sistema revisó la información disponible en el certificado subido.
           </p>
         </header>
 
         <div className="space-y-5 px-6 py-7 sm:px-9 sm:py-9">
-          <section className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 text-center">
-              <p className="text-sm font-black uppercase tracking-widest text-slate-700">
-                Multas detectadas
-              </p>
-              <p className="mt-3 text-3xl font-black text-slate-950">
-                {normalized.totalCount}
-              </p>
-            </div>
-
+          <section>
             <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5 text-center">
               <p className="text-sm font-black uppercase tracking-widest text-emerald-700">
                 Potencialmente prescritas
               </p>
               <p className="mt-3 text-3xl font-black text-emerald-700">
                 {normalized.prescribedCount}
-              </p>
-            </div>
-          </section>
-
-          <section className="relative rounded-3xl border border-cyan-200 bg-cyan-50 px-5 pb-7 pt-16 text-center">
-            <div className="absolute left-1/2 top-0 flex h-20 w-20 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-gradient-to-br from-cyan-400 to-emerald-600 text-3xl font-black text-white shadow-lg">
-              $
-            </div>
-
-            <p className="mx-auto max-w-md text-xl font-black leading-tight tracking-wide text-teal-800 sm:text-2xl">
-              MONTO ASOCIADO A LAS MULTAS POTENCIALMENTE PRESCRITAS
-            </p>
-
-            <p className="mt-5 text-3xl font-black leading-none tracking-tight text-teal-700 sm:text-7xl">
-              {formatCLP(normalized.amount)}
-            </p>
-
-            <p className="mx-auto mt-5 max-w-md text-lg font-medium leading-tight text-slate-700 sm:text-xl">
-              Monto referencial calculado en base al certificado subido.
-            </p>
-          </section>
-
-          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-lg">
-            <div className="flex items-start justify-between gap-4 text-lg text-slate-700">
-              <p className="max-w-[230px] leading-tight">
-                Tramitación por abogado estimada
-              </p>
-              <p className="font-black text-slate-900">
-                {formatCLP(normalized.lawyerEstimate)}
-              </p>
-            </div>
-
-            <div className="my-5 h-px bg-slate-200" />
-
-            <div className="flex items-center justify-between gap-4 text-xl">
-              <p className="font-black text-slate-950">Total referencial</p>
-              <p className="font-black text-slate-950">
-                {formatCLP(normalized.totalReferential)}
               </p>
             </div>
           </section>
@@ -386,11 +314,11 @@ export default function PreliminaryResultCard({
                 </h3>
 
                 <p className="mt-3 text-sm font-semibold leading-6 text-slate-700">
-                  Podemos generar un informe con la fecha estimada desde la cual podrías solicitar la prescripción de cada multa detectada, según los datos visibles en el certificado.
+                  Podemos generar un informe con la fecha estimada desde la cual podrías solicitar la prescripción, según los datos visibles en el certificado.
                 </p>
 
                 <p className="mt-3 text-xs font-bold leading-5 text-amber-800">
-                  Disponible solo porque el sistema detectó multas en el certificado. Si el certificado no se leyó bien o no contiene multas, esta compra queda bloqueada.
+                  Esta opción solo se habilita cuando el certificado fue leído correctamente y no existen multas potencialmente prescritas.
                 </p>
 
                 <button
@@ -405,7 +333,7 @@ export default function PreliminaryResultCard({
 
             {!canPurchaseFull && !canPurchaseEstimated ? (
               <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm font-bold leading-5 text-amber-800">
-                Compra no disponible. Debe existir una solicitud válida y el certificado debe tener multas detectadas.
+                Compra no disponible. Debe existir una solicitud válida y el certificado debe ser legible.
               </p>
             ) : null}
           </div>
