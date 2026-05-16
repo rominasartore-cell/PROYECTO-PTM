@@ -1,4 +1,0 @@
-﻿PTM DEPLOY MARKER
-Fecha local: 2026-05-15 20:58:10
-Commit local antes de marker: be2ab57
-Archivo: public/ptm-deploy-marker.txt
