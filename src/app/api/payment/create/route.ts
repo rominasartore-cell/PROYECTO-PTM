@@ -4,6 +4,10 @@ import { savePaymentCreated } from "@/lib/storage/payment-store";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+type ProductKind =
+  | "informe-completo-prescripcion"
+  | "informe-fecha-estimada-prescripcion";
+
 type PaymentBody = {
   requestId?: string;
   quoteToken?: string;
@@ -31,6 +35,41 @@ type PaymentBody = {
   amount?: number;
   [key: string]: any;
 };
+
+const PRODUCT_CONFIG: Record<
+  ProductKind,
+  {
+    id: ProductKind;
+    priceEnv: string;
+    fallbackPrice: number;
+    itemId: string;
+    title: string;
+    description: (plate: string) => string;
+  }
+> = {
+  "informe-completo-prescripcion": {
+    id: "informe-completo-prescripcion",
+    priceEnv: "REPORT_PRICE_CLP",
+    fallbackPrice: 9990,
+    itemId: "informe-prescripcion-tag",
+    title: "Informe de prescripcion de multas de transito",
+    description: (plate) => `Informe completo para patente ${plate}`,
+  },
+  "informe-fecha-estimada-prescripcion": {
+    id: "informe-fecha-estimada-prescripcion",
+    priceEnv: "ESTIMATED_REPORT_PRICE_CLP",
+    fallbackPrice: 4990,
+    itemId: "informe-fecha-estimada-prescripcion",
+    title: "Informe de fecha estimada de prescripcion",
+    description: (plate) => `Informe referencial de fechas estimadas para patente ${plate}`,
+  },
+};
+
+function normalizeProduct(value: unknown): ProductKind {
+  return value === "informe-fecha-estimada-prescripcion"
+    ? "informe-fecha-estimada-prescripcion"
+    : "informe-completo-prescripcion";
+}
 
 function getEnvNumber(key: string, fallback: number): number {
   const raw = process.env[key];
@@ -243,8 +282,12 @@ export async function POST(request: Request) {
 
     const requestId = createRequestId(body);
     const siteUrl = getSiteUrl(request);
-
-    const reportPriceClp = getEnvNumber("REPORT_PRICE_CLP", 9990);
+    const product = normalizeProduct(body.product);
+    const productConfig = PRODUCT_CONFIG[product];
+    const reportPriceClp = getEnvNumber(
+      productConfig.priceEnv,
+      productConfig.fallbackPrice
+    );
 
     const name = sanitizeText(
       body.name ?? body.nombre ?? body.customerName,
@@ -259,8 +302,6 @@ export async function POST(request: Request) {
       body.plate ?? body.patente ?? body.vehiclePlate,
       "SIN-PATENTE"
     );
-
-    const product = sanitizeText(body.product, "informe-completo-prescripcion");
 
     const sourceResult = body.analysisResult || body.result || body;
 
@@ -343,7 +384,44 @@ export async function POST(request: Request) {
       );
     }
 
-    if (multasSusceptibles <= 0) {
+    if (product === "informe-fecha-estimada-prescripcion") {
+      if (totalMultas <= 0) {
+        return Response.json(
+          {
+            ok: false,
+            error:
+              "No se detectaron multas en el certificado. No se puede comprar el informe de fechas estimadas.",
+            requestId,
+            debug: {
+              product,
+              totalMultas,
+              multasSusceptibles,
+              receivedKeys: Object.keys(body || {}),
+            },
+          },
+          { status: 400 }
+        );
+      }
+
+      if (multasSusceptibles > 0) {
+        return Response.json(
+          {
+            ok: false,
+            error:
+              "Este informe de fechas estimadas solo esta disponible cuando no hay multas potencialmente prescritas. Para este caso corresponde el informe completo.",
+            requestId,
+            debug: {
+              product,
+              totalMultas,
+              multasSusceptibles,
+              montoPotencial,
+              montoPotencialUtm,
+            },
+          },
+          { status: 400 }
+        );
+      }
+    } else if (multasSusceptibles <= 0) {
       return Response.json(
         {
           ok: false,
@@ -351,6 +429,7 @@ export async function POST(request: Request) {
             "No hay multas revisables o potencialmente prescritas. Compra no disponible.",
           requestId,
           debug: {
+            product,
             totalMultas,
             multasSusceptibles,
             montoPotencial,
@@ -423,6 +502,7 @@ export async function POST(request: Request) {
         sandbox_init_point: mockUrl,
         external_reference: requestId,
         amount: reportPriceClp,
+        product,
         message: "Pago de prueba creado. Mercado Pago no fue llamado.",
       });
     }
@@ -443,9 +523,9 @@ export async function POST(request: Request) {
     const preferencePayload = {
       items: [
         {
-          id: "informe-prescripcion-tag",
-          title: "Informe de prescripcion de multas de transito",
-          description: `Informe completo para patente ${plate}`,
+          id: productConfig.itemId,
+          title: productConfig.title,
+          description: productConfig.description(plate),
           quantity: 1,
           currency_id: "CLP",
           unit_price: reportPriceClp,
@@ -550,6 +630,7 @@ export async function POST(request: Request) {
       sandbox_init_point: mpData.sandbox_init_point,
       external_reference: requestId,
       amount: reportPriceClp,
+      product,
       urls,
       metadata: commonMetadata,
       mercadoPago: {

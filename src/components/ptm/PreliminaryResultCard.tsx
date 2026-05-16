@@ -3,6 +3,10 @@
 import { useMemo, useState } from "react";
 import ProductDetailModal from "./ProductDetailModal";
 
+type ProductKind =
+  | "informe-completo-prescripcion"
+  | "informe-fecha-estimada-prescripcion";
+
 type PreliminaryResultCardProps = {
   analysis?: any;
   result?: any;
@@ -86,8 +90,11 @@ function normalizeAnalysis(input: any) {
       source.totalMultas,
       source.multasTotalesDetectadas,
       source.totalFines,
+      source.finesCount,
+      source.totalTickets,
       resumen.totalMultas,
       resumen.multasTotalesDetectadas,
+      resumen.totalFines,
       Array.isArray(multas) ? multas.length : 0
     )
   );
@@ -206,6 +213,9 @@ export default function PreliminaryResultCard({
   paymentPayload,
 }: PreliminaryResultCardProps) {
   const [modalOpen, setModalOpen] = useState(false);
+  const [modalProduct, setModalProduct] = useState<ProductKind>(
+    "informe-completo-prescripcion"
+  );
 
   const normalized = useMemo(
     () => normalizeAnalysis(result ?? analysis),
@@ -216,17 +226,30 @@ export default function PreliminaryResultCard({
   const finalRequestId = requestId || normalized.requestId;
 
   const hasPaymentReference = Boolean(finalRequestId || finalQuoteToken);
+  const hasDetectedFines = normalized.totalCount > 0;
   const hasEligibleFines = normalized.prescribedCount > 0;
-  const canPurchase =
+
+  const canPurchaseFull =
     hasPaymentReference &&
     hasEligibleFines &&
     (typeof eligible === "boolean" ? eligible : true);
+
+  const canPurchaseEstimated =
+    hasPaymentReference &&
+    hasDetectedFines &&
+    !hasEligibleFines;
+
+  function openProduct(product: ProductKind) {
+    setModalProduct(product);
+    setModalOpen(true);
+  }
 
   const modalPayload = useMemo(
     () => ({
       ...(paymentPayload ?? {}),
       requestId: finalRequestId,
       quoteToken: finalQuoteToken,
+      product: modalProduct,
       totalMultas: normalized.totalCount,
       totalFines: normalized.totalCount,
       total_multas: normalized.totalCount,
@@ -254,7 +277,7 @@ export default function PreliminaryResultCard({
       utmClp: normalized.utmClp,
       utm_clp: normalized.utmClp,
     }),
-    [paymentPayload, finalRequestId, finalQuoteToken, normalized]
+    [paymentPayload, finalRequestId, finalQuoteToken, modalProduct, normalized]
   );
 
   return (
@@ -276,7 +299,16 @@ export default function PreliminaryResultCard({
         </header>
 
         <div className="space-y-5 px-6 py-7 sm:px-9 sm:py-9">
-          <section>
+          <section className="grid gap-4 sm:grid-cols-2">
+            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 text-center">
+              <p className="text-sm font-black uppercase tracking-widest text-slate-700">
+                Multas detectadas
+              </p>
+              <p className="mt-3 text-3xl font-black text-slate-950">
+                {normalized.totalCount}
+              </p>
+            </div>
+
             <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5 text-center">
               <p className="text-sm font-black uppercase tracking-widest text-emerald-700">
                 Potencialmente prescritas
@@ -332,22 +364,48 @@ export default function PreliminaryResultCard({
             </p>
           </section>
 
-          <div className="space-y-2">
-            <button
-              type="button"
-              onClick={() => {
-                if (!canPurchase) return;
-                setModalOpen(true);
-              }}
-              disabled={!canPurchase}
-              className="w-full rounded-2xl bg-emerald-700 px-6 py-5 text-xl font-black text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-emerald-800 active:translate-y-0 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
-            >
-              {canPurchase ? "Comprar informe completo →" : "Compra no disponible"}
-            </button>
+          <div className="space-y-3">
+            {canPurchaseFull ? (
+              <button
+                type="button"
+                onClick={() => openProduct("informe-completo-prescripcion")}
+                className="w-full rounded-2xl bg-emerald-700 px-6 py-5 text-xl font-black text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-emerald-800 active:translate-y-0"
+              >
+                Comprar informe completo →
+              </button>
+            ) : null}
 
-            {!canPurchase ? (
+            {canPurchaseEstimated ? (
+              <section className="rounded-3xl border border-amber-200 bg-amber-50 p-5">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-700">
+                  Sin multas prescritas todavía
+                </p>
+
+                <h3 className="mt-2 text-xl font-black leading-tight text-slate-950">
+                  ¿Quieres saber cuándo podrían prescribir?
+                </h3>
+
+                <p className="mt-3 text-sm font-semibold leading-6 text-slate-700">
+                  Podemos generar un informe con la fecha estimada desde la cual podrías solicitar la prescripción de cada multa detectada, según los datos visibles en el certificado.
+                </p>
+
+                <p className="mt-3 text-xs font-bold leading-5 text-amber-800">
+                  Disponible solo porque el sistema detectó multas en el certificado. Si el certificado no se leyó bien o no contiene multas, esta compra queda bloqueada.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() => openProduct("informe-fecha-estimada-prescripcion")}
+                  className="mt-4 w-full rounded-2xl bg-slate-950 px-6 py-4 text-base font-black text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-slate-800 active:translate-y-0"
+                >
+                  Comprar informe de fechas estimadas - $4.990 →
+                </button>
+              </section>
+            ) : null}
+
+            {!canPurchaseFull && !canPurchaseEstimated ? (
               <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm font-bold leading-5 text-amber-800">
-                No hay multas potencialmente prescritas disponibles para comprar este informe.
+                Compra no disponible. Debe existir una solicitud válida y el certificado debe tener multas detectadas.
               </p>
             ) : null}
           </div>
@@ -369,6 +427,7 @@ export default function PreliminaryResultCard({
         quoteToken={finalQuoteToken}
         requestId={finalRequestId}
         paymentPayload={modalPayload}
+        product={modalProduct}
       />
     </>
   );

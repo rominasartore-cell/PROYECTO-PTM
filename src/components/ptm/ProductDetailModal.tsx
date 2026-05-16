@@ -3,15 +3,87 @@
 import { useEffect, useMemo, useState } from "react";
 import { trackPaymentRedirect, trackPurchaseClicked } from "@/lib/analytics";
 
+type ProductKind =
+  | "informe-completo-prescripcion"
+  | "informe-fecha-estimada-prescripcion";
+
 type ProductDetailModalProps = {
   open: boolean;
   onClose: () => void;
   quoteToken?: string | null;
   requestId?: string | null;
   paymentPayload?: Record<string, unknown>;
+  product?: ProductKind;
 };
 
-const PRODUCT_PRICE_CLP = 9990;
+const PRODUCT_CONFIG: Record<
+  ProductKind,
+  {
+    id: ProductKind;
+    price: number;
+    eyebrow: string;
+    title: string;
+    description: string;
+    priceNote: string;
+    buttonLabel: string;
+    includedItems: string[];
+    excludedItems: string[];
+    legalNote: string;
+  }
+> = {
+  "informe-completo-prescripcion": {
+    id: "informe-completo-prescripcion",
+    price: 9990,
+    eyebrow: "Oferta de lanzamiento",
+    title: "Informe completo de análisis + solicitudes editables",
+    description:
+      "Revisa el valor, compra el informe y luego descarga/recibe el detalle preparado con los antecedentes de tu certificado.",
+    priceNote: "Precio único por informe completo + solicitudes editables.",
+    buttonLabel: "Comprar informe",
+    includedItems: [
+      "Informe completo de análisis del certificado.",
+      "Detalle de multas detectadas y estado estimado.",
+      "Identificación de multas potencialmente prescritas.",
+      "Solicitud editable de prescripción.",
+      "Guía de tramitación personal paso a paso.",
+    ],
+    excludedItems: [
+      "No incluye representación judicial ni patrocinio profesional.",
+      "No incluye presentación de escritos ante tribunales.",
+      "No incluye seguimiento del expediente.",
+      "No garantiza resolución favorable ni eliminación de multas.",
+      "El tribunal puede exigir antecedentes o formalidades adicionales.",
+    ],
+    legalNote:
+      "La compra no garantiza que el tribunal declare la prescripción ni que las multas sean eliminadas del Registro de Multas No Pagadas. El producto entrega documentos para tramitación personal.",
+  },
+  "informe-fecha-estimada-prescripcion": {
+    id: "informe-fecha-estimada-prescripcion",
+    price: 4990,
+    eyebrow: "Informe preventivo",
+    title: "Informe de fecha estimada de prescripción",
+    description:
+      "Compra un informe referencial con las fechas estimadas desde las cuales tus multas podrían cumplir plazo para solicitar prescripción, según los datos visibles en el certificado.",
+    priceNote: "Precio único por informe referencial de fechas estimadas.",
+    buttonLabel: "Comprar informe de fechas",
+    includedItems: [
+      "Informe de fecha estimada de prescripción.",
+      "Detalle de multas detectadas en el certificado.",
+      "Fecha de ingreso al RMNP/RMTNP cuando esté disponible.",
+      "Fecha estimada desde la cual podría solicitarse prescripción.",
+      "Advertencias legales y criterio de cálculo referencial.",
+    ],
+    excludedItems: [
+      "No incluye instructivo paso a paso.",
+      "No incluye escritos ni solicitudes editables.",
+      "No incluye representación judicial ni patrocinio profesional.",
+      "No incluye presentación ante tribunales ni seguimiento del expediente.",
+      "No garantiza que la prescripción sea acogida en el futuro.",
+    ],
+    legalNote:
+      "La fecha indicada es referencial y se calcula según los datos visibles en el certificado. La procedencia de la prescripción depende de la revisión del Juzgado de Policía Local competente y de los antecedentes específicos de cada caso.",
+  },
+};
 
 function formatCLP(value: number): string {
   return new Intl.NumberFormat("es-CL", {
@@ -54,15 +126,27 @@ function getPaymentUrl(data: any): string {
   ).trim();
 }
 
+function normalizeProduct(product: unknown): ProductKind {
+  return product === "informe-fecha-estimada-prescripcion"
+    ? "informe-fecha-estimada-prescripcion"
+    : "informe-completo-prescripcion";
+}
+
 export default function ProductDetailModal({
   open,
   onClose,
   quoteToken,
   requestId,
   paymentPayload,
+  product,
 }: ProductDetailModalProps) {
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState("");
+
+  const productKind = normalizeProduct(
+    product || getPayloadString(paymentPayload, "product")
+  );
+  const productConfig = PRODUCT_CONFIG[productKind];
 
   const paymentRequestId = useMemo(
     () =>
@@ -99,8 +183,8 @@ export default function ProductDetailModal({
   async function handlePay() {
     try {
       trackPurchaseClicked({
-        product: "informe-completo-prescripcion",
-        amount: PRODUCT_PRICE_CLP,
+        product: productConfig.id,
+        amount: productConfig.price,
         request_id: paymentRequestId || paymentQuoteToken || "",
       });
       setPaying(true);
@@ -142,8 +226,8 @@ export default function ProductDetailModal({
           name: customerName,
           email: customerEmail,
           plate: vehiclePlate,
-          product: "informe-completo-prescripcion",
-          amount: PRODUCT_PRICE_CLP,
+          product: productConfig.id,
+          amount: productConfig.price,
         }),
       });
 
@@ -175,8 +259,8 @@ export default function ProductDetailModal({
       }
 
       trackPaymentRedirect({
-        product: "informe-completo-prescripcion",
-        amount: PRODUCT_PRICE_CLP,
+        product: productConfig.id,
+        amount: productConfig.price,
         request_id: paymentRequestId || paymentQuoteToken || "",
       });
 
@@ -191,29 +275,13 @@ export default function ProductDetailModal({
         rawMessage === "Load failed" ||
         rawMessage === "Failed to fetch" ||
         rawMessage.toLowerCase().includes("network")
-          ? "No se pudo iniciar la compra. Si el certificado no tiene multas potencialmente prescritas, la compra no esta disponible."
+          ? "No se pudo iniciar la compra. Verifica que el certificado haya sido leído correctamente e inténtalo nuevamente."
           : rawMessage;
 
       setError(friendlyMessage);
       setPaying(false);
     }
   }
-
-  const includedItems = [
-    "Informe completo de análisis del certificado.",
-    "Detalle de multas detectadas y estado estimado.",
-    "Identificación de multas potencialmente prescritas.",
-    "Solicitud editable de prescripción.",
-    "Guía de tramitación personal paso a paso.",
-  ];
-
-  const excludedItems = [
-    "No incluye representación judicial ni patrocinio profesional.",
-    "No incluye presentación de escritos ante tribunales.",
-    "No incluye seguimiento del expediente.",
-    "No garantiza resolución favorable ni eliminación de multas.",
-    "El tribunal puede exigir antecedentes o formalidades adicionales.",
-  ];
 
   return (
     <div className="fixed inset-0 z-[999] flex items-center justify-center bg-slate-950/70 px-4 py-6 backdrop-blur-sm">
@@ -234,11 +302,11 @@ export default function ProductDetailModal({
           </p>
 
           <h2 className="mt-3 text-2xl font-black leading-tight text-slate-950 sm:text-3xl">
-            Informe completo de análisis + solicitudes editables
+            {productConfig.title}
           </h2>
 
           <p className="mt-3 max-w-2xl text-sm font-semibold leading-7 text-slate-600">
-            Revisa el valor, compra el informe y luego descarga/recibe el detalle preparado con los antecedentes de tu certificado.
+            {productConfig.description}
           </p>
         </div>
 
@@ -246,18 +314,18 @@ export default function ProductDetailModal({
           <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div>
               <span className="inline-flex rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-black uppercase tracking-[0.22em] text-emerald-300">
-                Oferta de lanzamiento
+                {productConfig.eyebrow}
               </span>
 
               <div className="mt-3 flex items-end gap-2">
                 <p className="text-5xl font-black tracking-tight text-emerald-300 sm:text-6xl">
-                  {formatCLP(PRODUCT_PRICE_CLP)}
+                  {formatCLP(productConfig.price)}
                 </p>
                 <p className="pb-2 text-sm font-black text-emerald-100">CLP</p>
               </div>
 
               <p className="mt-2 text-xs font-bold leading-6 text-emerald-100/90">
-                Precio único por informe completo + solicitudes editables.
+                {productConfig.priceNote}
               </p>
             </div>
 
@@ -268,7 +336,7 @@ export default function ProductDetailModal({
                 disabled={paying}
                 className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-400 px-5 py-4 text-base font-black text-slate-950 shadow-lg shadow-emerald-400/20 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                <span>{paying ? "Abriendo pago..." : "Comprar informe"}</span>
+                <span>{paying ? "Abriendo pago..." : productConfig.buttonLabel}</span>
                 <span aria-hidden="true">→</span>
               </button>
 
@@ -295,7 +363,7 @@ export default function ProductDetailModal({
             </h3>
 
             <ul className="mt-4 space-y-3 text-sm font-semibold leading-6 text-slate-700">
-              {includedItems.map((item) => (
+              {productConfig.includedItems.map((item) => (
                 <li key={item} className="flex gap-3">
                   <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-700 text-[11px] font-black text-white">
                     ✓
@@ -315,7 +383,7 @@ export default function ProductDetailModal({
             </h3>
 
             <ul className="mt-4 space-y-3 text-sm font-semibold leading-6 text-slate-700">
-              {excludedItems.map((item) => (
+              {productConfig.excludedItems.map((item) => (
                 <li key={item} className="flex gap-3">
                   <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-teal-600 text-[11px] font-black text-teal-800">
                     —
@@ -328,7 +396,7 @@ export default function ProductDetailModal({
         </div>
 
         <div className="mt-5 rounded-3xl border border-slate-200 bg-slate-50 p-4 text-xs font-semibold leading-6 text-slate-600">
-          La compra no garantiza que el tribunal declare la prescripción ni que las multas sean eliminadas del Registro de Multas No Pagadas. El producto entrega documentos para tramitación personal.
+          {productConfig.legalNote}
         </div>
 
         <button
