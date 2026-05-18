@@ -65,7 +65,9 @@ function getErrorMessage(error: unknown): string {
 }
 
 function asRecord(value: unknown): JsonRecord {
-  return value && typeof value === "object" && !Array.isArray(value) ? (value as JsonRecord) : {};
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as JsonRecord)
+    : {};
 }
 
 function pickString(record: JsonRecord, keys: string[], fallback = ""): string {
@@ -82,8 +84,10 @@ function pickNumber(record: JsonRecord, keys: string[], fallback = 0): number {
     const value = record[key];
     if (value === null || value === undefined || value === "") continue;
 
-    const normalized = typeof value === "string" ? value.replace(/\./g, "").replace(",", ".") : value;
+    const normalized =
+      typeof value === "string" ? value.replace(/\./g, "").replace(",", ".") : value;
     const parsed = Number(normalized);
+
     if (Number.isFinite(parsed)) return parsed;
   }
 
@@ -142,14 +146,14 @@ function statusClass(value?: string | null): string {
   const status = String(value || "").toLowerCase();
 
   if (status === "approved" || status === "paid" || status === "completed") {
-    return "border-emerald-500/40 bg-emerald-500/10 text-emerald-200";
+    return "border-emerald-200 bg-emerald-50 text-emerald-800";
   }
 
   if (status === "rejected" || status === "failed" || status === "cancelled" || status === "canceled") {
-    return "border-red-500/40 bg-red-500/10 text-red-200";
+    return "border-red-200 bg-red-50 text-red-800";
   }
 
-  return "border-yellow-500/40 bg-yellow-500/10 text-yellow-200";
+  return "border-amber-200 bg-amber-50 text-amber-800";
 }
 
 function isApprovedStatus(value?: string | null): boolean {
@@ -161,27 +165,77 @@ function Badge({ children, className = "" }: { children: ReactNode; className?: 
   return <span className={`rounded-full border px-2.5 py-1 text-xs font-black ${className}`}>{children}</span>;
 }
 
-function InfoCard({ title, children }: { title: string; children: ReactNode }) {
+function Field({ label, value, monospace = false }: { label: string; value: ReactNode; monospace?: boolean }) {
   return (
-    <section className="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-sm">
-      <h2 className="text-lg font-black text-white">{title}</h2>
-      <div className="mt-4 space-y-3">{children}</div>
-    </section>
+    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">{label}</p>
+      <div className={`mt-1 break-words text-sm font-semibold text-slate-800 ${monospace ? "font-mono" : ""}`}>
+        {value || "-"}
+      </div>
+    </div>
   );
 }
 
-function Field({ label, value, monospace = false }: { label: string; value: ReactNode; monospace?: boolean }) {
+function SummaryCard({
+  label,
+  value,
+  hint,
+  tone = "white",
+}: {
+  label: string;
+  value: ReactNode;
+  hint?: ReactNode;
+  tone?: "white" | "green" | "blue" | "amber" | "red";
+}) {
+  const toneClasses = {
+    white: "border-slate-200 bg-white text-slate-950",
+    green: "border-emerald-200 bg-emerald-50 text-emerald-900",
+    blue: "border-cyan-200 bg-cyan-50 text-cyan-900",
+    amber: "border-amber-200 bg-amber-50 text-amber-900",
+    red: "border-red-200 bg-red-50 text-red-900",
+  };
+
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-      <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{label}</p>
-      <div className={`mt-1 break-words text-sm text-slate-200 ${monospace ? "font-mono" : ""}`}>{value || "-"}</div>
+    <div className={`rounded-2xl border p-4 shadow-sm ${toneClasses[tone]}`}>
+      <p className="text-[11px] font-black uppercase tracking-wide opacity-70">{label}</p>
+      <div className="mt-2 text-2xl font-black">{value}</div>
+      {hint ? <p className="mt-1 text-xs font-semibold opacity-70">{hint}</p> : null}
     </div>
+  );
+}
+
+function Section({
+  title,
+  children,
+  defaultOpen = false,
+  hint,
+}: {
+  title: string;
+  children: ReactNode;
+  defaultOpen?: boolean;
+  hint?: string;
+}) {
+  return (
+    <details
+      open={defaultOpen}
+      className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm"
+    >
+      <summary className="cursor-pointer list-none">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-base font-black text-slate-950">{title}</h2>
+          <span className="text-xs font-bold text-slate-500">Abrir/cerrar</span>
+        </div>
+        {hint ? <p className="mt-1 text-xs text-slate-500">{hint}</p> : null}
+      </summary>
+
+      <div className="mt-4">{children}</div>
+    </details>
   );
 }
 
 function JsonBlock({ value }: { value: unknown }) {
   return (
-    <pre className="max-h-[420px] overflow-auto rounded-xl border border-slate-800 bg-slate-950 p-4 text-xs text-slate-300">
+    <pre className="max-h-[420px] overflow-auto rounded-xl border border-slate-200 bg-slate-950 p-4 text-xs text-slate-100">
       {JSON.stringify(value, null, 2)}
     </pre>
   );
@@ -204,7 +258,8 @@ function textValue(value: unknown, fallback = "-"): string {
 function optionalMoney(value: unknown): string {
   if (value === null || value === undefined || value === "") return "-";
 
-  const normalized = typeof value === "string" ? value.replace(/\./g, "").replace(",", ".") : value;
+  const normalized =
+    typeof value === "string" ? value.replace(/\./g, "").replace(",", ".") : value;
   const amount = Number(normalized);
 
   if (!Number.isFinite(amount)) return "-";
@@ -246,14 +301,14 @@ function fineStatusClass(value: unknown): string {
   const status = String(value || "").toUpperCase();
 
   if (status.includes("PRESCRITA")) {
-    return "border-emerald-500/40 bg-emerald-500/10 text-emerald-200";
+    return "border-emerald-200 bg-emerald-50 text-emerald-800";
   }
 
   if (status.includes("VIGENTE")) {
-    return "border-yellow-500/40 bg-yellow-500/10 text-yellow-200";
+    return "border-amber-200 bg-amber-50 text-amber-800";
   }
 
-  return "border-slate-500/40 bg-slate-500/10 text-slate-200";
+  return "border-slate-200 bg-slate-100 text-slate-800";
 }
 
 function fineStatusLabel(value: unknown): string {
@@ -268,28 +323,28 @@ function fineStatusLabel(value: unknown): string {
 function FinesTable({ fines }: { fines: JsonRecord[] }) {
   if (!fines.length) {
     return (
-      <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 text-sm text-slate-400">
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm font-bold text-slate-500">
         No hay multas detectadas para mostrar.
       </div>
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-800">
+    <div className="overflow-hidden rounded-xl border border-slate-200">
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-slate-800 text-left text-sm">
-          <thead className="bg-slate-950/80 text-xs uppercase tracking-[0.14em] text-slate-500">
+        <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
+          <thead className="bg-slate-50 text-xs uppercase tracking-[0.14em] text-slate-500">
             <tr>
               <th className="px-4 py-3">ID multa</th>
               <th className="px-4 py-3">Estado</th>
               <th className="px-4 py-3">Ingreso RMNP</th>
-              <th className="px-4 py-3">Prescripcion ref.</th>
+              <th className="px-4 py-3">Prescripción ref.</th>
               <th className="px-4 py-3 text-right">UTM</th>
               <th className="px-4 py-3 text-right">Monto</th>
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-slate-800 bg-slate-900">
+          <tbody className="divide-y divide-slate-200 bg-white">
             {fines.map((fine, index) => {
               const estado = firstValue(fine, ["estado", "status"]);
               const idMulta = firstValue(fine, ["idMulta", "id_multa", "fineId"]);
@@ -299,30 +354,17 @@ function FinesTable({ fines }: { fines: JsonRecord[] }) {
               const montoPesos = firstValue(fine, ["montoPesos", "monto_pesos"]);
 
               return (
-                <tr key={`${textValue(idMulta, "multa")}-${index}`} className="align-top transition hover:bg-slate-800/70">
-                  <td className="px-4 py-3 font-mono text-xs text-slate-200">
-                    {textValue(idMulta)}
-                  </td>
+                <tr key={`${textValue(idMulta, "multa")}-${index}`} className="align-top transition hover:bg-slate-50">
+                  <td className="px-4 py-3 font-mono text-xs text-slate-700">{textValue(idMulta)}</td>
 
                   <td className="px-4 py-3">
                     <Badge className={fineStatusClass(estado)}>{fineStatusLabel(estado)}</Badge>
                   </td>
 
-                  <td className="px-4 py-3 text-slate-300">
-                    {textValue(ingresoRmnp)}
-                  </td>
-
-                  <td className="px-4 py-3 text-slate-300">
-                    {textValue(prescripcion)}
-                  </td>
-
-                  <td className="px-4 py-3 text-right font-bold text-slate-200">
-                    {optionalNumber(montoUtm)}
-                  </td>
-
-                  <td className="px-4 py-3 text-right font-bold text-emerald-300">
-                    {optionalMoney(montoPesos)}
-                  </td>
+                  <td className="px-4 py-3 text-slate-700">{textValue(ingresoRmnp)}</td>
+                  <td className="px-4 py-3 text-slate-700">{textValue(prescripcion)}</td>
+                  <td className="px-4 py-3 text-right font-bold text-slate-800">{optionalNumber(montoUtm)}</td>
+                  <td className="px-4 py-3 text-right font-bold text-emerald-700">{optionalMoney(montoPesos)}</td>
                 </tr>
               );
             })}
@@ -332,6 +374,7 @@ function FinesTable({ fines }: { fines: JsonRecord[] }) {
     </div>
   );
 }
+
 function ActionButton({
   children,
   onClick,
@@ -344,10 +387,10 @@ function ActionButton({
   tone?: "default" | "primary" | "success" | "danger";
 }) {
   const classes = {
-    default: "border border-slate-700 text-slate-200 hover:bg-slate-800",
-    primary: "bg-cyan-400 text-slate-950 hover:bg-cyan-300",
-    success: "bg-emerald-500 text-slate-950 hover:bg-emerald-400",
-    danger: "bg-red-500 text-white hover:bg-red-400",
+    default: "border border-slate-300 bg-white text-slate-800 hover:bg-slate-50",
+    primary: "bg-cyan-700 text-white hover:bg-cyan-800",
+    success: "bg-emerald-600 text-white hover:bg-emerald-700",
+    danger: "bg-red-600 text-white hover:bg-red-700",
   };
 
   return (
@@ -428,6 +471,9 @@ export default function AdminRequestDetailPage() {
   const approved = isApprovedStatus(status);
   const fineLogs = useMemo(() => getFineLogsFromRecord(merged), [merged]);
 
+  const paymentOnly = source === "payment_only";
+  const needsAction = approved && !paymentOnly;
+
   const loadRequest = useCallback(async () => {
     if (!requestId) return;
 
@@ -481,9 +527,7 @@ export default function AdminRequestDetailPage() {
         rows[0] ||
         null;
 
-      if (!found) {
-        throw new Error("No se encontro la solicitud en el listado administrativo.");
-      }
+      if (!found) throw new Error("No se encontró la solicitud en el listado administrativo.");
 
       const analysis = asRecord(
         found.raw_analysis_json ||
@@ -538,7 +582,7 @@ export default function AdminRequestDetailPage() {
       const json = await readJson<ApiResponse>(response);
 
       if (!response.ok || json.ok === false) {
-        throw new Error(json.error || json.message || "No se pudo completar la accion");
+        throw new Error(json.error || json.message || "No se pudo completar la acción");
       }
 
       setActionState({ loading: false, message: json.message || successFallback, error: "" });
@@ -579,29 +623,27 @@ export default function AdminRequestDetailPage() {
 
   if (!authReady) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4 text-white">
-        
-
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/80 px-6 py-4 text-sm text-slate-300 shadow-xl">
-          Verificando sesion administrativa...
+      <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 text-slate-950">
+        <div className="rounded-2xl border border-slate-200 bg-white px-6 py-4 text-sm font-bold text-slate-600 shadow-xl">
+          Verificando sesión administrativa...
         </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 px-4 py-8 text-white">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <header className="rounded-2xl border border-slate-800 bg-slate-900/80 p-6 shadow-xl">
+    <main className="min-h-screen bg-slate-50 px-4 py-6 text-slate-950">
+      <div className="mx-auto max-w-7xl space-y-5">
+        <header className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0">
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">Prescribe tu Multa</p>
-              <h1 className="mt-2 text-3xl font-black">Ficha administrativa</h1>
-<p className="mt-2 break-all text-sm text-slate-300">Request ID: {requestId || "Sin requestId"}</p>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-teal-700">Prescribe tu Multa</p>
+              <h1 className="mt-1 text-2xl font-black">Ficha de solicitud</h1>
+              <p className="mt-1 break-all text-xs font-semibold text-slate-500">Request ID: {requestId || "Sin requestId"}</p>
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <ActionButton onClick={() => router.push("/admin/dashboard")}>Volver dashboard</ActionButton>
+              <ActionButton onClick={() => router.push("/admin/dashboard")}>Dashboard</ActionButton>
               <ActionButton onClick={() => void loadRequest()} disabled={loading} tone="primary">
                 {loading ? "Actualizando..." : "Actualizar"}
               </ActionButton>
@@ -609,135 +651,129 @@ export default function AdminRequestDetailPage() {
           </div>
         </header>
 
-        {error ? <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-100">{error}</div> : null}
-        {actionState.error ? <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-100">{actionState.error}</div> : null}
-        {actionState.message ? <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4 text-sm text-emerald-100">{actionState.message}</div> : null}
-        <section className="grid gap-4 xl:grid-cols-3">
-          <SendDocumentsReadyButton />
-          <RequestManagementStatusCard />
-          <ManualDeliveryCard />
-        </section>
+        {error ? <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">{error}</div> : null}
+        {actionState.error ? <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">{actionState.error}</div> : null}
+        {actionState.message ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-700">{actionState.message}</div> : null}
 
         {loading ? (
-          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center text-slate-400">Cargando detalle...</section>
+          <section className="rounded-3xl border border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-500">
+            Cargando detalle...
+          </section>
         ) : !payload ? (
-          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center text-slate-400">
+          <section className="rounded-3xl border border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-500">
             No hay datos para mostrar.
           </section>
         ) : (
           <>
-            <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-                <p className="text-sm text-slate-400">Estado comercial</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Badge className={statusClass(status)}>{statusLabel(status)}</Badge>
-                  {source === "payment_only" ? <Badge className="border-purple-500/40 bg-purple-500/10 text-purple-200">Pago sin analisis</Badge> : null}
-                  {isMock ? <Badge className="border-blue-500/40 bg-blue-500/10 text-blue-200">Mock</Badge> : null}
-                  {isSandbox ? <Badge className="border-orange-500/40 bg-orange-500/10 text-orange-200">Sandbox</Badge> : null}
-                  {isSupabase ? <Badge className="border-cyan-500/40 bg-cyan-500/10 text-cyan-200">Supabase</Badge> : null}
-                  {isLocalOnly ? <Badge className="border-slate-500/40 bg-slate-500/10 text-slate-200">Solo local</Badge> : null}
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-                <p className="text-sm text-slate-400">Monto pagado</p>
-                <p className="mt-2 text-3xl font-black text-emerald-300">{money(amount)}</p>
-                <p className="mt-1 text-xs text-slate-500">{paidAt ? `Pagado: ${dateText(paidAt)}` : "Sin pago aprobado"}</p>
-              </div>
-
-              <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-                <p className="text-sm text-slate-400">Cliente</p>
-                <p className="mt-2 truncate text-xl font-black">{customerName}</p>
-                <p className="mt-1 break-all text-sm text-slate-400">{customerEmail}</p>
-              </div>
-
-              <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-                <p className="text-sm text-slate-400">Patente</p>
-                <p className="mt-2 text-3xl font-black">{plate}</p>
-              </div>
+            <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+              <SummaryCard
+                label="Estado"
+                value={<Badge className={statusClass(status)}>{statusLabel(status)}</Badge>}
+                hint={paymentOnly ? "Pago sin análisis" : needsAction ? "Listo para preparar" : "Revisar estado"}
+                tone={paymentOnly ? "red" : approved ? "green" : "amber"}
+              />
+              <SummaryCard label="Monto" value={money(amount)} hint={paidAt ? `Pagado: ${dateText(paidAt)}` : "Sin pago aprobado"} tone="green" />
+              <SummaryCard label="Cliente" value={<span className="text-xl">{customerName}</span>} hint={customerEmail} />
+              <SummaryCard label="Patente" value={plate} hint="Vehículo" />
+              <SummaryCard label="Prescritas" value={prescribedCount || "No informado"} hint={potentialAmount ? money(potentialAmount) : "Monto no informado"} tone="blue" />
             </section>
 
-            <section className="grid gap-4 lg:grid-cols-3">
-              <InfoCard title="Datos de pago">
-                <div className="grid gap-3">
-                  <Field label="Estado" value={statusLabel(status)} />
-                  <Field label="Monto" value={money(amount)} />
-                  <Field label="Request ID" value={requestId} monospace />
-                  <Field label="Preference ID" value={preferenceId || "Sin preference_id"} monospace />
-                  <Field label="Payment ID" value={paymentId || "Sin payment_id"} monospace />
-                  <Field label="Creado" value={dateText(createdAt)} />
-                  <Field label="Actualizado" value={dateText(updatedAt)} />
-                  <Field label="Pagado" value={paidAt ? dateText(paidAt) : "No aprobado"} />
-                </div>
-              </InfoCard>
-
-              <InfoCard title="Datos del analisis">
-                <div className="grid gap-3">
-                  <Field label="Total multas" value={totalFines || "No informado"} />
-                  <Field label="Potencialmente prescritas" value={prescribedCount || "No informado"} />
-                  <Field label="Monto potencial" value={potentialAmount ? money(potentialAmount) : "No informado"} />
-                  <Field label="UTM prescritas" value={totalUtm || "No informado"} />
-                  <Field label="PDF" value={pdfFilename || pdfPath || "No informado"} />
-                  <Field label="Fuente" value={source || "Analisis"} />
-                </div>
-              </InfoCard>
-
-              <InfoCard title="Acciones rapidas">
-                <div className="grid gap-3">
-                  <ActionButton
-                    onClick={() => void postAction(`/api/admin/requests/${encodeURIComponent(requestId)}/resend-email`, "Correo reenviado correctamente")}
-                    disabled={actionState.loading || !approved}
-                    tone="success"
-                  >
-                    {actionState.loading ? "Procesando..." : "Reenviar correo"}
-                  </ActionButton>
-
-                  <ActionButton onClick={openClientResult} tone="primary">
-                    Abrir resultado cliente
-                  </ActionButton>
-
-                  <ActionButton onClick={() => void copyText(requestId, "Request ID")}>
-                    Copiar Request ID
-                  </ActionButton>
-
-                  <ActionButton onClick={() => openPreview("report")}>
-                    Previsualizar informe
-                  </ActionButton>
-
-                  <ActionButton onClick={() => openPreview("drafts")}>
-                    Previsualizar escritos
-                  </ActionButton>
-                </div>
-
-                <p className="text-sm text-slate-400">
-                  El reenvio usa confirmacion de compra. No entrega link directo de descarga.
+            {paymentOnly ? (
+              <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-900">
+                <p className="text-sm font-black">Pago aprobado sin análisis asociado.</p>
+                <p className="mt-1 text-xs font-semibold">
+                  No generar documentos desde esta ficha hasta revisar el origen del pago.
                 </p>
-              </InfoCard>
-            </section>
+              </div>
+            ) : null}
 
-            <section className="grid gap-4">
-              <InfoCard title="Tabla de multas detectadas">
-                <FinesTable fines={fineLogs} />
-              </InfoCard>
+            <Section
+              title="1. Operación y entrega"
+              defaultOpen
+              hint="Aquí se revisa, edita, genera y registra la entrega. Es el bloque principal."
+            >
+              <div className="grid gap-4 xl:grid-cols-3">
+                <RequestManagementStatusCard />
+                <SendDocumentsReadyButton />
+                <ManualDeliveryCard />
+              </div>
+            </Section>
 
-              <details className="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-sm">
-                
-          
-<summary className="cursor-pointer text-sm font-black uppercase tracking-[0.16em] text-slate-400 transition hover:text-cyan-300">
-                  Ver datos tecnicos
-                </summary>
-
-                <div className="mt-4 grid gap-4 lg:grid-cols-2">
-                  <InfoCard title="Detalle normalizado">
-                    <JsonBlock value={merged} />
-                  </InfoCard>
-
-                  <InfoCard title="Respuesta completa API">
-                    <JsonBlock value={payload} />
-                  </InfoCard>
+            <Section title="2. Datos del caso" defaultOpen hint="Resumen útil para verificar antes de enviar documentos.">
+              <div className="grid gap-4 lg:grid-cols-3">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <h3 className="text-sm font-black text-slate-900">Pago</h3>
+                  <div className="mt-3 grid gap-3">
+                    <Field label="Estado" value={statusLabel(status)} />
+                    <Field label="Monto" value={money(amount)} />
+                    <Field label="Preference ID" value={preferenceId || "Sin preference_id"} monospace />
+                    <Field label="Payment ID" value={paymentId || "Sin payment_id"} monospace />
+                    <Field label="Creado" value={dateText(createdAt)} />
+                    <Field label="Actualizado" value={dateText(updatedAt)} />
+                    <Field label="Pagado" value={paidAt ? dateText(paidAt) : "No aprobado"} />
+                  </div>
                 </div>
-              </details>
-            </section>
+
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <h3 className="text-sm font-black text-slate-900">Análisis</h3>
+                  <div className="mt-3 grid gap-3">
+                    <Field label="Total multas" value={totalFines || "No informado"} />
+                    <Field label="Potencialmente prescritas" value={prescribedCount || "No informado"} />
+                    <Field label="Monto potencial" value={potentialAmount ? money(potentialAmount) : "No informado"} />
+                    <Field label="UTM prescritas" value={totalUtm || "No informado"} />
+                    <Field label="PDF" value={pdfFilename || pdfPath || "No informado"} />
+                    <Field label="Fuente" value={source || "Análisis"} />
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <h3 className="text-sm font-black text-slate-900">Acciones rápidas</h3>
+                  <div className="mt-3 grid gap-3">
+                    <ActionButton
+                      onClick={() => void postAction(`/api/admin/requests/${encodeURIComponent(requestId)}/resend-email`, "Correo reenviado correctamente")}
+                      disabled={actionState.loading || !approved}
+                      tone="success"
+                    >
+                      {actionState.loading ? "Procesando..." : "Reenviar correo"}
+                    </ActionButton>
+
+                    <ActionButton onClick={openClientResult} tone="primary">
+                      Abrir resultado cliente
+                    </ActionButton>
+
+                    <ActionButton onClick={() => void copyText(requestId, "Request ID")}>
+                      Copiar Request ID
+                    </ActionButton>
+
+                    <ActionButton onClick={() => openPreview("report")}>
+                      Previsualizar informe
+                    </ActionButton>
+
+                    <ActionButton onClick={() => openPreview("drafts")}>
+                      Previsualizar escritos
+                    </ActionButton>
+                  </div>
+                </div>
+              </div>
+            </Section>
+
+            <Section title="3. Multas detectadas" defaultOpen={fineLogs.length > 0}>
+              <FinesTable fines={fineLogs} />
+            </Section>
+
+            <Section title="4. Datos técnicos" hint="Solo para diagnóstico. No es necesario revisarlo en operación normal.">
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div>
+                  <h3 className="mb-2 text-sm font-black text-slate-900">Detalle normalizado</h3>
+                  <JsonBlock value={merged} />
+                </div>
+
+                <div>
+                  <h3 className="mb-2 text-sm font-black text-slate-900">Respuesta completa API</h3>
+                  <JsonBlock value={payload} />
+                </div>
+              </div>
+            </Section>
           </>
         )}
       </div>
