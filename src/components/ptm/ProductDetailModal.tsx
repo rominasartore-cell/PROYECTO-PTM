@@ -68,7 +68,7 @@ const PRODUCT_CONFIG: Record<
     buttonLabel: "Comprar informe de fechas",
     includedItems: [
       "Informe de fecha estimada de prescripción.",
-      "Detalle de multas detectadas en el certificado.",
+      "Detalle de multas revisadas según el certificado.",
       "Fecha de ingreso al RMNP/RMTNP cuando esté disponible.",
       "Fecha estimada desde la cual podría solicitarse prescripción.",
       "Advertencias legales y criterio de cálculo referencial.",
@@ -90,7 +90,7 @@ function formatCLP(value: number): string {
     style: "currency",
     currency: "CLP",
     maximumFractionDigits: 0,
-  }).format(value);
+  }).format(Math.max(0, Math.round(value)));
 }
 
 function getPayloadString(
@@ -104,6 +104,34 @@ function getPayloadString(
   }
 
   return "";
+}
+
+function getPayloadNumber(
+  payload: Record<string, unknown> | undefined,
+  keys: string[]
+): number {
+  for (const key of keys) {
+    const value = payload?.[key];
+
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return value > 0 ? value : 0;
+    }
+
+    if (typeof value === "string") {
+      const parsed = Number(
+        value
+          .replace(/[^\d,.-]/g, "")
+          .replace(/\.(?=\d{3}(\D|$))/g, "")
+          .replace(",", ".")
+      );
+
+      if (Number.isFinite(parsed) && parsed > 0) {
+        return parsed;
+      }
+    }
+  }
+
+  return 0;
 }
 
 function getPaymentUrl(data: any): string {
@@ -166,6 +194,25 @@ export default function ProductDetailModal({
       paymentRequestId,
     [paymentPayload, paymentRequestId, quoteToken]
   );
+
+  const referentialAmount = useMemo(
+    () =>
+      getPayloadNumber(paymentPayload, [
+        "montoPotencial",
+        "monto_potencial",
+        "potentialAmount",
+        "potential_amount",
+        "prescribedAmount",
+        "prescribed_amount",
+        "montoMultasPotencialmentePrescritasCLP",
+        "montoPrescritoCLP",
+      ]),
+    [paymentPayload]
+  );
+
+  const showReferentialAmount =
+    productConfig.id === "informe-completo-prescripcion" &&
+    referentialAmount > 0;
 
   useEffect(() => {
     if (!open) return;
@@ -346,6 +393,22 @@ export default function ProductDetailModal({
             </div>
           </div>
         </section>
+
+        {showReferentialAmount ? (
+          <section className="mt-4 rounded-3xl border border-cyan-200 bg-cyan-50 p-5 text-center">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-800">
+              Monto referencial asociado
+            </p>
+
+            <p className="mt-2 text-3xl font-black tracking-tight text-teal-800 sm:text-4xl">
+              {formatCLP(referentialAmount)}
+            </p>
+
+            <p className="mx-auto mt-3 max-w-xl text-xs font-semibold leading-5 text-slate-700">
+              Corresponde al monto referencial asociado a las multas potencialmente prescritas, calculado según los datos visibles en el certificado. No garantiza eliminación ni resultado favorable.
+            </p>
+          </section>
+        ) : null}
 
         {error ? (
           <div className="mt-4 rounded-2xl border border-slate-300 bg-slate-50 p-4 text-sm font-bold text-slate-800">
