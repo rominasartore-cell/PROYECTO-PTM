@@ -643,8 +643,8 @@ export default function RequestManagementStatusCard() {
   }
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="border-b border-slate-100 px-4 py-3">
+    <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="border-b border-slate-100 px-3 py-2.5">
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
             <div className="flex flex-wrap items-center gap-2">
@@ -662,10 +662,10 @@ export default function RequestManagementStatusCard() {
             </div>
 
             <h2 className="mt-2 text-base font-black text-slate-950">
-              Documentos y entrega
+              Operación documental
             </h2>
             <p className="mt-0.5 text-xs font-semibold text-slate-500">
-              Flujo compacto: editar, generar, validar y registrar.
+              Editar, generar y registrar sin ruido visual.
             </p>
           </div>
 
@@ -680,7 +680,7 @@ export default function RequestManagementStatusCard() {
         </div>
       </div>
 
-      <div className="space-y-3 p-4 text-sm">
+      <div className="space-y-2.5 p-3 text-sm">
         {isPaymentOnly ? (
           <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-red-900">
             <p className="text-sm font-black">Pago aprobado sin análisis asociado.</p>
@@ -691,7 +691,7 @@ export default function RequestManagementStatusCard() {
         ) : null}
 
         {paidVerification.approved ? (
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5">
             <div className="grid gap-2 md:grid-cols-3">
               <div>
                 <p className="text-[10px] font-black uppercase text-slate-500">Pago</p>
@@ -747,26 +747,26 @@ export default function RequestManagementStatusCard() {
         </div>
 
         {canPrepare ? (
-          <div className="rounded-xl border border-cyan-200 bg-cyan-50 p-3">
+          <div className="rounded-lg border border-cyan-200 bg-cyan-50 p-2.5">
             <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
               <button type="button" onClick={loadEditorDocs} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-black text-white hover:bg-slate-800">
-                Editar en panel
+                Editar
               </button>
               <button type="button" onClick={downloadAdminJson} className="rounded-lg bg-cyan-700 px-3 py-2 text-xs font-black text-white hover:bg-cyan-800">
-                Descargar JSON
+                JSON
               </button>
               <button type="button" onClick={copyLocalDeliveryCommand} className="rounded-lg border border-cyan-700 bg-white px-3 py-2 text-xs font-black text-cyan-900 hover:bg-cyan-100">
-                Copiar generar
+                Generar
               </button>
               <button type="button" onClick={copyReviewEditCommand} className="rounded-lg border border-amber-500 bg-white px-3 py-2 text-xs font-black text-amber-800 hover:bg-amber-50">
-                Abrir local
+                Local
               </button>
             </div>
           </div>
         ) : null}
 
         {editorOpen && editableDocs.length > 0 ? (
-          <div className="rounded-xl border border-slate-200 bg-white p-3">
+          <div className="rounded-lg border border-slate-200 bg-white p-2.5">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm font-black text-slate-950">Editor de documentos</p>
@@ -789,7 +789,7 @@ export default function RequestManagementStatusCard() {
             <textarea
               value={activeDoc?.content || ""}
               onChange={(event) => updateActiveDocContent(event.target.value)}
-              className="mt-3 min-h-[260px] w-full rounded-lg border border-slate-300 bg-slate-50 p-3 font-mono text-xs leading-5 text-slate-900 outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100"
+              className="mt-2 min-h-[180px] w-full rounded-lg border border-slate-300 bg-slate-50 p-2.5 font-mono text-xs leading-5 text-slate-900 outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100"
             />
 
             <div className="mt-2 grid gap-2 sm:grid-cols-3">

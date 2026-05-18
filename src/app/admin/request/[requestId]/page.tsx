@@ -155,9 +155,9 @@ function SummaryCard({ label, value, hint, tone = "white" }: { label: string; va
   };
 
   return (
-    <div className={`rounded-2xl border p-4 shadow-sm ${toneClasses[tone]}`}>
+    <div className={`rounded-xl border p-3 shadow-sm ${toneClasses[tone]}`}>
       <p className="text-[11px] font-black uppercase tracking-wide opacity-70">{label}</p>
-      <div className="mt-2 text-2xl font-black">{value}</div>
+      <div className="mt-1.5 text-xl font-black">{value}</div>
       {hint ? <p className="mt-1 text-xs font-semibold opacity-70">{hint}</p> : null}
     </div>
   );
@@ -165,7 +165,7 @@ function SummaryCard({ label, value, hint, tone = "white" }: { label: string; va
 
 function Section({ title, children, defaultOpen = false, hint }: { title: string; children: ReactNode; defaultOpen?: boolean; hint?: string; }) {
   return (
-    <details open={defaultOpen} className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+    <details open={defaultOpen} className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm">
       <summary className="cursor-pointer list-none">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-base font-black text-slate-950">{title}</h2>
@@ -457,7 +457,7 @@ export default function AdminRequestDetailPage() {
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-6 text-slate-950">
       <div className="mx-auto max-w-7xl space-y-5">
-        <header className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <header className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0">
               <p className="text-xs font-black uppercase tracking-[0.18em] text-teal-700">Prescribe tu Multa</p>
@@ -497,11 +497,11 @@ export default function AdminRequestDetailPage() {
               </div>
             ) : null}
 
-            <Section title="1. Operación documental" defaultOpen hint="Bloque principal. Está compacto para editar/generar documentos sin ruido visual.">
+            <Section title="1. Operación documental" defaultOpen hint="Bloque principal para editar/generar documentos.">
               <RequestManagementStatusCard />
 
               <details className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                <summary className="cursor-pointer text-sm font-black text-slate-800">Correo y registro final</summary>
+                <summary className="cursor-pointer text-sm font-black text-slate-800">Correo y cierre</summary>
                 <div className="mt-3 grid gap-3 xl:grid-cols-2">
                   <SendDocumentsReadyButton />
                   <ManualDeliveryCard />
@@ -509,7 +509,7 @@ export default function AdminRequestDetailPage() {
               </details>
             </Section>
 
-            <Section title="2. Datos del caso" defaultOpen hint="Resumen útil para verificar antes de enviar documentos.">
+            <Section title="2. Datos del caso" hint="Resumen útil para verificar antes de enviar documentos.">
               <div className="grid gap-4 lg:grid-cols-3">
                 <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <h3 className="text-sm font-black text-slate-900">Pago</h3>
@@ -552,7 +552,7 @@ export default function AdminRequestDetailPage() {
               </div>
             </Section>
 
-            <Section title="3. Multas detectadas" defaultOpen={fineLogs.length > 0}>
+            <Section title="3. Multas detectadas" hint="Abrir solo si necesitas revisar detalle de multas.">
               <FinesTable fines={fineLogs} />
             </Section>
 
