@@ -3,6 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 
+const ADMIN_TOKEN_KEY = "ptm-admin-token";
+
+type JsonRecord = Record<string, unknown>;
+
 type ManagementStatus =
   | "pending_review"
   | "in_progress"
@@ -18,6 +22,30 @@ type ApiResponse = {
   updatedAt?: string | null;
   error?: string;
   message?: string;
+};
+
+type PaidVerification = {
+  loading: boolean;
+  checked: boolean;
+  approved: boolean;
+  status: string;
+  paidAt: string;
+  amount: number;
+  product: string;
+  customerEmail: string;
+  error: string;
+};
+
+const INITIAL_PAID_VERIFICATION: PaidVerification = {
+  loading: true,
+  checked: false,
+  approved: false,
+  status: "",
+  paidAt: "",
+  amount: 0,
+  product: "",
+  customerEmail: "",
+  error: "",
 };
 
 const STATUS_OPTIONS: Array<{
@@ -57,6 +85,66 @@ function getRequestIdFromParams(params: ReturnType<typeof useParams>): string {
   return typeof raw === "string" ? raw : "";
 }
 
+function getAdminToken(): string {
+  if (typeof window === "undefined") return "";
+  return window.localStorage.getItem(ADMIN_TOKEN_KEY) || "";
+}
+
+function buildAdminHeaders(): HeadersInit {
+  const token = getAdminToken();
+  const headers: Record<string, string> = {};
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  return headers;
+}
+
+function asRecord(value: unknown): JsonRecord {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as JsonRecord)
+    : {};
+}
+
+function pickString(record: JsonRecord, keys: string[], fallback = ""): string {
+  for (const key of keys) {
+    const value = record[key];
+
+    if (value !== null && value !== undefined && value !== "") {
+      return String(value);
+    }
+  }
+
+  return fallback;
+}
+
+function pickNumber(record: JsonRecord, keys: string[], fallback = 0): number {
+  for (const key of keys) {
+    const value = record[key];
+
+    if (value === null || value === undefined || value === "") continue;
+
+    const normalized =
+      typeof value === "string"
+        ? value.replace(/\./g, "").replace(",", ".")
+        : value;
+
+    const parsed = Number(normalized);
+
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  return fallback;
+}
+
+function isApprovedStatus(value?: string | null): boolean {
+  const status = String(value || "").toLowerCase();
+  return status === "approved" || status === "paid" || status === "completed";
+}
+
 function formatDate(value?: string | null): string {
   if (!value) {
     return "Sin actualización";
@@ -72,6 +160,14 @@ function formatDate(value?: string | null): string {
     dateStyle: "short",
     timeStyle: "short",
   }).format(date);
+}
+
+function formatMoney(value: number): string {
+  return new Intl.NumberFormat("es-CL", {
+    style: "currency",
+    currency: "CLP",
+    maximumFractionDigits: 0,
+  }).format(value || 0);
 }
 
 function getStatusClasses(status: ManagementStatus): string {
@@ -101,6 +197,46 @@ function getStatusLabel(status: ManagementStatus): string {
   return STATUS_OPTIONS.find((item) => item.value === status)?.label || status;
 }
 
+function getNextStepText(status: ManagementStatus): string {
+  if (status === "documents_sent") {
+    return "Entrega registrada: los documentos ya figuran como enviados.";
+  }
+
+  if (status === "closed") {
+    return "Gestión cerrada: no quedan acciones obligatorias pendientes.";
+  }
+
+  if (status === "in_progress") {
+    return "Siguiente paso: terminar preparación, validar ZIP y enviar documentos listos.";
+  }
+
+  return "Siguiente paso: revisar datos del cliente y preparar entrega documental.";
+}
+
+function getNoticeClasses(status: ManagementStatus): string {
+  if (status === "documents_sent" || status === "closed") {
+    return "border-emerald-200 bg-emerald-50 text-emerald-900";
+  }
+
+  if (status === "in_progress") {
+    return "border-teal-200 bg-teal-50 text-teal-900";
+  }
+
+  return "border-amber-200 bg-amber-50 text-amber-900";
+}
+
+function getNoticeBadge(status: ManagementStatus): string {
+  if (status === "documents_sent" || status === "closed") {
+    return "Entrega registrada";
+  }
+
+  if (status === "in_progress") {
+    return "En preparación";
+  }
+
+  return "Pendiente de preparar";
+}
+
 export default function RequestManagementStatusCard() {
   const params = useParams();
   const requestId = useMemo(() => getRequestIdFromParams(params), [params]);
@@ -112,6 +248,147 @@ export default function RequestManagementStatusCard() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [paidVerification, setPaidVerification] = useState<PaidVerification>(
+    INITIAL_PAID_VERIFICATION
+  );
+
+  async function loadPaidVerification() {
+    if (!requestId) {
+      setPaidVerification({
+        ...INITIAL_PAID_VERIFICATION,
+        loading: false,
+        checked: true,
+        error: "No se detectó requestId.",
+      });
+      return;
+    }
+
+    setPaidVerification((current) => ({
+      ...current,
+      loading: true,
+      error: "",
+    }));
+
+    try {
+      const query = new URLSearchParams({
+        search: requestId,
+        limit: "100",
+        ts: String(Date.now()),
+      });
+
+      const response = await fetch(`/api/admin/requests?${query.toString()}`, {
+        method: "GET",
+        cache: "no-store",
+        headers: buildAdminHeaders(),
+      });
+
+      const data = (await response.json().catch(() => null)) as any;
+
+      if (!response.ok || data?.ok === false) {
+        throw new Error(
+          data?.error ||
+            data?.message ||
+            `No se pudo verificar pago. HTTP ${response.status}`
+        );
+      }
+
+      const rows = Array.isArray(data?.requests)
+        ? data.requests
+        : Array.isArray(data?.data)
+          ? data.data
+          : data?.data
+            ? [data.data]
+            : [];
+
+      const found =
+        rows.find((row: any) => {
+          const payment = asRecord(row?.payment);
+          const candidates = [
+            row?.request_id,
+            row?.requestId,
+            row?.id,
+            row?.external_reference,
+            row?.externalReference,
+            payment.requestId,
+            payment.externalReference,
+          ];
+
+          return candidates.some(
+            (value) => String(value || "").trim() === requestId
+          );
+        }) ||
+        rows[0] ||
+        null;
+
+      if (!found) {
+        setPaidVerification({
+          ...INITIAL_PAID_VERIFICATION,
+          loading: false,
+          checked: true,
+          error: "No se encontró la solicitud para verificar pago.",
+        });
+        return;
+      }
+
+      const payment = asRecord(found.payment);
+      const merged = {
+        ...payment,
+        ...asRecord(found),
+      };
+
+      const commercialStatus = pickString(
+        merged,
+        [
+          "payment_status",
+          "paymentStatus",
+          "purchase_status",
+          "purchaseStatus",
+          "status",
+        ],
+        ""
+      );
+
+      setPaidVerification({
+        loading: false,
+        checked: true,
+        approved: isApprovedStatus(commercialStatus),
+        status: commercialStatus,
+        paidAt: pickString(
+          merged,
+          ["payment_paid_at", "paymentPaidAt", "paid_at", "paidAt"],
+          ""
+        ),
+        amount: pickNumber(
+          merged,
+          ["payment_amount", "paymentAmount", "amount", "transaction_amount"],
+          0
+        ),
+        product: pickString(merged, ["product", "payment_product"], ""),
+        customerEmail: pickString(
+          merged,
+          [
+            "customer_email",
+            "customerEmail",
+            "payment_customer_email",
+            "paymentCustomerEmail",
+            "email",
+          ],
+          ""
+        ),
+        error: "",
+      });
+    } catch (error) {
+      setPaidVerification({
+        ...INITIAL_PAID_VERIFICATION,
+        loading: false,
+        checked: true,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Error inesperado verificando pago.",
+      });
+    }
+  }
 
   async function loadStatus() {
     if (!requestId) {
@@ -154,12 +431,14 @@ export default function RequestManagementStatusCard() {
 
   useEffect(() => {
     loadStatus();
+    loadPaidVerification();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requestId]);
 
   useEffect(() => {
     function handleRefresh() {
       loadStatus();
+      loadPaidVerification();
     }
 
     window.addEventListener("ptm-management-status-refresh", handleRefresh);
@@ -256,6 +535,45 @@ export default function RequestManagementStatusCard() {
       </div>
 
       <div className="p-4">
+        {paidVerification.loading ? (
+          <div className="mb-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600">
+            Verificando pago de la solicitud...
+          </div>
+        ) : paidVerification.approved ? (
+          <div className={`mb-3 rounded-lg border px-3 py-3 ${getNoticeClasses(status)}`}>
+            <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-white/70 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wide">
+                    Solicitud pagada verificada
+                  </span>
+                  <span className="rounded-full bg-white/70 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wide">
+                    {getNoticeBadge(status)}
+                  </span>
+                </div>
+
+                <p className="mt-2 text-sm font-black">
+                  Pago aprobado confirmado. {getNextStepText(status)}
+                </p>
+
+                <p className="mt-1 text-xs font-semibold leading-5 opacity-80">
+                  Revisa datos del cliente, previsualiza informe y escritos, genera la entrega local, valida el ZIP y luego envía “documentos listos”.
+                </p>
+              </div>
+
+              <div className="grid min-w-[160px] gap-1 text-xs font-bold md:text-right">
+                <span>{formatMoney(paidVerification.amount)}</span>
+                <span>{paidVerification.paidAt ? formatDate(paidVerification.paidAt) : "Pago sin fecha"}</span>
+                {paidVerification.product ? <span>{paidVerification.product}</span> : null}
+              </div>
+            </div>
+          </div>
+        ) : paidVerification.error ? (
+          <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">
+            No se pudo verificar pago desde esta tarjeta: {paidVerification.error}
+          </div>
+        ) : null}
+
         <div className="grid gap-2 md:grid-cols-[1fr_1fr_2fr]">
           <div className={`rounded-lg border px-3 py-2.5 ${getStatusClasses(status)}`}>
             <p className="text-[10px] font-black uppercase tracking-wide opacity-70">
