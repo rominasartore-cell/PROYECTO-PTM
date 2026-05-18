@@ -33,6 +33,13 @@ type PaidVerification = {
   error: string;
 };
 
+type EditableDoc = {
+  id: string;
+  title: string;
+  filename: string;
+  content: string;
+};
+
 const STATUS_OPTIONS: Array<{
   value: ManagementStatus;
   label: string;
@@ -91,6 +98,12 @@ function asRecord(value: unknown): JsonRecord {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as JsonRecord)
     : {};
+}
+
+function asArray(value: unknown): unknown[] {
+  if (Array.isArray(value)) return value;
+  if (value === null || value === undefined) return [];
+  return [value];
 }
 
 function pickString(record: JsonRecord, keys: string[], fallback = ""): string {
@@ -191,6 +204,14 @@ function getNoticeClasses(status: ManagementStatus): string {
   return "border-amber-200 bg-amber-50 text-amber-900";
 }
 
+function safeFilePart(value: string): string {
+  return value
+    .replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 120);
+}
+
 function buildLocalDeliveryCommand(requestId: string): string {
   const safeRequestId = requestId.replace(/"/g, "");
   const jsonName = `admin-request-${safeRequestId}.json`;
@@ -230,31 +251,304 @@ function buildReviewEditCommand(requestId: string): string {
     '  throw "No existe carpeta de entrega. Primero genera documentos con generate-real-delivery.ps1: $DeliveryDir"',
     "}",
     "",
-    'Write-Host "Carpeta de entrega:" -ForegroundColor Cyan',
-    "Write-Host $DeliveryDir",
-    "",
-    '$editableFiles = @("informe.md", "instructivo.md", "checklist.md", "solicitud-prescripcion-base.md")',
-    'Write-Host ""',
-    'Write-Host "Documentos editables principales:" -ForegroundColor Yellow',
-    "foreach ($file in $editableFiles) {",
-    "  $path = Join-Path $DeliveryDir $file",
-    "  if (Test-Path $path) {",
-    '    Write-Host "[OK] $file" -ForegroundColor Green',
-    "  } else {",
-    '    Write-Host "[FALTA] $file" -ForegroundColor Yellow',
-    "  }",
-    "}",
-    "",
     "$codeCommand = Get-Command code -ErrorAction SilentlyContinue",
     "if ($codeCommand) {",
     "  code $DeliveryDir",
     "} else {",
     "  explorer.exe $DeliveryDir",
     "}",
-    "",
-    'Write-Host ""',
-    'Write-Host "Edita los .md si corresponde. Luego vuelve a ejecutar validacion/auditoria o regenera ZIP antes de enviar." -ForegroundColor Yellow',
   ].join("\n");
+}
+
+function getDeepArray(record: JsonRecord, paths: string[][]): unknown[] {
+  for (const path of paths) {
+    let current: unknown = record;
+
+    for (const key of path) {
+      current = asRecord(current)[key];
+    }
+
+    const values = asArray(current);
+    if (values.length > 0) return values;
+  }
+
+  return [];
+}
+
+function getDeepRecord(record: JsonRecord, paths: string[][]): JsonRecord {
+  for (const path of paths) {
+    let current: unknown = record;
+
+    for (const key of path) {
+      current = asRecord(current)[key];
+    }
+
+    const result = asRecord(current);
+    if (Object.keys(result).length > 0) return result;
+  }
+
+  return {};
+}
+
+function normalizeFine(value: unknown, index: number): JsonRecord {
+  const fine = asRecord(value);
+  return {
+    numero: pickString(fine, ["numero", "number", "index"], String(index + 1)),
+    rol: pickString(fine, ["rolCausa", "rol", "role", "caseRole"], "Rol no informado"),
+    tribunal: pickString(fine, ["tribunal", "court", "juzgado", "courtName"], "Tribunal no informado"),
+    comunaTribunal: pickString(fine, ["comunaTribunal", "comuna", "courtCommune"], "Comuna no informada"),
+    fechaIngreso: pickString(fine, ["fechaIngresoRmnp", "rmnpDate", "fechaRmnp", "date"], "Fecha no informada"),
+    fechaPrescripcion: pickString(fine, ["fechaPrescripcionReferencial", "estimatedPrescriptionDate", "prescriptionDate"], "Fecha referencial no informada"),
+    montoUtm: pickString(fine, ["montoMultaUtm", "montoUtm", "amountUtm", "utm", "monto"], "Monto no informado"),
+    infraccion: pickString(fine, ["infraccion", "infraction", "description"], "Infracción no informada"),
+    estado: pickString(fine, ["estado", "status"], "Estado no informado"),
+  };
+}
+
+function isPrescribedFine(value: unknown): boolean {
+  const fine = asRecord(value);
+  const status = pickString(fine, ["estado", "status", "situacion"], "").toLowerCase();
+
+  return (
+    status.includes("prescrit") ||
+    fine.potencialmentePrescrita === true ||
+    fine.isPrescribed === true ||
+    fine.prescrita === true
+  );
+}
+
+function buildFineList(fines: JsonRecord[]): string {
+  if (fines.length === 0) return "- No se informaron multas para esta categoría.";
+
+  return fines
+    .map((fine, index) => {
+      return [
+        `### Multa ${index + 1}`,
+        "",
+        `- Rol: ${fine.rol}`,
+        `- Tribunal: ${fine.tribunal}`,
+        `- Comuna tribunal: ${fine.comunaTribunal}`,
+        `- Fecha ingreso RMNP: ${fine.fechaIngreso}`,
+        `- Fecha estimada/referencial: ${fine.fechaPrescripcion}`,
+        `- Monto UTM: ${fine.montoUtm}`,
+        `- Infracción: ${fine.infraccion}`,
+        `- Estado: ${fine.estado}`,
+      ].join("\n");
+    })
+    .join("\n\n");
+}
+
+function buildEditableDocs(requestId: string, row: JsonRecord): EditableDoc[] {
+  const payment = asRecord(row.payment);
+  const clientData =
+    asRecord(row.client_data).rut || asRecord(row.clientData).rut
+      ? asRecord(row.client_data || row.clientData)
+      : getDeepRecord(row, [["data", "client_data"], ["data", "clientData"]]);
+
+  const analysis = getDeepRecord(row, [
+    ["analysis"],
+    ["raw_analysis_json"],
+    ["data", "raw_analysis_json"],
+    ["data", "analysis"],
+    ["result"],
+  ]);
+
+  const merged = {
+    ...payment,
+    ...analysis,
+    ...clientData,
+    ...row,
+  };
+
+  const name = pickString(
+    merged,
+    ["customer_name", "customerName", "name", "nombre", "nombreCliente"],
+    "Cliente no informado"
+  );
+  const email = pickString(
+    merged,
+    ["customer_email", "customerEmail", "email", "correo", "emailCliente"],
+    "Correo no informado"
+  );
+  const plate = pickString(
+    merged,
+    ["vehicle_plate", "plate", "patente"],
+    "Patente no informada"
+  );
+  const rut = pickString(merged, ["rutSolicitante", "rut"], "RUT no informado");
+  const domicilio = pickString(
+    merged,
+    ["domicilioSolicitante", "domicilio", "address"],
+    "Domicilio no informado"
+  );
+  const comuna = pickString(
+    merged,
+    ["comunaSolicitante", "comuna", "commune"],
+    "Comuna no informada"
+  );
+  const profession = pickString(
+    merged,
+    ["profesionOficio", "profesion", "profession"],
+    "Profesión u oficio no informado"
+  );
+
+  const rawLogs = getDeepArray(row, [
+    ["analysis", "logs"],
+    ["result", "logs"],
+    ["raw_analysis_json", "logs"],
+    ["data", "raw_analysis_json", "logs"],
+    ["data", "raw_analysis_json", "analysis", "logs"],
+    ["data", "raw_analysis_json", "result", "logs"],
+  ]);
+
+  const fines = rawLogs.map(normalizeFine);
+  const prescribedFines = fines.filter((fine) => isPrescribedFine(fine));
+  const nonPrescribedFines = fines.filter((fine) => !isPrescribedFine(fine));
+
+  const totalMultas = pickNumber(
+    merged,
+    ["totalMultas", "totalFines", "total_multas"],
+    fines.length
+  );
+  const totalPrescritas = pickNumber(
+    merged,
+    [
+      "totalPotencialmentePrescritas",
+      "prescribedCount",
+      "potentiallyPrescribed",
+      "multasPotencialmentePrescritas",
+      "multasSusceptibles",
+    ],
+    prescribedFines.length
+  );
+  const montoReferencial = pickNumber(
+    merged,
+    [
+      "montoReferencialPrescrito",
+      "montoPotencial",
+      "montoPotencialPesos",
+      "potentialAmount",
+      "amount",
+    ],
+    0
+  );
+
+  const today = new Intl.DateTimeFormat("es-CL", {
+    dateStyle: "short",
+  }).format(new Date());
+
+  const header = [
+    `Request ID: ${requestId}`,
+    `Cliente: ${name}`,
+    `Correo: ${email}`,
+    `Patente: ${plate}`,
+    `Fecha edición: ${today}`,
+  ].join("\n");
+
+  const informe = [
+    "# Informe de análisis de prescripción de multas",
+    "",
+    header,
+    "",
+    "## Resumen",
+    "",
+    `- Total de multas revisadas: ${totalMultas || "No informado"}`,
+    `- Multas potencialmente prescritas: ${totalPrescritas || 0}`,
+    `- Monto referencial asociado: ${montoReferencial > 0 ? formatMoney(montoReferencial) : "No informado"}`,
+    "",
+    "## Multas potencialmente prescritas",
+    "",
+    buildFineList(prescribedFines),
+    "",
+    "## Multas no prescritas o vigentes",
+    "",
+    buildFineList(nonPrescribedFines),
+    "",
+    "## Nota legal",
+    "",
+    "Este informe es referencial y se basa en los datos visibles en el certificado revisado. No constituye representación judicial ni garantiza que el tribunal declare la prescripción.",
+  ].join("\n");
+
+  const instructivo = [
+    "# Instructivo de tramitación personal",
+    "",
+    header,
+    "",
+    "## Pasos sugeridos",
+    "",
+    "1. Revisar que los datos personales estén correctos.",
+    "2. Revisar que la patente y las multas correspondan al certificado.",
+    "3. Presentar la solicitud ante el Juzgado de Policía Local competente.",
+    "4. Adjuntar certificado RMNP/RMTNP y documentos de identificación si corresponde.",
+    "5. Hacer seguimiento de la resolución del tribunal.",
+    "",
+    "## Advertencia",
+    "",
+    "El tribunal puede exigir antecedentes adicionales o rechazar la solicitud según los antecedentes del caso.",
+  ].join("\n");
+
+  const solicitudBase = [
+    "# Solicitud de prescripción de multa",
+    "",
+    "S.J.L. DE POLICÍA LOCAL COMPETENTE",
+    "",
+    `${name}, RUT ${rut}, domiciliado/a en ${domicilio}, comuna de ${comuna}, profesión u oficio ${profession}, correo electrónico ${email}, respecto del vehículo patente ${plate}, a US. respetuosamente digo:`,
+    "",
+    "Que vengo en solicitar se declare la prescripción de la o las multas individualizadas, de acuerdo con los antecedentes contenidos en el certificado de multas de tránsito no pagadas.",
+    "",
+    "## Multas incluidas en esta solicitud",
+    "",
+    buildFineList(prescribedFines),
+    "",
+    "POR TANTO,",
+    "",
+    "Solicito a US. tener por presentada esta solicitud y resolver conforme a derecho.",
+    "",
+    "Firma: ______________________________",
+  ].join("\n");
+
+  const checklist = [
+    "# Checklist de revisión antes de enviar",
+    "",
+    header,
+    "",
+    "- [ ] Datos del cliente revisados.",
+    "- [ ] Patente revisada.",
+    "- [ ] Total de multas revisado.",
+    "- [ ] Multas potencialmente prescritas revisadas.",
+    "- [ ] Monto referencial revisado.",
+    "- [ ] Solicitud editable revisada.",
+    "- [ ] Sin placeholders visibles.",
+    "- [ ] ZIP final validado.",
+    "- [ ] Auditoría aprobada.",
+  ].join("\n");
+
+  return [
+    {
+      id: "informe",
+      title: "Informe",
+      filename: `informe-${safeFilePart(requestId)}.md`,
+      content: informe,
+    },
+    {
+      id: "solicitud",
+      title: "Solicitud",
+      filename: `solicitud-prescripcion-${safeFilePart(requestId)}.md`,
+      content: solicitudBase,
+    },
+    {
+      id: "instructivo",
+      title: "Instructivo",
+      filename: `instructivo-${safeFilePart(requestId)}.md`,
+      content: instructivo,
+    },
+    {
+      id: "checklist",
+      title: "Checklist",
+      filename: `checklist-${safeFilePart(requestId)}.md`,
+      content: checklist,
+    },
+  ];
 }
 
 export default function RequestManagementStatusCard() {
@@ -270,7 +564,14 @@ export default function RequestManagementStatusCard() {
   const [errorMessage, setErrorMessage] = useState("");
   const [localDeliveryMessage, setLocalDeliveryMessage] = useState("");
   const [localDeliveryError, setLocalDeliveryError] = useState("");
+  const [editorMessage, setEditorMessage] = useState("");
+  const [editorError, setEditorError] = useState("");
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editableDocs, setEditableDocs] = useState<EditableDoc[]>([]);
+  const [activeDocId, setActiveDocId] = useState("informe");
   const [paidVerification, setPaidVerification] = useState<PaidVerification>(INITIAL_PAID);
+
+  const activeDoc = editableDocs.find((doc) => doc.id === activeDocId) || editableDocs[0];
 
   async function fetchAdminRequestPayload(): Promise<any> {
     if (!requestId) throw new Error("No se detectó requestId.");
@@ -337,19 +638,9 @@ export default function RequestManagementStatusCard() {
 
       const data = await fetchAdminRequestPayload();
       const content = JSON.stringify(data, null, 2);
-      const blob = new Blob([content], { type: "application/json;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const filename = `admin-request-${requestId}.json`;
+      downloadTextFile(`admin-request-${requestId}.json`, content, "application/json;charset=utf-8");
 
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
-
-      setLocalDeliveryMessage(`JSON admin descargado: ${filename}`);
+      setLocalDeliveryMessage(`JSON admin descargado: admin-request-${requestId}.json`);
     } catch (error) {
       setLocalDeliveryError(
         error instanceof Error
@@ -393,6 +684,73 @@ export default function RequestManagementStatusCard() {
         error instanceof Error ? error.message : "No se pudo copiar el comando de revisión."
       );
     }
+  }
+
+  function downloadTextFile(filename: string, content: string, type = "text/markdown;charset=utf-8") {
+    const blob = new Blob([content], { type });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  async function loadEditorDocs() {
+    try {
+      setEditorError("");
+      setEditorMessage("");
+
+      const data = await fetchAdminRequestPayload();
+      const found = findMatchingRequest(data);
+
+      if (!found) {
+        throw new Error("No se encontró la solicitud para armar documentos editables.");
+      }
+
+      const docs = buildEditableDocs(requestId, found);
+
+      setEditableDocs(docs);
+      setActiveDocId(docs[0]?.id || "informe");
+      setEditorOpen(true);
+      setEditorMessage("Documentos cargados para edición en panel.");
+    } catch (error) {
+      setEditorError(
+        error instanceof Error
+          ? error.message
+          : "Error inesperado cargando editor de documentos."
+      );
+    }
+  }
+
+  function updateActiveDocContent(content: string) {
+    if (!activeDoc) return;
+
+    setEditableDocs((docs) =>
+      docs.map((doc) => (doc.id === activeDoc.id ? { ...doc, content } : doc))
+    );
+  }
+
+  async function copyActiveDoc() {
+    if (!activeDoc) return;
+
+    await navigator.clipboard.writeText(activeDoc.content);
+    setEditorMessage(`Documento copiado: ${activeDoc.title}`);
+  }
+
+  function downloadActiveDoc() {
+    if (!activeDoc) return;
+
+    downloadTextFile(activeDoc.filename, activeDoc.content);
+    setEditorMessage(`Documento descargado: ${activeDoc.filename}`);
+  }
+
+  function downloadAllDocs() {
+    editableDocs.forEach((doc) => downloadTextFile(doc.filename, doc.content));
+    setEditorMessage("Documentos descargados. Revisa Descargas.");
   }
 
   async function loadPaidVerification() {
@@ -644,7 +1002,7 @@ export default function RequestManagementStatusCard() {
                   <p className="mt-1 text-xs font-semibold leading-5 opacity-80">
                     {isPaymentOnly
                       ? "Antes de generar entrega, confirma que exista análisis asociado y que la ficha no sea solo un registro de pago."
-                      : "Revisa datos del cliente, previsualiza informe y escritos, genera la entrega local, valida el ZIP y luego envía documentos listos."}
+                      : "Revisa datos del cliente, edita documentos si corresponde, genera/valida la entrega y luego envía documentos listos."}
                   </p>
                 </div>
 
@@ -661,19 +1019,27 @@ export default function RequestManagementStatusCard() {
                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                   <div>
                     <span className="rounded-full bg-white px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wide text-cyan-800">
-                      Preparar entrega local
+                      Documentos y entrega
                     </span>
 
                     <p className="mt-2 text-sm font-black">
-                      Descarga el JSON admin, genera los documentos y revisa la carpeta editable antes de enviar.
+                      Edita documentos en este panel o genera la entrega local.
                     </p>
 
                     <p className="mt-1 text-xs font-semibold leading-5 text-cyan-800">
-                      El botón revisar/editar abre la carpeta local generada en VS Code si está instalado; si no, abre el Explorador.
+                      La edición en panel permite copiar o descargar Markdown. La entrega ZIP final sigue validándose localmente antes de enviar.
                     </p>
                   </div>
 
                   <div className="grid gap-2 md:min-w-[240px]">
+                    <button
+                      type="button"
+                      onClick={loadEditorDocs}
+                      className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-black text-white shadow-sm transition hover:bg-slate-800"
+                    >
+                      Abrir editor documentos
+                    </button>
+
                     <button
                       type="button"
                       onClick={downloadAdminJson}
@@ -695,10 +1061,69 @@ export default function RequestManagementStatusCard() {
                       onClick={copyReviewEditCommand}
                       className="rounded-lg border border-amber-600 bg-amber-50 px-3 py-2 text-xs font-black text-amber-900 shadow-sm transition hover:bg-amber-100"
                     >
-                      Copiar comando revisar/editar
+                      Copiar comando revisar local
                     </button>
                   </div>
                 </div>
+
+                {editorOpen && editableDocs.length > 0 ? (
+                  <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3 text-slate-950">
+                    <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <p className="text-sm font-black">
+                          Editor rápido de documentos
+                        </p>
+                        <p className="mt-1 text-xs font-semibold text-slate-500">
+                          Revisa y edita antes de descargar o copiar.
+                        </p>
+                      </div>
+
+                      <select
+                        value={activeDoc?.id || ""}
+                        onChange={(event) => setActiveDocId(event.target.value)}
+                        className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-900"
+                      >
+                        {editableDocs.map((doc) => (
+                          <option key={doc.id} value={doc.id}>
+                            {doc.title}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <textarea
+                      value={activeDoc?.content || ""}
+                      onChange={(event) => updateActiveDocContent(event.target.value)}
+                      className="mt-3 min-h-[360px] w-full rounded-lg border border-slate-300 bg-slate-50 p-3 font-mono text-xs leading-5 text-slate-900 outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100"
+                    />
+
+                    <div className="mt-3 grid gap-2 md:grid-cols-3">
+                      <button
+                        type="button"
+                        onClick={copyActiveDoc}
+                        className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-black text-slate-900 hover:bg-slate-50"
+                      >
+                        Copiar documento
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={downloadActiveDoc}
+                        className="rounded-lg bg-cyan-700 px-3 py-2 text-xs font-black text-white hover:bg-cyan-800"
+                      >
+                        Descargar este .md
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={downloadAllDocs}
+                        className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-black text-white hover:bg-slate-800"
+                      >
+                        Descargar todos
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
 
                 {localDeliveryMessage ? (
                   <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700">
@@ -709,6 +1134,18 @@ export default function RequestManagementStatusCard() {
                 {localDeliveryError ? (
                   <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-700">
                     {localDeliveryError}
+                  </div>
+                ) : null}
+
+                {editorMessage ? (
+                  <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700">
+                    {editorMessage}
+                  </div>
+                ) : null}
+
+                {editorError ? (
+                  <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-700">
+                    {editorError}
                   </div>
                 ) : null}
               </div>
