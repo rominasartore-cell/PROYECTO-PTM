@@ -29,6 +29,7 @@ type PaidVerification = {
   checked: boolean;
   approved: boolean;
   status: string;
+  source: string;
   paidAt: string;
   amount: number;
   product: string;
@@ -41,6 +42,7 @@ const INITIAL_PAID_VERIFICATION: PaidVerification = {
   checked: false,
   approved: false,
   status: "",
+  source: "",
   paidAt: "",
   amount: 0,
   product: "",
@@ -143,6 +145,10 @@ function pickNumber(record: JsonRecord, keys: string[], fallback = 0): number {
 function isApprovedStatus(value?: string | null): boolean {
   const status = String(value || "").toLowerCase();
   return status === "approved" || status === "paid" || status === "completed";
+}
+
+function isPaymentOnlySource(value?: string | null): boolean {
+  return String(value || "").toLowerCase() === "payment_only";
 }
 
 function formatDate(value?: string | null): string {
@@ -353,6 +359,7 @@ export default function RequestManagementStatusCard() {
         checked: true,
         approved: isApprovedStatus(commercialStatus),
         status: commercialStatus,
+        source: pickString(merged, ["source"], ""),
         paidAt: pickString(
           merged,
           ["payment_paid_at", "paymentPaidAt", "paid_at", "paidAt"],
@@ -497,6 +504,7 @@ export default function RequestManagementStatusCard() {
   }
 
   const selectedOption = STATUS_OPTIONS.find((item) => item.value === status);
+  const isPaymentOnly = isPaymentOnlySource(paidVerification.source);
 
   return (
     <section className="my-3 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -540,34 +548,59 @@ export default function RequestManagementStatusCard() {
             Verificando pago de la solicitud...
           </div>
         ) : paidVerification.approved ? (
-          <div className={`mb-3 rounded-lg border px-3 py-3 ${getNoticeClasses(status)}`}>
-            <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-              <div>
+          <>
+            {isPaymentOnly ? (
+              <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-3 text-red-900">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full bg-white/70 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wide">
-                    Solicitud pagada verificada
+                  <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wide text-red-800">
+                    Alerta operativa
                   </span>
-                  <span className="rounded-full bg-white/70 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wide">
-                    {getNoticeBadge(status)}
+                  <span className="rounded-full bg-white px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wide text-red-800">
+                    Pago sin análisis
                   </span>
                 </div>
 
                 <p className="mt-2 text-sm font-black">
-                  Pago aprobado confirmado. {getNextStepText(status)}
+                  Pago aprobado sin análisis asociado.
                 </p>
 
-                <p className="mt-1 text-xs font-semibold leading-5 opacity-80">
-                  Revisa datos del cliente, previsualiza informe y escritos, genera la entrega local, valida el ZIP y luego envía “documentos listos”.
+                <p className="mt-1 text-xs font-semibold leading-5">
+                  Esta solicitud tiene pago registrado, pero no contiene análisis ni multas detectadas. No generar documentos desde esta ficha hasta revisar el origen del pago.
                 </p>
               </div>
+            ) : null}
 
-              <div className="grid min-w-[160px] gap-1 text-xs font-bold md:text-right">
-                <span>{formatMoney(paidVerification.amount)}</span>
-                <span>{paidVerification.paidAt ? formatDate(paidVerification.paidAt) : "Pago sin fecha"}</span>
-                {paidVerification.product ? <span>{paidVerification.product}</span> : null}
+            <div className={`mb-3 rounded-lg border px-3 py-3 ${getNoticeClasses(status)}`}>
+              <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-white/70 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wide">
+                      Solicitud pagada verificada
+                    </span>
+                    <span className="rounded-full bg-white/70 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wide">
+                      {getNoticeBadge(status)}
+                    </span>
+                  </div>
+
+                  <p className="mt-2 text-sm font-black">
+                    Pago aprobado confirmado. {getNextStepText(status)}
+                  </p>
+
+                  <p className="mt-1 text-xs font-semibold leading-5 opacity-80">
+                    {isPaymentOnly
+                      ? "Antes de generar entrega, confirma que exista análisis asociado y que la ficha no sea solo un registro de pago."
+                      : "Revisa datos del cliente, previsualiza informe y escritos, genera la entrega local, valida el ZIP y luego envía documentos listos."}
+                  </p>
+                </div>
+
+                <div className="grid min-w-[160px] gap-1 text-xs font-bold md:text-right">
+                  <span>{formatMoney(paidVerification.amount)}</span>
+                  <span>{paidVerification.paidAt ? formatDate(paidVerification.paidAt) : "Pago sin fecha"}</span>
+                  {paidVerification.product ? <span>{paidVerification.product}</span> : null}
+                </div>
               </div>
             </div>
-          </div>
+          </>
         ) : paidVerification.error ? (
           <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">
             No se pudo verificar pago desde esta tarjeta: {paidVerification.error}
