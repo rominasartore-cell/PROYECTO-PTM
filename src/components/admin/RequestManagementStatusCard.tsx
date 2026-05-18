@@ -191,12 +191,6 @@ function getNoticeClasses(status: ManagementStatus): string {
   return "border-amber-200 bg-amber-50 text-amber-900";
 }
 
-function getNoticeBadge(status: ManagementStatus): string {
-  if (status === "documents_sent" || status === "closed") return "Entrega registrada";
-  if (status === "in_progress") return "En preparación";
-  return "Pendiente de preparar";
-}
-
 function buildLocalDeliveryCommand(requestId: string): string {
   const safeRequestId = requestId.replace(/"/g, "");
   const jsonName = `admin-request-${safeRequestId}.json`;
@@ -217,6 +211,49 @@ function buildLocalDeliveryCommand(requestId: string): string {
     "powershell -ExecutionPolicy Bypass -File .\\scripts\\ops\\generate-real-delivery.ps1 `",
     "  -RequestId $RequestId `",
     "  -AdminJsonPath $AdminJsonPath",
+  ].join("\n");
+}
+
+function buildReviewEditCommand(requestId: string): string {
+  const safeRequestId = requestId.replace(/"/g, "");
+
+  return [
+    '$ErrorActionPreference = "Stop"',
+    "",
+    '$project = "C:\\Users\\romis\\OneDrive\\Escritorio\\PROYECTO PTM\\prescribe-tu-multa\\prescribe-tu-multa"',
+    "Set-Location $project",
+    "",
+    `$RequestId = "${safeRequestId}"`,
+    '$DeliveryDir = Join-Path $project ("docs\\deliveries\\" + $RequestId)',
+    "",
+    "if (!(Test-Path $DeliveryDir)) {",
+    '  throw "No existe carpeta de entrega. Primero genera documentos con generate-real-delivery.ps1: $DeliveryDir"',
+    "}",
+    "",
+    'Write-Host "Carpeta de entrega:" -ForegroundColor Cyan',
+    "Write-Host $DeliveryDir",
+    "",
+    '$editableFiles = @("informe.md", "instructivo.md", "checklist.md", "solicitud-prescripcion-base.md")',
+    'Write-Host ""',
+    'Write-Host "Documentos editables principales:" -ForegroundColor Yellow',
+    "foreach ($file in $editableFiles) {",
+    "  $path = Join-Path $DeliveryDir $file",
+    "  if (Test-Path $path) {",
+    '    Write-Host "[OK] $file" -ForegroundColor Green',
+    "  } else {",
+    '    Write-Host "[FALTA] $file" -ForegroundColor Yellow',
+    "  }",
+    "}",
+    "",
+    "$codeCommand = Get-Command code -ErrorAction SilentlyContinue",
+    "if ($codeCommand) {",
+    "  code $DeliveryDir",
+    "} else {",
+    "  explorer.exe $DeliveryDir",
+    "}",
+    "",
+    'Write-Host ""',
+    'Write-Host "Edita los .md si corresponde. Luego vuelve a ejecutar validacion/auditoria o regenera ZIP antes de enviar." -ForegroundColor Yellow',
   ].join("\n");
 }
 
@@ -336,6 +373,24 @@ export default function RequestManagementStatusCard() {
     } catch (error) {
       setLocalDeliveryError(
         error instanceof Error ? error.message : "No se pudo copiar el comando local."
+      );
+    }
+  }
+
+  async function copyReviewEditCommand() {
+    try {
+      setLocalDeliveryMessage("");
+      setLocalDeliveryError("");
+
+      if (!requestId) throw new Error("No se detectó requestId.");
+
+      const command = buildReviewEditCommand(requestId);
+      await navigator.clipboard.writeText(command);
+
+      setLocalDeliveryMessage("Comando para revisar/editar documentos copiado.");
+    } catch (error) {
+      setLocalDeliveryError(
+        error instanceof Error ? error.message : "No se pudo copiar el comando de revisión."
       );
     }
   }
@@ -610,15 +665,15 @@ export default function RequestManagementStatusCard() {
                     </span>
 
                     <p className="mt-2 text-sm font-black">
-                      Descarga el JSON admin y copia el comando para generar documentos en tu computador.
+                      Descarga el JSON admin, genera los documentos y revisa la carpeta editable antes de enviar.
                     </p>
 
                     <p className="mt-1 text-xs font-semibold leading-5 text-cyan-800">
-                      Guarda el JSON en Descargas. El comando copiado usará esa ruta automáticamente.
+                      El botón revisar/editar abre la carpeta local generada en VS Code si está instalado; si no, abre el Explorador.
                     </p>
                   </div>
 
-                  <div className="grid gap-2 md:min-w-[220px]">
+                  <div className="grid gap-2 md:min-w-[240px]">
                     <button
                       type="button"
                       onClick={downloadAdminJson}
@@ -632,7 +687,15 @@ export default function RequestManagementStatusCard() {
                       onClick={copyLocalDeliveryCommand}
                       className="rounded-lg border border-cyan-700 bg-white px-3 py-2 text-xs font-black text-cyan-900 shadow-sm transition hover:bg-cyan-100"
                     >
-                      Copiar comando local
+                      Copiar comando generar
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={copyReviewEditCommand}
+                      className="rounded-lg border border-amber-600 bg-amber-50 px-3 py-2 text-xs font-black text-amber-900 shadow-sm transition hover:bg-amber-100"
+                    >
+                      Copiar comando revisar/editar
                     </button>
                   </div>
                 </div>
