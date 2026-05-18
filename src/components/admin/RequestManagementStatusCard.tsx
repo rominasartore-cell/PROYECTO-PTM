@@ -5,19 +5,17 @@ import { useParams } from "next/navigation";
 
 const ADMIN_TOKEN_KEY = "ptm-admin-token";
 
-type JsonRecord = Record<string, unknown>;
-
 type ManagementStatus =
   | "pending_review"
   | "in_progress"
   | "documents_sent"
   | "closed";
 
+type JsonRecord = Record<string, unknown>;
+
 type ApiResponse = {
   ok?: boolean;
-  found?: boolean;
   status?: ManagementStatus;
-  label?: string;
   note?: string;
   updatedAt?: string | null;
   error?: string;
@@ -26,28 +24,13 @@ type ApiResponse = {
 
 type PaidVerification = {
   loading: boolean;
-  checked: boolean;
   approved: boolean;
-  status: string;
   source: string;
+  status: string;
   paidAt: string;
   amount: number;
   product: string;
-  customerEmail: string;
   error: string;
-};
-
-const INITIAL_PAID_VERIFICATION: PaidVerification = {
-  loading: true,
-  checked: false,
-  approved: false,
-  status: "",
-  source: "",
-  paidAt: "",
-  amount: 0,
-  product: "",
-  customerEmail: "",
-  error: "",
 };
 
 const STATUS_OPTIONS: Array<{
@@ -77,13 +60,20 @@ const STATUS_OPTIONS: Array<{
   },
 ];
 
+const INITIAL_PAID: PaidVerification = {
+  loading: true,
+  approved: false,
+  source: "",
+  status: "",
+  paidAt: "",
+  amount: 0,
+  product: "",
+  error: "",
+};
+
 function getRequestIdFromParams(params: ReturnType<typeof useParams>): string {
   const raw = params?.requestId;
-
-  if (Array.isArray(raw)) {
-    return raw[0] || "";
-  }
-
+  if (Array.isArray(raw)) return raw[0] || "";
   return typeof raw === "string" ? raw : "";
 }
 
@@ -94,13 +84,7 @@ function getAdminToken(): string {
 
 function buildAdminHeaders(): HeadersInit {
   const token = getAdminToken();
-  const headers: Record<string, string> = {};
-
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-
-  return headers;
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 function asRecord(value: unknown): JsonRecord {
@@ -112,31 +96,21 @@ function asRecord(value: unknown): JsonRecord {
 function pickString(record: JsonRecord, keys: string[], fallback = ""): string {
   for (const key of keys) {
     const value = record[key];
-
-    if (value !== null && value !== undefined && value !== "") {
-      return String(value);
-    }
+    if (value !== null && value !== undefined && value !== "") return String(value);
   }
-
   return fallback;
 }
 
 function pickNumber(record: JsonRecord, keys: string[], fallback = 0): number {
   for (const key of keys) {
     const value = record[key];
-
     if (value === null || value === undefined || value === "") continue;
 
     const normalized =
-      typeof value === "string"
-        ? value.replace(/\./g, "").replace(",", ".")
-        : value;
+      typeof value === "string" ? value.replace(/\./g, "").replace(",", ".") : value;
 
     const parsed = Number(normalized);
-
-    if (Number.isFinite(parsed)) {
-      return parsed;
-    }
+    if (Number.isFinite(parsed)) return parsed;
   }
 
   return fallback;
@@ -152,15 +126,10 @@ function isPaymentOnlySource(value?: string | null): boolean {
 }
 
 function formatDate(value?: string | null): string {
-  if (!value) {
-    return "Sin actualización";
-  }
+  if (!value) return "Sin actualización";
 
   const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
+  if (Number.isNaN(date.getTime())) return value;
 
   return new Intl.DateTimeFormat("es-CL", {
     dateStyle: "short",
@@ -177,18 +146,9 @@ function formatMoney(value: number): string {
 }
 
 function getStatusClasses(status: ManagementStatus): string {
-  if (status === "pending_review") {
-    return "border-amber-200 bg-amber-50 text-amber-800";
-  }
-
-  if (status === "in_progress") {
-    return "border-teal-200 bg-teal-50 text-teal-800";
-  }
-
-  if (status === "documents_sent") {
-    return "border-emerald-200 bg-emerald-50 text-emerald-800";
-  }
-
+  if (status === "pending_review") return "border-amber-200 bg-amber-50 text-amber-800";
+  if (status === "in_progress") return "border-teal-200 bg-teal-50 text-teal-800";
+  if (status === "documents_sent") return "border-emerald-200 bg-emerald-50 text-emerald-800";
   return "border-slate-200 bg-slate-100 text-slate-800";
 }
 
@@ -232,15 +192,32 @@ function getNoticeClasses(status: ManagementStatus): string {
 }
 
 function getNoticeBadge(status: ManagementStatus): string {
-  if (status === "documents_sent" || status === "closed") {
-    return "Entrega registrada";
-  }
-
-  if (status === "in_progress") {
-    return "En preparación";
-  }
-
+  if (status === "documents_sent" || status === "closed") return "Entrega registrada";
+  if (status === "in_progress") return "En preparación";
   return "Pendiente de preparar";
+}
+
+function buildLocalDeliveryCommand(requestId: string): string {
+  const safeRequestId = requestId.replace(/"/g, "");
+  const jsonName = `admin-request-${safeRequestId}.json`;
+
+  return [
+    '$ErrorActionPreference = "Stop"',
+    "",
+    '$project = "C:\\Users\\romis\\OneDrive\\Escritorio\\PROYECTO PTM\\prescribe-tu-multa\\prescribe-tu-multa"',
+    "Set-Location $project",
+    "",
+    `$RequestId = "${safeRequestId}"`,
+    `$AdminJsonPath = Join-Path $env:USERPROFILE "Downloads\\${jsonName}"`,
+    "",
+    "if (!(Test-Path $AdminJsonPath)) {",
+    '  throw "No existe JSON admin descargado: $AdminJsonPath"',
+    "}",
+    "",
+    "powershell -ExecutionPolicy Bypass -File .\\scripts\\ops\\generate-real-delivery.ps1 `",
+    "  -RequestId $RequestId `",
+    "  -AdminJsonPath $AdminJsonPath",
+  ].join("\n");
 }
 
 export default function RequestManagementStatusCard() {
@@ -254,83 +231,135 @@ export default function RequestManagementStatusCard() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  const [paidVerification, setPaidVerification] = useState<PaidVerification>(
-    INITIAL_PAID_VERIFICATION
-  );
+  const [localDeliveryMessage, setLocalDeliveryMessage] = useState("");
+  const [localDeliveryError, setLocalDeliveryError] = useState("");
+  const [paidVerification, setPaidVerification] = useState<PaidVerification>(INITIAL_PAID);
+
+  async function fetchAdminRequestPayload(): Promise<any> {
+    if (!requestId) throw new Error("No se detectó requestId.");
+
+    const query = new URLSearchParams({
+      search: requestId,
+      limit: "100",
+      ts: String(Date.now()),
+    });
+
+    const response = await fetch(`/api/admin/requests?${query.toString()}`, {
+      method: "GET",
+      cache: "no-store",
+      headers: buildAdminHeaders(),
+    });
+
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok || data?.ok === false) {
+      throw new Error(
+        data?.error ||
+          data?.message ||
+          `No se pudo obtener JSON admin. HTTP ${response.status}`
+      );
+    }
+
+    return data;
+  }
+
+  function findMatchingRequest(data: any): JsonRecord | null {
+    const rows = Array.isArray(data?.requests)
+      ? data.requests
+      : Array.isArray(data?.data)
+        ? data.data
+        : data?.data
+          ? [data.data]
+          : [];
+
+    const found =
+      rows.find((row: any) => {
+        const payment = asRecord(row?.payment);
+        const candidates = [
+          row?.request_id,
+          row?.requestId,
+          row?.id,
+          row?.external_reference,
+          row?.externalReference,
+          payment.requestId,
+          payment.externalReference,
+        ];
+
+        return candidates.some((value) => String(value || "").trim() === requestId);
+      }) ||
+      rows[0] ||
+      null;
+
+    return found ? asRecord(found) : null;
+  }
+
+  async function downloadAdminJson() {
+    try {
+      setLocalDeliveryMessage("");
+      setLocalDeliveryError("");
+
+      const data = await fetchAdminRequestPayload();
+      const content = JSON.stringify(data, null, 2);
+      const blob = new Blob([content], { type: "application/json;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const filename = `admin-request-${requestId}.json`;
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+
+      setLocalDeliveryMessage(`JSON admin descargado: ${filename}`);
+    } catch (error) {
+      setLocalDeliveryError(
+        error instanceof Error
+          ? error.message
+          : "Error inesperado descargando JSON admin."
+      );
+    }
+  }
+
+  async function copyLocalDeliveryCommand() {
+    try {
+      setLocalDeliveryMessage("");
+      setLocalDeliveryError("");
+
+      if (!requestId) throw new Error("No se detectó requestId.");
+
+      const command = buildLocalDeliveryCommand(requestId);
+      await navigator.clipboard.writeText(command);
+
+      setLocalDeliveryMessage("Comando local copiado. Primero descarga el JSON admin.");
+    } catch (error) {
+      setLocalDeliveryError(
+        error instanceof Error ? error.message : "No se pudo copiar el comando local."
+      );
+    }
+  }
 
   async function loadPaidVerification() {
     if (!requestId) {
       setPaidVerification({
-        ...INITIAL_PAID_VERIFICATION,
+        ...INITIAL_PAID,
         loading: false,
-        checked: true,
         error: "No se detectó requestId.",
       });
       return;
     }
 
-    setPaidVerification((current) => ({
-      ...current,
-      loading: true,
-      error: "",
-    }));
+    setPaidVerification((current) => ({ ...current, loading: true, error: "" }));
 
     try {
-      const query = new URLSearchParams({
-        search: requestId,
-        limit: "100",
-        ts: String(Date.now()),
-      });
-
-      const response = await fetch(`/api/admin/requests?${query.toString()}`, {
-        method: "GET",
-        cache: "no-store",
-        headers: buildAdminHeaders(),
-      });
-
-      const data = (await response.json().catch(() => null)) as any;
-
-      if (!response.ok || data?.ok === false) {
-        throw new Error(
-          data?.error ||
-            data?.message ||
-            `No se pudo verificar pago. HTTP ${response.status}`
-        );
-      }
-
-      const rows = Array.isArray(data?.requests)
-        ? data.requests
-        : Array.isArray(data?.data)
-          ? data.data
-          : data?.data
-            ? [data.data]
-            : [];
-
-      const found =
-        rows.find((row: any) => {
-          const payment = asRecord(row?.payment);
-          const candidates = [
-            row?.request_id,
-            row?.requestId,
-            row?.id,
-            row?.external_reference,
-            row?.externalReference,
-            payment.requestId,
-            payment.externalReference,
-          ];
-
-          return candidates.some(
-            (value) => String(value || "").trim() === requestId
-          );
-        }) ||
-        rows[0] ||
-        null;
+      const data = await fetchAdminRequestPayload();
+      const found = findMatchingRequest(data);
 
       if (!found) {
         setPaidVerification({
-          ...INITIAL_PAID_VERIFICATION,
+          ...INITIAL_PAID,
           loading: false,
-          checked: true,
           error: "No se encontró la solicitud para verificar pago.",
         });
         return;
@@ -339,60 +368,30 @@ export default function RequestManagementStatusCard() {
       const payment = asRecord(found.payment);
       const merged = {
         ...payment,
-        ...asRecord(found),
+        ...found,
       };
 
       const commercialStatus = pickString(
         merged,
-        [
-          "payment_status",
-          "paymentStatus",
-          "purchase_status",
-          "purchaseStatus",
-          "status",
-        ],
+        ["payment_status", "paymentStatus", "purchase_status", "purchaseStatus", "status"],
         ""
       );
 
       setPaidVerification({
         loading: false,
-        checked: true,
         approved: isApprovedStatus(commercialStatus),
         status: commercialStatus,
         source: pickString(merged, ["source"], ""),
-        paidAt: pickString(
-          merged,
-          ["payment_paid_at", "paymentPaidAt", "paid_at", "paidAt"],
-          ""
-        ),
-        amount: pickNumber(
-          merged,
-          ["payment_amount", "paymentAmount", "amount", "transaction_amount"],
-          0
-        ),
+        paidAt: pickString(merged, ["payment_paid_at", "paymentPaidAt", "paid_at", "paidAt"], ""),
+        amount: pickNumber(merged, ["payment_amount", "paymentAmount", "amount", "transaction_amount"], 0),
         product: pickString(merged, ["product", "payment_product"], ""),
-        customerEmail: pickString(
-          merged,
-          [
-            "customer_email",
-            "customerEmail",
-            "payment_customer_email",
-            "paymentCustomerEmail",
-            "email",
-          ],
-          ""
-        ),
         error: "",
       });
     } catch (error) {
       setPaidVerification({
-        ...INITIAL_PAID_VERIFICATION,
+        ...INITIAL_PAID,
         loading: false,
-        checked: true,
-        error:
-          error instanceof Error
-            ? error.message
-            : "Error inesperado verificando pago.",
+        error: error instanceof Error ? error.message : "Error inesperado verificando pago.",
       });
     }
   }
@@ -427,9 +426,7 @@ export default function RequestManagementStatusCard() {
       setUpdatedAt(data.updatedAt || null);
     } catch (error) {
       setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Error inesperado cargando estado interno."
+        error instanceof Error ? error.message : "Error inesperado cargando estado interno."
       );
     } finally {
       setLoading(false);
@@ -494,9 +491,7 @@ export default function RequestManagementStatusCard() {
       setMessage(data.message || "Estado interno actualizado.");
     } catch (error) {
       setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Error inesperado guardando estado interno."
+        error instanceof Error ? error.message : "Error inesperado guardando estado interno."
       );
     } finally {
       setSaving(false);
@@ -505,6 +500,7 @@ export default function RequestManagementStatusCard() {
 
   const selectedOption = STATUS_OPTIONS.find((item) => item.value === status);
   const isPaymentOnly = isPaymentOnlySource(paidVerification.source);
+  const canPrepareLocalDelivery = paidVerification.approved && !isPaymentOnly;
 
   return (
     <section className="my-3 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -578,7 +574,11 @@ export default function RequestManagementStatusCard() {
                       Solicitud pagada verificada
                     </span>
                     <span className="rounded-full bg-white/70 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wide">
-                      {getNoticeBadge(status)}
+                      {status === "documents_sent" || status === "closed"
+                        ? "Entrega registrada"
+                        : status === "in_progress"
+                          ? "En preparación"
+                          : "Pendiente de preparar"}
                     </span>
                   </div>
 
@@ -600,6 +600,56 @@ export default function RequestManagementStatusCard() {
                 </div>
               </div>
             </div>
+
+            {canPrepareLocalDelivery ? (
+              <div className="mb-3 rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-3 text-cyan-950">
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <span className="rounded-full bg-white px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wide text-cyan-800">
+                      Preparar entrega local
+                    </span>
+
+                    <p className="mt-2 text-sm font-black">
+                      Descarga el JSON admin y copia el comando para generar documentos en tu computador.
+                    </p>
+
+                    <p className="mt-1 text-xs font-semibold leading-5 text-cyan-800">
+                      Guarda el JSON en Descargas. El comando copiado usará esa ruta automáticamente.
+                    </p>
+                  </div>
+
+                  <div className="grid gap-2 md:min-w-[220px]">
+                    <button
+                      type="button"
+                      onClick={downloadAdminJson}
+                      className="rounded-lg bg-cyan-700 px-3 py-2 text-xs font-black text-white shadow-sm transition hover:bg-cyan-800"
+                    >
+                      Descargar JSON admin
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={copyLocalDeliveryCommand}
+                      className="rounded-lg border border-cyan-700 bg-white px-3 py-2 text-xs font-black text-cyan-900 shadow-sm transition hover:bg-cyan-100"
+                    >
+                      Copiar comando local
+                    </button>
+                  </div>
+                </div>
+
+                {localDeliveryMessage ? (
+                  <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700">
+                    {localDeliveryMessage}
+                  </div>
+                ) : null}
+
+                {localDeliveryError ? (
+                  <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-700">
+                    {localDeliveryError}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
           </>
         ) : paidVerification.error ? (
           <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">
