@@ -22,6 +22,9 @@ type PaymentStatusResponse = {
     customerName?: string | null;
     preferenceId?: string | null;
     paymentId?: string | null;
+    product?: string | null;
+    prescribedCount?: number | null;
+    totalMultas?: number | null;
     mock?: boolean | null;
     sandbox?: boolean | null;
     paidAt?: string | null;
@@ -140,6 +143,32 @@ function money(value: unknown): string {
   });
 }
 
+function numberValue(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+
+  if (typeof value === "string") {
+    const parsed = Number(
+      value
+        .replace(/[^\d,.-]/g, "")
+        .replace(/\.(?=\d{3}(\D|$))/g, "")
+        .replace(",", ".")
+    );
+
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
+}
+
+function isPaidPurchaseStatus(value: unknown): boolean {
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase();
+
+  return ["paid", "approved", "accredited", "success"].includes(normalized);
+}
+
+
 function dateText(value?: string | null): string {
   if (!value) return "No registrado";
 
@@ -243,6 +272,20 @@ function ResultadosContent() {
 
   const email = String(data?.payment?.customerEmail || queryEmail || "").trim();
   const amount = data?.payment?.amount ?? null;
+  const product = String(data?.payment?.product || "").trim();
+  const analyticsValue = Number(amount || 0);
+  const analyticsProduct =
+    product ||
+    (analyticsValue === 5990
+      ? "informe-simple-revision"
+      : analyticsValue === 9990
+        ? "informe-completo-prescripcion"
+        : "unknown");
+  const paymentStatus = String(data?.payment?.status || data?.status || status || "").trim();
+  const purchaseStatus = String(
+    data?.purchaseStatus || (status === "approved" ? "paid" : status)
+  ).trim();
+  const prescribedCount = numberValue(data?.payment?.prescribedCount);
   const rawStatus = String(data?.payment?.rawStatus || "").trim();
   const statusDetail = String(data?.payment?.statusDetail || "").trim();
   const preferenceId = String(data?.payment?.preferenceId || "").trim();
@@ -250,32 +293,58 @@ function ResultadosContent() {
   const isMock = Boolean(data?.payment?.mock) || queryMock === "true";
   const isSandbox = Boolean(data?.payment?.sandbox);
 
-  useEffect(() => {
+    useEffect(() => {
     if (loading) return;
     if (!requestId) return;
     if (!hasConfirmedRecord) return;
     if (status !== "approved") return;
+    if (!isPaidPurchaseStatus(purchaseStatus)) return;
 
     const storageKey = `ptm_payment_approved_${requestId}`;
 
     try {
-      if (window.sessionStorage.getItem(storageKey) === "1") return;
+      const alreadyTracked =
+        window.localStorage.getItem(storageKey) === "1" ||
+        window.sessionStorage.getItem(storageKey) === "1";
+
+      if (alreadyTracked) return;
+
       window.sessionStorage.setItem(storageKey, "1");
+      window.localStorage.setItem(storageKey, "1");
     } catch {
-      // Si sessionStorage no está disponible, igual enviamos el evento.
+      // Si storage no está disponible, igual enviamos el evento.
     }
 
     trackPaymentApproved({
       request_id: requestId,
-      amount: Number(amount || 0),
+      product: analyticsProduct,
+      value: analyticsValue,
+      currency: "CLP",
+      payment_status: paymentStatus || "approved",
+      purchase_status: purchaseStatus || "paid",
+      prescribed_count: prescribedCount,
+      amount: analyticsValue,
       status: "approved",
-      purchase_status: "paid",
       mercado_pago_status: rawStatus || "approved",
       mercado_pago_status_detail: statusDetail || "",
       mock: isMock,
       sandbox: isSandbox,
     });
-  }, [amount, hasConfirmedRecord, isMock, isSandbox, loading, rawStatus, requestId, status, statusDetail]);
+  }, [
+    analyticsProduct,
+    analyticsValue,
+    hasConfirmedRecord,
+    isMock,
+    isSandbox,
+    loading,
+    paymentStatus,
+    prescribedCount,
+    purchaseStatus,
+    rawStatus,
+    requestId,
+    status,
+    statusDetail,
+  ]);
 
   const supportHref = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(
     `Soporte compra PTM ${requestId || "sin codigo"}`

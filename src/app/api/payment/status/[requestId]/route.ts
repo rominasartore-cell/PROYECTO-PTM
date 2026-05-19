@@ -33,6 +33,37 @@ function normalizeStatus(value: unknown): string {
   return status;
 }
 
+function pickMetadataNumber(
+  metadata: Record<string, unknown> | undefined,
+  keys: string[]
+): number | null {
+  if (!metadata || typeof metadata !== "object") return null;
+
+  for (const key of keys) {
+    const raw = metadata[key];
+
+    if (typeof raw === "number" && Number.isFinite(raw)) {
+      return raw;
+    }
+
+    if (typeof raw === "string") {
+      const parsed = Number(
+        raw
+          .replace(/[^\d,.-]/g, "")
+          .replace(/\.(?=\d{3}(\D|$))/g, "")
+          .replace(",", ".")
+      );
+
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+    }
+  }
+
+  return null;
+}
+
+
 export async function GET(_request: Request, context: RouteContext) {
   try {
     const params = await context.params;
@@ -82,6 +113,21 @@ export async function GET(_request: Request, context: RouteContext) {
         customerEmail: payment.customerEmail,
         customerName: payment.customerName,
         plate: payment.plate,
+        product: payment.product || null,
+        prescribedCount: pickMetadataNumber(payment.metadata, [
+          "multas_susceptibles",
+          "multasSusceptibles",
+          "prescribed_count",
+          "prescribedCount",
+          "total_potentially_prescribed",
+          "totalPotentiallyPrescribed",
+        ]),
+        totalMultas: pickMetadataNumber(payment.metadata, [
+          "total_multas",
+          "totalMultas",
+          "total_fines",
+          "totalFines",
+        ]),
         mock: payment.mock,
         sandbox: payment.sandbox,
         preferenceId: payment.preferenceId,

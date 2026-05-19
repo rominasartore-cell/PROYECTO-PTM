@@ -5,7 +5,7 @@ import ProductDetailModal from "./ProductDetailModal";
 
 type ProductKind =
   | "informe-completo-prescripcion"
-  | "informe-fecha-estimada-prescripcion";
+  | "informe-simple-revision";
 
 type PreliminaryResultCardProps = {
   analysis?: any;
@@ -209,7 +209,7 @@ export default function PreliminaryResultCard({
     hasEligibleFines &&
     (typeof eligible === "boolean" ? eligible : true);
 
-  const canPurchaseEstimated =
+  const canPurchaseSimple =
     hasPaymentReference &&
     hasFineData &&
     !hasEligibleFines;
@@ -303,35 +303,35 @@ export default function PreliminaryResultCard({
               </button>
             ) : null}
 
-            {canPurchaseEstimated ? (
+            {canPurchaseSimple ? (
               <section className="rounded-3xl border border-amber-200 bg-amber-50 p-5">
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-700">
-                  Sin multas prescritas todavía
+                  Sin multas potencialmente prescritas
                 </p>
 
                 <h3 className="mt-2 text-xl font-black leading-tight text-slate-950">
-                  ¿Quieres saber cuándo podrían prescribir?
+                  Informe simple de revisión
                 </h3>
 
                 <p className="mt-3 text-sm font-semibold leading-6 text-slate-700">
-                  Podemos generar un informe con la fecha estimada desde la cual podrías solicitar la prescripción, según los datos visibles en el certificado.
+                  Puedes comprar un informe simple con el resumen del certificado, el resultado del análisis y fechas estimadas de prescripción, según los datos visibles.
                 </p>
 
                 <p className="mt-3 text-xs font-bold leading-5 text-amber-800">
-                  Esta opción solo se habilita cuando el certificado fue leído correctamente y no existen multas potencialmente prescritas.
+                  No incluye solicitudes de prescripción ni set de documentos para presentar.
                 </p>
 
                 <button
                   type="button"
-                  onClick={() => openProduct("informe-fecha-estimada-prescripcion")}
+                  onClick={() => openProduct("informe-simple-revision")}
                   className="mt-4 w-full rounded-2xl bg-slate-950 px-6 py-4 text-base font-black text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-slate-800 active:translate-y-0"
                 >
-                  Comprar informe de fechas estimadas - $4.990 →
+                  Comprar informe simple - $5.990 →
                 </button>
               </section>
             ) : null}
 
-            {!canPurchaseFull && !canPurchaseEstimated ? (
+            {!canPurchaseFull && !canPurchaseSimple ? (
               <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm font-bold leading-5 text-amber-800">
                 Compra no disponible. Debe existir una solicitud válida y el certificado debe ser legible.
               </p>

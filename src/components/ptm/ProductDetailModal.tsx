@@ -5,7 +5,7 @@ import { trackPaymentRedirect, trackPurchaseClicked } from "@/lib/analytics";
 
 type ProductKind =
   | "informe-completo-prescripcion"
-  | "informe-fecha-estimada-prescripcion";
+  | "informe-simple-revision";
 
 type ProductDetailModalProps = {
   open: boolean;
@@ -34,17 +34,17 @@ const PRODUCT_CONFIG: Record<
   "informe-completo-prescripcion": {
     id: "informe-completo-prescripcion",
     price: 9990,
-    eyebrow: "Oferta de lanzamiento",
-    title: "Informe completo de análisis + solicitudes editables",
+    eyebrow: "Precio lanzamiento · Ahorras $5.000",
+    title: "Informe completo de prescripción + solicitudes editables",
     description:
-      "Revisa el valor, compra el informe y luego descarga/recibe el detalle preparado con los antecedentes de tu certificado.",
-    priceNote: "Precio único por informe completo + solicitudes editables.",
-    buttonLabel: "Comprar informe",
+      "Para certificados con multas potencialmente prescritas. Incluye informe completo, solicitudes editables y guía de tramitación personal.",
+    priceNote: "Precio lanzamiento. Precio normal $14.990.",
+    buttonLabel: "Comprar informe completo",
     includedItems: [
       "Informe completo de análisis del certificado.",
       "Detalle de multas detectadas y estado estimado.",
       "Identificación de multas potencialmente prescritas.",
-      "Solicitud editable de prescripción.",
+      "Solicitudes editables de prescripción, una por multa cuando corresponda.",
       "Guía de tramitación personal paso a paso.",
     ],
     excludedItems: [
@@ -55,33 +55,33 @@ const PRODUCT_CONFIG: Record<
       "El tribunal puede exigir antecedentes o formalidades adicionales.",
     ],
     legalNote:
-      "La compra no garantiza que el tribunal declare la prescripción ni que las multas sean eliminadas del Registro de Multas No Pagadas. El producto entrega documentos para tramitación personal.",
+      "Servicio documental automatizado. No constituye representación judicial ni garantiza la eliminación de multas.",
   },
-  "informe-fecha-estimada-prescripcion": {
-    id: "informe-fecha-estimada-prescripcion",
-    price: 4990,
-    eyebrow: "Informe preventivo",
-    title: "Informe de fecha estimada de prescripción",
+  "informe-simple-revision": {
+    id: "informe-simple-revision",
+    price: 5990,
+    eyebrow: "Precio único",
+    title: "Informe simple de revisión",
     description:
-      "Compra un informe referencial con las fechas estimadas desde las cuales tus multas podrían cumplir plazo para solicitar prescripción, según los datos visibles en el certificado.",
-    priceNote: "Precio único por informe referencial de fechas estimadas.",
-    buttonLabel: "Comprar informe de fechas",
+      "Para certificados sin multas potencialmente prescritas. Incluye resumen del certificado revisado, resultado del análisis y fechas estimadas de prescripción.",
+    priceNote: "Precio único por informe simple de revisión.",
+    buttonLabel: "Comprar informe simple",
     includedItems: [
-      "Informe de fecha estimada de prescripción.",
-      "Detalle de multas revisadas según el certificado.",
-      "Fecha de ingreso al RMNP/RMTNP cuando esté disponible.",
-      "Fecha estimada desde la cual podría solicitarse prescripción.",
-      "Advertencias legales y criterio de cálculo referencial.",
+      "Resumen del certificado revisado.",
+      "Resultado del análisis preliminar.",
+      "Indicación de que no se detectaron multas potencialmente prescritas.",
+      "Fechas estimadas de prescripción según los datos visibles en el certificado.",
+      "Recomendación general para revisión futura.",
     ],
     excludedItems: [
-      "No incluye instructivo paso a paso.",
-      "No incluye escritos ni solicitudes editables.",
+      "No incluye solicitudes de prescripción.",
+      "No incluye set de documentos para presentar.",
       "No incluye representación judicial ni patrocinio profesional.",
       "No incluye presentación ante tribunales ni seguimiento del expediente.",
       "No garantiza que la prescripción sea acogida en el futuro.",
     ],
     legalNote:
-      "La fecha indicada es referencial y se calcula según los datos visibles en el certificado. La procedencia de la prescripción depende de la revisión del Juzgado de Policía Local competente y de los antecedentes específicos de cada caso.",
+      "Servicio documental automatizado. No constituye representación judicial ni garantiza la eliminación de multas.",
   },
 };
 
@@ -155,8 +155,8 @@ function getPaymentUrl(data: any): string {
 }
 
 function normalizeProduct(product: unknown): ProductKind {
-  return product === "informe-fecha-estimada-prescripcion"
-    ? "informe-fecha-estimada-prescripcion"
+  return product === "informe-simple-revision"
+    ? "informe-simple-revision"
     : "informe-completo-prescripcion";
 }
 

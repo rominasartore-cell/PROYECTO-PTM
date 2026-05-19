@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 type ProductKind =
   | "informe-completo-prescripcion"
-  | "informe-fecha-estimada-prescripcion";
+  | "informe-simple-revision";
 
 type PaymentBody = {
   requestId?: string;
@@ -40,8 +40,7 @@ const PRODUCT_CONFIG: Record<
   ProductKind,
   {
     id: ProductKind;
-    priceEnv: string;
-    fallbackPrice: number;
+    price: number;
     itemId: string;
     title: string;
     description: (plate: string) => string;
@@ -49,42 +48,26 @@ const PRODUCT_CONFIG: Record<
 > = {
   "informe-completo-prescripcion": {
     id: "informe-completo-prescripcion",
-    priceEnv: "REPORT_PRICE_CLP",
-    fallbackPrice: 9990,
-    itemId: "informe-prescripcion-tag",
-    title: "Informe de prescripcion de multas de transito",
-    description: (plate) => `Informe completo para patente ${plate}`,
+    price: 9990,
+    itemId: "informe-completo-prescripcion",
+    title: "Informe completo de prescripcion de multas de transito",
+    description: (plate) =>
+      `Informe completo con solicitudes editables para patente ${plate}`,
   },
-  "informe-fecha-estimada-prescripcion": {
-    id: "informe-fecha-estimada-prescripcion",
-    priceEnv: "ESTIMATED_REPORT_PRICE_CLP",
-    fallbackPrice: 4990,
-    itemId: "informe-fecha-estimada-prescripcion",
-    title: "Informe de fecha estimada de prescripcion",
-    description: (plate) => `Informe referencial de fechas estimadas para patente ${plate}`,
+  "informe-simple-revision": {
+    id: "informe-simple-revision",
+    price: 5990,
+    itemId: "informe-simple-revision",
+    title: "Informe simple de revision",
+    description: (plate) =>
+      `Informe simple de revision y fechas estimadas para patente ${plate}`,
   },
 };
 
 function normalizeProduct(value: unknown): ProductKind {
-  return value === "informe-fecha-estimada-prescripcion"
-    ? "informe-fecha-estimada-prescripcion"
+  return value === "informe-simple-revision"
+    ? "informe-simple-revision"
     : "informe-completo-prescripcion";
-}
-
-function getEnvNumber(key: string, fallback: number): number {
-  const raw = process.env[key];
-
-  if (!raw) return fallback;
-
-  const parsed = Number(
-    raw
-      .toString()
-      .trim()
-      .replace(/\./g, "")
-      .replace(",", ".")
-  );
-
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
 function getSiteUrl(request: Request): string {
@@ -284,10 +267,7 @@ export async function POST(request: Request) {
     const siteUrl = getSiteUrl(request);
     const product = normalizeProduct(body.product);
     const productConfig = PRODUCT_CONFIG[product];
-    const reportPriceClp = getEnvNumber(
-      productConfig.priceEnv,
-      productConfig.fallbackPrice
-    );
+    const reportPriceClp = productConfig.price;
 
     const name = sanitizeText(
       body.name ?? body.nombre ?? body.customerName,
@@ -384,13 +364,13 @@ export async function POST(request: Request) {
       );
     }
 
-    if (product === "informe-fecha-estimada-prescripcion") {
+    if (product === "informe-simple-revision") {
       if (totalMultas <= 0) {
         return Response.json(
           {
             ok: false,
             error:
-              "No se detectaron multas en el certificado. No se puede comprar el informe de fechas estimadas.",
+              "No se detectaron multas en el certificado. No se puede comprar el informe simple.",
             requestId,
             debug: {
               product,
@@ -408,7 +388,7 @@ export async function POST(request: Request) {
           {
             ok: false,
             error:
-              "Este informe de fechas estimadas solo esta disponible cuando no hay multas potencialmente prescritas. Para este caso corresponde el informe completo.",
+              "El informe simple solo esta disponible cuando no hay multas potencialmente prescritas. Para este caso corresponde el informe completo.",
             requestId,
             debug: {
               product,
