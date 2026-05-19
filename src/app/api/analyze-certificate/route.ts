@@ -457,6 +457,50 @@ function collectAmounts(text: string): (number | null)[] {
   return positions.map((pos) => extractMontoUtmFromSlice(s.slice(pos, pos + 180)));
 }
 
+
+function collectTextAfterLabels(
+  text: string,
+  finderRegex: RegExp,
+  labelRegex: RegExp
+): (string | null)[] {
+  const s = searchable(text);
+  const positions = findLabelPositions(s, finderRegex);
+
+  return positions
+    .map((pos) => extractTextAfterLabel(s.slice(pos, pos + 360), labelRegex))
+    .filter((value) => value !== null);
+}
+
+function collectTribunals(text: string): (string | null)[] {
+  return collectTextAfterLabels(
+    text,
+    /\b(?:TRIBUNAL|JUZGADO)\b/gi,
+    /\b(?:TRIBUNAL|JUZGADO)\b/i
+  );
+}
+
+function collectRolesCausa(text: string): (string | null)[] {
+  return collectTextAfterLabels(
+    text,
+    /\b(?:ROL\s+CAUSA|ROL|CAUSA)\b/gi,
+    /\b(?:ROL\s+CAUSA|ROL|CAUSA)\b/i
+  );
+}
+
+function collectTiposInfraccion(text: string): (string | null)[] {
+  return collectTextAfterLabels(
+    text,
+    /\b(?:TIPO\s+INFRACCION|TIPO\s+DE\s+INFRACCION|DESCRIPCION\s+INFRACCION|INFRACCION)\b/gi,
+    /\b(?:TIPO\s+INFRACCION|TIPO\s+DE\s+INFRACCION|DESCRIPCION\s+INFRACCION|INFRACCION)\b/i
+  );
+}
+
+function pickParallelText(
+  values: (string | null)[],
+  index: number
+): string | null {
+  return values[index] ?? (values.length === 1 ? values[0] : null);
+}
 function buildLogsFromParallelFields(
   text: string,
   options: {
@@ -468,6 +512,9 @@ function buildLogsFromParallelFields(
   const ids = collectIds(text);
   const dates = collectDates(text);
   const amounts = collectAmounts(text);
+  const tribunals = collectTribunals(text);
+  const rolesCausa = collectRolesCausa(text);
+  const tiposInfraccion = collectTiposInfraccion(text);
 
   const count = Math.max(ids.length, dates.length, amounts.length);
 
@@ -481,9 +528,9 @@ function buildLogsFromParallelFields(
         idMulta: ids[i] ?? null,
         fechaIngresoRmnp: dates[i] ?? null,
         montoUtm: amounts[i] ?? null,
-        tribunal: null,
-        rolCausa: null,
-        tipoInfraccion: null,
+        tribunal: pickParallelText(tribunals, i),
+        rolCausa: pickParallelText(rolesCausa, i),
+        tipoInfraccion: pickParallelText(tiposInfraccion, i),
         utmClp: options.utmClp,
         prescriptionYears: options.prescriptionYears,
         today: options.today,
@@ -493,7 +540,6 @@ function buildLogsFromParallelFields(
 
   return logs;
 }
-
 function parserScore(logs: FineLog[]): number {
   return logs.reduce((score, fine) => {
     let value = score;
@@ -502,11 +548,13 @@ function parserScore(logs: FineLog[]): number {
     if (fine.fechaIngresoRmnp) value += 4;
     if (fine.montoUtm !== null) value += 3;
     if (fine.prescripcionPorFecha !== null) value += 3;
+    if (fine.tribunal) value += 1;
+    if (fine.rolCausa) value += 1;
+    if (fine.tipoInfraccion) value += 1;
 
     return value;
   }, 0);
 }
-
 async function extractPdfText(buffer: Buffer): Promise<string> {
   try {
     const data = await pdfParse(buffer);
@@ -733,6 +781,9 @@ export async function POST(request: NextRequest) {
       idsDetectados: collectIds(text).length,
       fechasIngresoDetectadas: collectDates(text).length,
       montosUtmDetectados: collectAmounts(text).length,
+      tribunalesDetectados: collectTribunals(text).length,
+      rolesCausaDetectados: collectRolesCausa(text).length,
+      infraccionesDetectadas: collectTiposInfraccion(text).length,
       textoPreview: text.slice(0, 1200),
     });
 
