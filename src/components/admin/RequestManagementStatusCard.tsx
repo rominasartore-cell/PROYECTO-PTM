@@ -217,7 +217,7 @@ function normalizeFine(value: unknown, index: number): JsonRecord {
     fechaIngreso: pickString(fine, ["fechaIngresoRmnp", "rmnpDate", "fechaRmnp", "date"], "Fecha no informada"),
     fechaPrescripcion: pickString(fine, ["fechaPrescripcionReferencial", "estimatedPrescriptionDate", "prescriptionDate"], "Fecha referencial no informada"),
     montoUtm: pickString(fine, ["montoMultaUtm", "montoUtm", "amountUtm", "utm", "monto"], "Monto no informado"),
-    infraccion: pickString(fine, ["infraccion", "infraction", "description"], "Infracción no informada"),
+    infraccion: pickString(fine, ["tipoInfraccion", "infraccion", "infraction", "description"], "Infracción no informada"),
     estado: pickString(fine, ["estado", "status"], "Estado no informado"),
   };
 }
@@ -246,6 +246,28 @@ function buildFineList(fines: JsonRecord[]): string {
     .join("\n\n");
 }
 
+
+function hasAnalysisLogs(row: JsonRecord): boolean {
+  const rawLogs = getDeepArray(row, [
+    ["logs"],
+    ["analysis", "logs"],
+    ["result", "logs"],
+    ["data", "logs"],
+    ["raw_analysis_json", "logs"],
+    ["raw_analysis_json", "result", "logs"],
+    ["raw_analysis_json", "analysis", "logs"],
+    ["raw_analysis_json", "analysisResult", "logs"],
+    ["raw_analysis_json", "preliminaryResult", "logs"],
+    ["data", "raw_analysis_json", "logs"],
+    ["data", "raw_analysis_json", "analysis", "logs"],
+    ["data", "raw_analysis_json", "result", "logs"],
+    ["data", "raw_analysis_json", "analysisResult", "logs"],
+    ["data", "raw_analysis_json", "preliminaryResult", "logs"],
+  ]);
+
+  return rawLogs.length > 0;
+}
+
 function buildEditableDocs(requestId: string, row: JsonRecord): EditableDoc[] {
   const payment = asRecord(row.payment);
   const clientData = asRecord(row.client_data || row.clientData);
@@ -268,12 +290,20 @@ function buildEditableDocs(requestId: string, row: JsonRecord): EditableDoc[] {
   const profession = pickString(merged, ["profesionOficio", "profesion", "profession"], "Profesión u oficio no informado");
 
   const rawLogs = getDeepArray(row, [
+    ["logs"],
     ["analysis", "logs"],
     ["result", "logs"],
+    ["data", "logs"],
     ["raw_analysis_json", "logs"],
+    ["raw_analysis_json", "result", "logs"],
+    ["raw_analysis_json", "analysis", "logs"],
+    ["raw_analysis_json", "analysisResult", "logs"],
+    ["raw_analysis_json", "preliminaryResult", "logs"],
     ["data", "raw_analysis_json", "logs"],
     ["data", "raw_analysis_json", "analysis", "logs"],
     ["data", "raw_analysis_json", "result", "logs"],
+    ["data", "raw_analysis_json", "analysisResult", "logs"],
+    ["data", "raw_analysis_json", "preliminaryResult", "logs"],
   ]);
 
   const fines = rawLogs.map(normalizeFine);
@@ -387,10 +417,12 @@ export default function RequestManagementStatusCard() {
   const [editableDocs, setEditableDocs] = useState<EditableDoc[]>([]);
   const [activeDocId, setActiveDocId] = useState("informe");
   const [paidVerification, setPaidVerification] = useState<PaidVerification>(INITIAL_PAID);
+  const [canPreviewDocs, setCanPreviewDocs] = useState(false);
 
   const activeDoc = editableDocs.find((doc) => doc.id === activeDocId) || editableDocs[0];
   const isPaymentOnly = isPaymentOnlySource(paidVerification.source);
   const canPrepare = paidVerification.approved && !isPaymentOnly;
+  const canOpenEditor = !isPaymentOnly && (canPrepare || canPreviewDocs);
 
   async function fetchAdminRequestPayload(): Promise<any> {
     if (!requestId) throw new Error("No se detectó requestId.");
@@ -459,9 +491,12 @@ export default function RequestManagementStatusCard() {
       const found = findMatchingRequest(data);
 
       if (!found) {
+        setCanPreviewDocs(false);
         setPaidVerification({ ...INITIAL_PAID, loading: false, error: "No se encontró la solicitud." });
         return;
       }
+
+      setCanPreviewDocs(hasAnalysisLogs(found));
 
       const payment = asRecord(found.payment);
       const merged = { ...payment, ...found };
@@ -478,6 +513,7 @@ export default function RequestManagementStatusCard() {
         error: "",
       });
     } catch (error) {
+      setCanPreviewDocs(false);
       setPaidVerification({ ...INITIAL_PAID, loading: false, error: error instanceof Error ? error.message : "Error verificando pago." });
     }
   }
@@ -746,21 +782,32 @@ export default function RequestManagementStatusCard() {
           </label>
         </div>
 
-        {canPrepare ? (
+        {canOpenEditor ? (
           <div className="rounded-lg border border-cyan-200 bg-cyan-50 p-2.5">
+            {!canPrepare ? (
+              <div className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">
+                Vista previa administrativa: permite revisar documentos con análisis pendiente. No generar ni enviar entrega sin pago aprobado.
+              </div>
+            ) : null}
+
             <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
               <button type="button" onClick={loadEditorDocs} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-black text-white hover:bg-slate-800">
-                Editar
+                {canPrepare ? "Editar" : "Vista previa"}
               </button>
-              <button type="button" onClick={downloadAdminJson} className="rounded-lg bg-cyan-700 px-3 py-2 text-xs font-black text-white hover:bg-cyan-800">
-                JSON
-              </button>
-              <button type="button" onClick={copyLocalDeliveryCommand} className="rounded-lg border border-cyan-700 bg-white px-3 py-2 text-xs font-black text-cyan-900 hover:bg-cyan-100">
-                Generar
-              </button>
-              <button type="button" onClick={copyReviewEditCommand} className="rounded-lg border border-amber-500 bg-white px-3 py-2 text-xs font-black text-amber-800 hover:bg-amber-50">
-                Local
-              </button>
+
+              {canPrepare ? (
+                <>
+                  <button type="button" onClick={downloadAdminJson} className="rounded-lg bg-cyan-700 px-3 py-2 text-xs font-black text-white hover:bg-cyan-800">
+                    JSON
+                  </button>
+                  <button type="button" onClick={copyLocalDeliveryCommand} className="rounded-lg border border-cyan-700 bg-white px-3 py-2 text-xs font-black text-cyan-900 hover:bg-cyan-100">
+                    Generar
+                  </button>
+                  <button type="button" onClick={copyReviewEditCommand} className="rounded-lg border border-amber-500 bg-white px-3 py-2 text-xs font-black text-amber-800 hover:bg-amber-50">
+                    Local
+                  </button>
+                </>
+              ) : null}
             </div>
           </div>
         ) : null}
