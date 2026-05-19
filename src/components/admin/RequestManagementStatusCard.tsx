@@ -492,6 +492,9 @@ export default function RequestManagementStatusCard() {
   const [activeDocId, setActiveDocId] = useState("informe");
   const [paidVerification, setPaidVerification] = useState<PaidVerification>(INITIAL_PAID);
   const [canPreviewDocs, setCanPreviewDocs] = useState(false);
+  const [deliveryZipFile, setDeliveryZipFile] = useState<File | null>(null);
+  const [deliveryUploading, setDeliveryUploading] = useState(false);
+  const [deliverySending, setDeliverySending] = useState(false);
 
   const activeDoc = editableDocs.find((doc) => doc.id === activeDocId) || editableDocs[0];
   const isPaymentOnly = isPaymentOnlySource(paidVerification.source);
@@ -752,6 +755,83 @@ export default function RequestManagementStatusCard() {
     setDeliveryMessage("Documentos descargados.");
   }
 
+  async function uploadDeliveryZip() {
+    if (!requestId) {
+      setDeliveryError("No se detecto requestId.");
+      return;
+    }
+
+    if (!deliveryZipFile) {
+      setDeliveryError("Selecciona un ZIP final antes de subir.");
+      return;
+    }
+
+    setDeliveryUploading(true);
+    setDeliveryMessage("");
+    setDeliveryError("");
+
+    try {
+      const formData = new FormData();
+      formData.append("file", deliveryZipFile);
+
+      const response = await fetch(`/api/admin/requests/${encodeURIComponent(requestId)}/delivery-upload?ts=${Date.now()}`, {
+        method: "POST",
+        cache: "no-store",
+        headers: buildAdminHeaders(),
+        body: formData,
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok || data?.ok === false) {
+        throw new Error(data?.error || `No se pudo subir ZIP. HTTP ${response.status}`);
+      }
+
+      setDeliveryMessage(`ZIP subido: ${data.fileName || deliveryZipFile.name}`);
+    } catch (error) {
+      setDeliveryError(error instanceof Error ? error.message : "No se pudo subir ZIP.");
+    } finally {
+      setDeliveryUploading(false);
+    }
+  }
+
+  async function sendDeliveryToClient() {
+    if (!requestId) {
+      setDeliveryError("No se detecto requestId.");
+      return;
+    }
+
+    setDeliverySending(true);
+    setDeliveryMessage("");
+    setDeliveryError("");
+
+    try {
+      const response = await fetch(`/api/admin/requests/${encodeURIComponent(requestId)}/send-delivery?ts=${Date.now()}`, {
+        method: "POST",
+        cache: "no-store",
+        headers: {
+          ...buildAdminHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({}),
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok || data?.ok === false) {
+        throw new Error(data?.error || `No se pudo enviar entrega. HTTP ${response.status}`);
+      }
+
+      setDeliveryMessage(`Entrega enviada al cliente: ${data.email || "email registrado"}`);
+      setStatus("documents_sent");
+      setUpdatedAt(new Date().toISOString());
+    } catch (error) {
+      setDeliveryError(error instanceof Error ? error.message : "No se pudo enviar entrega al cliente.");
+    } finally {
+      setDeliverySending(false);
+    }
+  }
+
   return (
     <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
       <div className="border-b border-slate-100 px-3 py-2.5">
@@ -924,6 +1004,48 @@ export default function RequestManagementStatusCard() {
                 Descargar todos
               </button>
             </div>
+          </div>
+        ) : null}
+
+        {canPrepare ? (
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-2.5">
+            <div className="flex flex-col gap-1">
+              <p className="text-sm font-black text-emerald-950">Entrega al cliente</p>
+              <p className="text-xs font-semibold text-emerald-800">
+                Sube el ZIP final revisado y envia al cliente un correo con link privado temporal. Solo disponible con pago aprobado.
+              </p>
+            </div>
+
+            <div className="mt-2 grid gap-2 lg:grid-cols-[1fr_auto_auto]">
+              <input
+                type="file"
+                accept=".zip,application/zip,application/x-zip-compressed"
+                onChange={(event) => setDeliveryZipFile(event.target.files?.[0] || null)}
+                className="rounded-lg border border-emerald-200 bg-white px-3 py-2 text-xs font-bold text-slate-800"
+              />
+
+              <button
+                type="button"
+                onClick={uploadDeliveryZip}
+                disabled={deliveryUploading || !deliveryZipFile}
+                className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-black text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {deliveryUploading ? "Subiendo..." : "Subir ZIP"}
+              </button>
+
+              <button
+                type="button"
+                onClick={sendDeliveryToClient}
+                disabled={deliverySending}
+                className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-black text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {deliverySending ? "Enviando..." : "Enviar entrega"}
+              </button>
+            </div>
+
+            <p className="mt-2 text-[11px] font-semibold text-emerald-900">
+              El link de descarga expira automaticamente. No se publica el ZIP de forma permanente.
+            </p>
           </div>
         ) : null}
 
