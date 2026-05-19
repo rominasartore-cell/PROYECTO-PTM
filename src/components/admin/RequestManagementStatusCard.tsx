@@ -207,13 +207,84 @@ function getDeepRecord(record: JsonRecord, paths: string[][]): JsonRecord {
   return {};
 }
 
+
+function inferComunaFromTribunal(value: string): string {
+  const tribunal = String(value || "").trim();
+
+  if (!tribunal || tribunal === "Tribunal no informado") {
+    return "Comuna no informada";
+  }
+
+  const normalized = tribunal
+    .replace(/\s+/g, " ")
+    .replace(/^JUZGADO\s+/i, "")
+    .replace(/^JPL\s+/i, "")
+    .trim();
+
+  const afterDe = normalized.match(/\b(?:DE|DEL)\s+(.+)$/i);
+  if (afterDe?.[1]) return afterDe[1].trim();
+
+  const afterLocal = normalized.match(/POLICÍA\s+LOCAL\s+(.+)$/i);
+  if (afterLocal?.[1]) return afterLocal[1].trim();
+
+  const afterPoliciaNoAccent = normalized.match(/POLICIA\s+LOCAL\s+(.+)$/i);
+  if (afterPoliciaNoAccent?.[1]) return afterPoliciaNoAccent[1].trim();
+
+  return "Comuna no informada";
+}
+
+
+function inferNumeroTribunal(value: string): string {
+  const tribunal = String(value || "").trim();
+
+  if (!tribunal || tribunal === "Tribunal no informado") {
+    return "Número tribunal no informado";
+  }
+
+  const match = tribunal.match(/^\s*(\d{1,2})\s+(?=(?:JUZGADO|POLICÍA|POLICIA|JPL)\b)/i);
+
+  if (match?.[1]) return match[1];
+
+  return "Número tribunal no informado";
+}
+
+function cleanTribunalWithoutLeadingNumber(value: string): string {
+  const tribunal = String(value || "").trim();
+
+  if (!tribunal || tribunal === "Tribunal no informado") {
+    return "Tribunal no informado";
+  }
+
+  return tribunal.replace(/^\s*\d{1,2}\s+(?=(?:JUZGADO|POLICÍA|POLICIA|JPL)\b)/i, "").trim();
+}
+
 function normalizeFine(value: unknown, index: number): JsonRecord {
   const fine = asRecord(value);
+  const tribunal = pickString(fine, ["tribunal", "court", "juzgado", "courtName"], "Tribunal no informado");
+  const numeroTribunal = pickString(
+    fine,
+    ["numeroTribunal", "tribunalNumero", "courtNumber", "juzgadoNumero"],
+    inferNumeroTribunal(tribunal)
+  );
+  const nombreTribunal = pickString(
+    fine,
+    ["nombreTribunal", "courtDisplayName"],
+    cleanTribunalWithoutLeadingNumber(tribunal)
+  );
+  const comunaTribunal = pickString(
+    fine,
+    ["comunaTribunal", "comuna", "courtCommune"],
+    inferComunaFromTribunal(tribunal)
+  );
+
   return {
-    numero: pickString(fine, ["numero", "number", "index"], String(index + 1)),
+    numero: pickString(fine, ["idMulta", "numeroMulta", "numero", "number", "index"], String(index + 1)),
+    idMulta: pickString(fine, ["idMulta", "numeroMulta", "fineId", "id"], "ID multa no informado"),
     rol: pickString(fine, ["rolCausa", "rol", "role", "caseRole"], "Rol no informado"),
-    tribunal: pickString(fine, ["tribunal", "court", "juzgado", "courtName"], "Tribunal no informado"),
-    comunaTribunal: pickString(fine, ["comunaTribunal", "comuna", "courtCommune"], "Comuna no informada"),
+    numeroTribunal,
+    tribunal,
+    nombreTribunal,
+    comunaTribunal,
     fechaIngreso: pickString(fine, ["fechaIngresoRmnp", "rmnpDate", "fechaRmnp", "date"], "Fecha no informada"),
     fechaPrescripcion: pickString(fine, ["fechaPrescripcionReferencial", "estimatedPrescriptionDate", "prescriptionDate"], "Fecha referencial no informada"),
     montoUtm: pickString(fine, ["montoMultaUtm", "montoUtm", "amountUtm", "utm", "monto"], "Monto no informado"),
@@ -234,8 +305,11 @@ function buildFineList(fines: JsonRecord[]): string {
     .map((fine, index) => [
       `### Multa ${index + 1}`,
       "",
+      `- ID multa: ${fine.idMulta || fine.numero}`,
       `- Rol: ${fine.rol}`,
+      `- Número tribunal/JPL: ${fine.numeroTribunal}`,
       `- Tribunal: ${fine.tribunal}`,
+      `- Nombre tribunal/JPL: ${fine.nombreTribunal}`,
       `- Comuna tribunal: ${fine.comunaTribunal}`,
       `- Fecha ingreso RMNP: ${fine.fechaIngreso}`,
       `- Fecha estimada/referencial: ${fine.fechaPrescripcion}`,
