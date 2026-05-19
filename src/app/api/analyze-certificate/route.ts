@@ -92,6 +92,51 @@ function cleanValue(value: string | null | undefined): string | null {
   return cleaned;
 }
 
+
+function prettifyLegalDisplayText(value: string | null): string | null {
+  const cleaned = cleanValue(value);
+
+  if (!cleaned) return null;
+
+  let text = cleaned.toUpperCase();
+
+  const replacements: Array<[RegExp, string]> = [
+    [/\bNUNOA\b/g, "ÑUÑOA"],
+    [/\bNUNOA\b/gi, "ÑUÑOA"],
+    [/\bSENALES\b/g, "SEÑALES"],
+    [/\bSENAL\b/g, "SEÑAL"],
+    [/\bTRANSITO\b/g, "TRÁNSITO"],
+    [/\bPOLICIA\b/g, "POLICÍA"],
+    [/\bPUBLICO\b/g, "PÚBLICO"],
+    [/\bELECTRONICO\b/g, "ELECTRÓNICO"],
+    [/\bCONTAMINACION\b/g, "CONTAMINACIÓN"],
+    [/\bRESTRICCION\b/g, "RESTRICCIÓN"],
+    [/\bINFRACCION\b/g, "INFRACCIÓN"],
+    [/\bPEATON\b/g, "PEATÓN"],
+    [/\bPEATONES\b/g, "PEATONES"],
+    [/\bANO\b/g, "AÑO"],
+  ];
+
+  for (const [pattern, replacement] of replacements) {
+    text = text.replace(pattern, replacement);
+  }
+
+  return text.replace(/\s+/g, " ").trim();
+}
+
+function prettifyTribunal(value: string | null): string | null {
+  return prettifyLegalDisplayText(value);
+}
+
+function prettifyRolCausa(value: string | null): string | null {
+  return prettifyLegalDisplayText(value);
+}
+
+function prettifyInfraccion(value: string | null): string | null {
+  return prettifyLegalDisplayText(value);
+}
+
+
 function parseUtmNumber(value: string | null): number | null {
   if (!value) return null;
 
@@ -464,9 +509,9 @@ function buildFineLogFromValues(args: {
     estado,
     montoUtm: args.montoUtm,
     montoPesos,
-    tribunal: args.tribunal,
-    rolCausa: args.rolCausa,
-    tipoInfraccion: args.tipoInfraccion,
+    tribunal: prettifyTribunal(args.tribunal),
+    rolCausa: prettifyRolCausa(args.rolCausa),
+    tipoInfraccion: prettifyInfraccion(args.tipoInfraccion),
     observaciones,
   };
 }
@@ -781,6 +826,7 @@ export async function POST(request: NextRequest) {
     const analysisResponse = buildResponse(logs, {
       parserUsado: useParallelParser ? "parallel-fields" : "blocks-by-id-multa",
       parserPriorizaBloquesPorIdMulta: true,
+      formatoPresentacionLegalV4: true,
       bloquesDetectados: fineBlocks.length,
       blockScore,
       parallelScore,
