@@ -1,4 +1,4 @@
-﻿param(
+param(
   [Parameter(Mandatory=$true)]
   [string]$RequestId,
 
@@ -7,6 +7,8 @@
 )
 
 $ErrorActionPreference = "Stop"
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
 
 function Write-Box($text) {
   Write-Host ""
@@ -22,15 +24,10 @@ function Find-ProjectRoot {
     $package = Join-Path $dir "package.json"
     $src = Join-Path $dir "src"
 
-    if ((Test-Path $package) -and (Test-Path $src)) {
-      return $dir
-    }
+    if ((Test-Path $package) -and (Test-Path $src)) { return $dir }
 
     $parent = Split-Path -Parent $dir
-    if ($parent -eq $dir) {
-      break
-    }
-
+    if ($parent -eq $dir) { break }
     $dir = $parent
   }
 
@@ -47,10 +44,7 @@ function Find-ScriptFile($projectRoot, $name) {
       $_.FullName -notmatch "\\docs\\deliveries\\"
     }
 
-  if (!$matches) {
-    throw "No se encontro script requerido: $name"
-  }
-
+  if (!$matches) { throw "No se encontro script requerido: $name" }
   return ($matches | Sort-Object FullName | Select-Object -First 1).FullName
 }
 
@@ -58,24 +52,13 @@ function Get-ParamNames($scriptPath) {
   $tokens = $null
   $errors = $null
 
-  try {
-    $ast = [System.Management.Automation.Language.Parser]::ParseFile($scriptPath, [ref]$tokens, [ref]$errors)
-  } catch {
-    return @()
-  }
-
-  if ($errors -and $errors.Count -gt 0) {
-    return @()
-  }
+  try { $ast = [System.Management.Automation.Language.Parser]::ParseFile($scriptPath, [ref]$tokens, [ref]$errors) } catch { return @() }
+  if ($errors -and $errors.Count -gt 0) { return @() }
 
   $names = @()
-
   if ($ast.ParamBlock -and $ast.ParamBlock.Parameters) {
-    foreach ($p in $ast.ParamBlock.Parameters) {
-      $names += $p.Name.VariablePath.UserPath
-    }
+    foreach ($p in $ast.ParamBlock.Parameters) { $names += $p.Name.VariablePath.UserPath }
   }
-
   return $names
 }
 
@@ -83,9 +66,7 @@ function Add-ParamIfExists($bag, $paramNames, $possibleNames, $value) {
   foreach ($actual in $paramNames) {
     foreach ($possible in $possibleNames) {
       if ($actual -ieq $possible) {
-        if (!$bag.ContainsKey($actual)) {
-          $bag[$actual] = $value
-        }
+        if (!$bag.ContainsKey($actual)) { $bag[$actual] = $value }
       }
     }
   }
@@ -110,7 +91,6 @@ function Invoke-CompatibleScript($scriptName, $projectRoot, $requestId, $adminJs
   Set-Variable -Name "ProjectRoot" -Value $projectRoot -Scope Global
 
   $bag = @{}
-
   Add-ParamIfExists $bag $paramNames @("RequestId", "Id", "AnalysisRequestId") $requestId
   Add-ParamIfExists $bag $paramNames @("AdminJsonPath", "AdminJson", "AdminJsonFile", "InputJsonPath", "JsonPath", "SourceJsonPath", "InputPath") $adminJsonPath
   Add-ParamIfExists $bag $paramNames @("DeliveryDir", "DeliveryPath", "OutputDir", "OutDir", "OutputPath", "CaseDir", "TargetDir") $deliveryDir
@@ -118,7 +98,6 @@ function Invoke-CompatibleScript($scriptName, $projectRoot, $requestId, $adminJs
 
   if ($paramNames.Count -gt 0) {
     Write-Host "      Parametros detectados: $($paramNames -join ', ')"
-
     if ($bag.Count -gt 0) {
       Write-Host "      Ejecutando con parametros compatibles..."
       & $scriptPath @bag
@@ -131,47 +110,53 @@ function Invoke-CompatibleScript($scriptName, $projectRoot, $requestId, $adminJs
     & $scriptPath
   }
 
-  if ($LASTEXITCODE -ne $null -and $LASTEXITCODE -ne 0) {
-    throw "Fallo $scriptName con exit code $LASTEXITCODE"
-  }
+  if ($LASTEXITCODE -ne $null -and $LASTEXITCODE -ne 0) { throw "Fallo $scriptName con exit code $LASTEXITCODE" }
 }
 
-Write-Box "PTM - GENERADOR UNICO DE ENTREGA REAL"
+function Repair-Delivery($projectRoot, $requestId) {
+  $repairScript = Join-Path $projectRoot "scripts\ops\repair-mojibake-delivery-v1.ps1"
+  if (!(Test-Path $repairScript)) { throw "No existe reparador UTF8: $repairScript" }
+  Write-Host ""
+  Write-Host "[RUN] repair-mojibake-delivery-v1.ps1"
+  powershell -ExecutionPolicy Bypass -File $repairScript -RequestId $requestId
+  if ($LASTEXITCODE -ne $null -and $LASTEXITCODE -ne 0) { throw "Fallo reparador UTF8 con exit code $LASTEXITCODE" }
+}
+
+Write-Box "PTM - GENERADOR UNICO DE ENTREGA REAL UTF8 SEGURO"
 
 $projectRoot = Find-ProjectRoot
 Set-Location $projectRoot
 
-if (!(Test-Path $AdminJsonPath)) {
-  throw "No existe AdminJsonPath: $AdminJsonPath"
-}
+if (!(Test-Path $AdminJsonPath)) { throw "No existe AdminJsonPath: $AdminJsonPath" }
 
 $deliveryDir = Join-Path $projectRoot ("docs\deliveries\" + $RequestId)
-
-if (!(Test-Path $deliveryDir)) {
-  New-Item -ItemType Directory -Path $deliveryDir -Force | Out-Null
-}
+if (!(Test-Path $deliveryDir)) { New-Item -ItemType Directory -Path $deliveryDir -Force | Out-Null }
 
 Write-Host "Proyecto: $projectRoot"
 Write-Host "RequestId: $RequestId"
 Write-Host "Admin JSON: $AdminJsonPath"
 Write-Host "Carpeta entrega: $deliveryDir"
 
-Write-Box "Ejecutando flujo validado"
+Write-Box "Ejecutando flujo validado con reparacion UTF8 antes de ZIP"
 
-$steps = @(
+$stepsBeforeRepair = @(
   "create-delivery-data-from-admin-json.ps1",
   "sync-client-data-to-delivery.ps1",
   "normalize-delivery-roles.ps1",
-  "create-delivery-package.ps1",
-  "validate-delivery-package.ps1",
-  "export-delivery-html.ps1",
-  "build-delivery-zip.ps1",
-  "audit-delivery-package.ps1"
+  "create-delivery-package.ps1"
 )
 
-foreach ($step in $steps) {
-  Invoke-CompatibleScript $step $projectRoot $RequestId $AdminJsonPath $deliveryDir
-}
+foreach ($step in $stepsBeforeRepair) { Invoke-CompatibleScript $step $projectRoot $RequestId $AdminJsonPath $deliveryDir }
+
+Repair-Delivery $projectRoot $RequestId
+
+Invoke-CompatibleScript "validate-delivery-package.ps1" $projectRoot $RequestId $AdminJsonPath $deliveryDir
+Invoke-CompatibleScript "export-delivery-html.ps1" $projectRoot $RequestId $AdminJsonPath $deliveryDir
+
+Repair-Delivery $projectRoot $RequestId
+
+Invoke-CompatibleScript "build-delivery-zip.ps1" $projectRoot $RequestId $AdminJsonPath $deliveryDir
+Invoke-CompatibleScript "audit-delivery-package.ps1" $projectRoot $RequestId $AdminJsonPath $deliveryDir
 
 Write-Box "Resultado"
 
