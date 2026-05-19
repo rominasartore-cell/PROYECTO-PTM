@@ -756,13 +756,22 @@ function PreliminaryResult({
 }
 
 function ReportIncludes() {
-  const items = [
-    "Informe de análisis del certificado aportado",
-    "Detalle de multas detectadas y revisables",
+  const fullItems = [
+    "Informe completo de análisis del certificado aportado",
+    "Detalle de multas detectadas y estado estimado",
     "Identificación de multas potencialmente prescritas",
     "Solicitudes editables de prescripción",
     "Guía de tramitación personal paso a paso",
     "Advertencias, límites y alcance del servicio",
+  ];
+
+  const simpleItems = [
+    "Resumen del certificado revisado",
+    "Resultado del análisis preliminar",
+    "Indicación de que no se detectaron multas potencialmente prescritas",
+    "Fechas estimadas de prescripción según datos visibles",
+    "Recomendación general para revisión futura",
+    "No incluye solicitudes ni set de documentos para presentar",
   ];
 
   return (
@@ -770,36 +779,94 @@ function ReportIncludes() {
       <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.8fr_1.2fr] lg:px-8">
         <div>
           <p className="text-sm font-black uppercase tracking-widest text-emerald-700">
-            Producto
+            Productos
           </p>
+
           <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
-            Informe completo + solicitudes editables
+            Primero revisas. Después decides.
           </h2>
+
           <p className="mt-4 text-base leading-8 text-slate-600">
-            Un producto documental preparado con los antecedentes del certificado aportado. No incluye representación judicial ni tramitación completa.
+            El precio depende del resultado del análisis. Si existen multas potencialmente prescritas, se habilita el informe completo. Si no existen, se habilita un informe simple de revisión.
           </p>
-          <div className="mt-5 inline-flex flex-col rounded-[2rem] border border-emerald-300 bg-slate-950 px-6 py-5 shadow-2xl shadow-emerald-950/25">
-            <span className="inline-flex w-fit rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-black uppercase tracking-[0.22em] text-emerald-300">
-              Oferta de lanzamiento
-            </span>
-            <span className="mt-3 text-6xl font-black tracking-tight text-emerald-300">
-              $9.990 <span className="align-middle text-base font-black text-emerald-100">CLP</span>
-            </span>
-            <span className="mt-2 text-xs font-bold text-emerald-100/90">
-              Precio único por informe completo + solicitudes editables
-            </span>
+
+          <div className="mt-6 grid gap-4">
+            <div className="rounded-[2rem] border border-emerald-300 bg-slate-950 px-6 py-5 shadow-2xl shadow-emerald-950/25">
+              <span className="inline-flex w-fit rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-emerald-300">
+                Precio lanzamiento · Ahorras $5.000
+              </span>
+
+              <p className="mt-3 text-sm font-bold text-emerald-100/90">
+                Informe completo
+              </p>
+
+              <span className="mt-1 block text-6xl font-black tracking-tight text-emerald-300">
+                $9.990 <span className="align-middle text-base font-black text-emerald-100">CLP</span>
+              </span>
+
+              <p className="mt-2 text-xs font-bold text-emerald-100/90">
+                Precio normal $14.990. Incluye informe completo, solicitudes editables y guía de tramitación personal.
+              </p>
+            </div>
+
+            <div className="rounded-[2rem] border border-teal-300 bg-white px-6 py-5 shadow-xl shadow-slate-900/5">
+              <span className="inline-flex w-fit rounded-full bg-teal-50 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-teal-700">
+                Precio único
+              </span>
+
+              <p className="mt-3 text-sm font-bold text-slate-700">
+                Informe simple
+              </p>
+
+              <span className="mt-1 block text-5xl font-black tracking-tight text-slate-950">
+                $5.990 <span className="align-middle text-base font-black text-slate-500">CLP</span>
+              </span>
+
+              <p className="mt-2 text-xs font-bold text-slate-500">
+                Para certificados sin multas potencialmente prescritas. Incluye revisión, resultado y fechas estimadas. No incluye escritos.
+              </p>
+            </div>
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          {items.map((item) => (
-            <div key={item} className="flex gap-3 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-700 text-sm font-black text-white">
-                ✓
-              </div>
-              <p className="font-bold leading-6 text-slate-800">{item}</p>
+        <div className="grid gap-5">
+          <div>
+            <h3 className="text-xl font-black text-slate-950">
+              Informe completo
+            </h3>
+
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              {fullItems.map((item) => (
+                <div key={item} className="flex gap-3 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-700 text-sm font-black text-white">
+                    ✓
+                  </div>
+                  <p className="font-bold leading-6 text-slate-800">{item}</p>
+                </div>
+              ))}
             </div>
-          ))}
+          </div>
+
+          <div>
+            <h3 className="text-xl font-black text-slate-950">
+              Informe simple
+            </h3>
+
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              {simpleItems.map((item) => (
+                <div key={item} className="flex gap-3 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-teal-700 text-sm font-black text-white">
+                    ✓
+                  </div>
+                  <p className="font-bold leading-6 text-slate-800">{item}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 text-sm font-semibold leading-7 text-slate-600 shadow-sm">
+            Servicio documental automatizado. No constituye representación judicial ni garantiza la eliminación de multas.
+          </div>
         </div>
       </div>
     </section>
