@@ -210,12 +210,24 @@ function extractTextAfterLabel(block: string, labelRegex: RegExp): string | null
   const next = after.search(NEXT_LABEL_REGEX);
   const rawValue = next > 0 ? after.slice(0, next) : after.slice(0, 260);
 
-  const lineCandidate = rawValue
-    .split(/\n/)
-    .map((line) => cleanValue(line))
-    .find((line) => !!line);
+  return cleanValue(rawValue.replace(/\n+/g, " "));
+}
 
-  return cleanValue(lineCandidate);
+function extractTextBetweenLabels(
+  block: string,
+  labelRegex: RegExp,
+  nextRegex: RegExp
+): string | null {
+  const s = searchable(block);
+  const match = labelRegex.exec(s);
+
+  if (!match) return null;
+
+  const after = s.slice(match.index + match[0].length).replace(/^[:\s.\-|]+/, "");
+  const next = after.search(nextRegex);
+  const rawValue = next >= 0 ? after.slice(0, next) : after.slice(0, 360);
+
+  return cleanValue(rawValue.replace(/\n+/g, " "));
 }
 
 function extractIdMultaFromSlice(slice: string): string | null {
@@ -272,13 +284,25 @@ function extractMontoUtm(block: string): number | null {
 
 function extractTribunal(block: string): string | null {
   return (
+    extractTextBetweenLabels(block, /\bTRIBUNAL\b/i, /\bROL\s*:/i) ||
+    extractTextBetweenLabels(block, /\bJUZGADO(?:\s+DE\s+POLICIA\s+LOCAL)?\b/i, /\bROL\s*:/i) ||
     extractTextAfterLabel(block, /\bTRIBUNAL\b/i) ||
     extractTextAfterLabel(block, /\bJUZGADO(?:\s+DE\s+POLICIA\s+LOCAL)?\b/i)
   );
 }
 
 function extractRolCausa(block: string): string | null {
+  const s = searchable(block);
+  const match = s.match(/\bROL\s*:\s*([A-Z0-9./_-]+)\s+(?:ANO|AÑO)\s+ROL\s*:\s*(\d{4})/i);
+
+  if (match?.[1] && match?.[2]) {
+    return cleanValue(`${match[1]} AÑO ROL ${match[2]}`);
+  }
+
   return (
+    extractTextBetweenLabels(block, /\bROL\s+CAUSA\b/i, /\bFECHA\s+INFRACCION\b/i) ||
+    extractTextBetweenLabels(block, /\bROL\b/i, /\bFECHA\s+INFRACCION\b/i) ||
+    extractTextBetweenLabels(block, /\bCAUSA\b/i, /\bFECHA\s+INFRACCION\b/i) ||
     extractTextAfterLabel(block, /\bROL\s+CAUSA\b/i) ||
     extractTextAfterLabel(block, /\bROL\b/i) ||
     extractTextAfterLabel(block, /\bCAUSA\b/i)
@@ -287,6 +311,10 @@ function extractRolCausa(block: string): string | null {
 
 function extractTipoInfraccion(block: string): string | null {
   return (
+    extractTextBetweenLabels(block, /\bTIPO\s+INFRACCION\b/i, /\bTRIBUNAL\b/i) ||
+    extractTextBetweenLabels(block, /\bTIPO\s+DE\s+INFRACCION\b/i, /\bTRIBUNAL\b/i) ||
+    extractTextBetweenLabels(block, /\bDESCRIPCION\s+INFRACCION\b/i, /\bTRIBUNAL\b/i) ||
+    extractTextBetweenLabels(block, /\bINFRACCION\b/i, /\bTRIBUNAL\b/i) ||
     extractTextAfterLabel(block, /\bTIPO\s+INFRACCION\b/i) ||
     extractTextAfterLabel(block, /\bTIPO\s+DE\s+INFRACCION\b/i) ||
     extractTextAfterLabel(block, /\bDESCRIPCION\s+INFRACCION\b/i) ||
@@ -746,15 +774,13 @@ export async function POST(request: NextRequest) {
     const blockScore = parserScore(blockLogs);
     const parallelScore = parserScore(parallelLogs);
 
-    const useParallelParser =
-      parallelLogs.length > 0 &&
-      parallelScore >= blockScore &&
-      parallelLogs.length >= blockLogs.length;
+    const useParallelParser = blockLogs.length === 0 && parallelLogs.length > 0;
 
     const logs = useParallelParser ? parallelLogs : blockLogs;
 
     const analysisResponse = buildResponse(logs, {
       parserUsado: useParallelParser ? "parallel-fields" : "blocks-by-id-multa",
+      parserPriorizaBloquesPorIdMulta: true,
       bloquesDetectados: fineBlocks.length,
       blockScore,
       parallelScore,
