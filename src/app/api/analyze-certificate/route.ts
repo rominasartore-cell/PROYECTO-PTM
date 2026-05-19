@@ -66,15 +66,36 @@ function searchable(text: string): string {
     .replace(/\bU\s*T\s*M\b/gi, "UTM")
     .replace(/MONTO\s+MULTA\s*[–—-]\s*MONEDA/gi, "MONTO MULTA-MONEDA")
     .replace(/FECHA\s+DE\s+INGRESO/gi, "FECHA INGRESO")
+    .replace(/N[°º]\s*/gi, "N ")
     .trim();
+}
+
+function cleanValue(value: string | null | undefined): string | null {
+  if (!value) return null;
+
+  const cleaned = value
+    .replace(/\s+/g, " ")
+    .replace(/^[:;\-.| ]+/, "")
+    .replace(/[:;\-.| ]+$/, "")
+    .trim();
+
+  if (!cleaned) return null;
+
+  if (
+    /^(FECHA|MONTO|ARANCEL|TOTAL|TRIBUNAL|JUZGADO|ROL|CAUSA|TIPO|INFRACCION|DESCRIPCION|ID|MULTA|RMNP|RMTNP)$/i.test(
+      cleaned
+    )
+  ) {
+    return null;
+  }
+
+  return cleaned;
 }
 
 function parseUtmNumber(value: string | null): number | null {
   if (!value) return null;
 
-  let cleaned = value
-    .replace(/[^\d,.-]/g, "")
-    .trim();
+  let cleaned = value.replace(/[^\d,.-]/g, "").trim();
 
   if (!cleaned) return null;
 
@@ -84,9 +105,7 @@ function parseUtmNumber(value: string | null): number | null {
 
   const parsed = Number(cleaned);
 
-  if (!Number.isFinite(parsed)) return null;
-
-  return parsed;
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function parseDateCL(value: string | null): Date | null {
@@ -161,28 +180,6 @@ function isPotentiallyPrescribed(
   return addYears(fechaIngreso, years) <= today;
 }
 
-function cleanValue(value: string | null | undefined): string | null {
-  if (!value) return null;
-
-  const cleaned = value
-    .replace(/\s+/g, " ")
-    .replace(/^[:;\-. ]+/, "")
-    .replace(/[:;\-. ]+$/, "")
-    .trim();
-
-  if (!cleaned) return null;
-
-  if (
-    /^(FECHA|MONTO|ARANCEL|TOTAL|TRIBUNAL|ROL|CAUSA|TIPO|INFRACCION)$/i.test(
-      cleaned
-    )
-  ) {
-    return null;
-  }
-
-  return cleaned;
-}
-
 function findLabelPositions(text: string, regex: RegExp): number[] {
   const positions: number[] = [];
   let match: RegExpExecArray | null;
@@ -198,6 +195,27 @@ function findLabelPositions(text: string, regex: RegExp): number[] {
   }
 
   return positions;
+}
+
+const NEXT_LABEL_REGEX =
+  /(?:ID\s+MULTA|FECHA\s+INGRESO|MONTO\s+MULTA|ARANCEL|TOTAL|TRIBUNAL|JUZGADO|ROL\s+CAUSA|ROL\b|CAUSA\b|TIPO\s+INFRACCION|TIPO\s+DE\s+INFRACCION|DESCRIPCION\s+INFRACCION|INFRACCION|PATENTE|PLACA)/i;
+
+function extractTextAfterLabel(block: string, labelRegex: RegExp): string | null {
+  const s = searchable(block);
+  const match = labelRegex.exec(s);
+
+  if (!match) return null;
+
+  const after = s.slice(match.index + match[0].length).replace(/^[:\s.\-|]+/, "");
+  const next = after.search(NEXT_LABEL_REGEX);
+  const rawValue = next > 0 ? after.slice(0, next) : after.slice(0, 260);
+
+  const lineCandidate = rawValue
+    .split(/\n/)
+    .map((line) => cleanValue(line))
+    .find((line) => !!line);
+
+  return cleanValue(lineCandidate);
 }
 
 function extractIdMultaFromSlice(slice: string): string | null {
@@ -225,30 +243,13 @@ function extractFechaIngresoFromSlice(slice: string): string | null {
   return cleanValue(match?.[1]);
 }
 
-function extractTextAfterLabel(block: string, labelRegex: RegExp): string | null {
-  const match = block.match(labelRegex);
-
-  if (!match?.index && match?.index !== 0) return null;
-
-  const slice = block.slice(match.index, match.index + 220);
-
-  const knownNextLabel =
-    /(?:ID\s+MULTA|FECHA\s+INGRESO|MONTO\s+MULTA|ARANCEL|TOTAL|TRIBUNAL|JUZGADO|ROL|CAUSA|TIPO\s+INFRACCION|INFRACCION|DESCRIPCION)/i;
-
-  const withoutLabel = slice.replace(labelRegex, "").replace(/^[:\s.-]+/, "");
-  const next = withoutLabel.search(knownNextLabel);
-  const value = next >= 0 ? withoutLabel.slice(0, next) : withoutLabel;
-
-  return cleanValue(value.split("\n")[0]);
-}
-
 function extractIdMulta(block: string): string | null {
   const s = searchable(block);
   const pos = s.search(/\bID\s+MULTA\b/i);
 
   if (pos < 0) return null;
 
-  return extractIdMultaFromSlice(s.slice(pos, pos + 120));
+  return extractIdMultaFromSlice(s.slice(pos, pos + 140));
 }
 
 function extractFechaIngresoRmnp(block: string): string | null {
@@ -257,7 +258,7 @@ function extractFechaIngresoRmnp(block: string): string | null {
 
   if (pos < 0) return null;
 
-  return extractFechaIngresoFromSlice(s.slice(pos, pos + 180));
+  return extractFechaIngresoFromSlice(s.slice(pos, pos + 200));
 }
 
 function extractMontoUtm(block: string): number | null {
@@ -266,37 +267,75 @@ function extractMontoUtm(block: string): number | null {
 
   if (pos < 0) return null;
 
-  return extractMontoUtmFromSlice(s.slice(pos, pos + 180));
+  return extractMontoUtmFromSlice(s.slice(pos, pos + 200));
 }
 
 function extractTribunal(block: string): string | null {
-  const s = searchable(block);
-
   return (
-    extractTextAfterLabel(s, /\bTRIBUNAL\b/i) ||
-    extractTextAfterLabel(s, /\bJUZGADO\b/i)
+    extractTextAfterLabel(block, /\bTRIBUNAL\b/i) ||
+    extractTextAfterLabel(block, /\bJUZGADO(?:\s+DE\s+POLICIA\s+LOCAL)?\b/i)
   );
 }
 
 function extractRolCausa(block: string): string | null {
-  const s = searchable(block);
-
   return (
-    extractTextAfterLabel(s, /\bROL\s+CAUSA\b/i) ||
-    extractTextAfterLabel(s, /\bROL\b/i) ||
-    extractTextAfterLabel(s, /\bCAUSA\b/i)
+    extractTextAfterLabel(block, /\bROL\s+CAUSA\b/i) ||
+    extractTextAfterLabel(block, /\bROL\b/i) ||
+    extractTextAfterLabel(block, /\bCAUSA\b/i)
   );
 }
 
 function extractTipoInfraccion(block: string): string | null {
-  const s = searchable(block);
-
   return (
-    extractTextAfterLabel(s, /\bTIPO\s+INFRACCION\b/i) ||
-    extractTextAfterLabel(s, /\bTIPO\s+DE\s+INFRACCION\b/i) ||
-    extractTextAfterLabel(s, /\bDESCRIPCION\s+INFRACCION\b/i) ||
-    extractTextAfterLabel(s, /\bINFRACCION\b/i)
+    extractTextAfterLabel(block, /\bTIPO\s+INFRACCION\b/i) ||
+    extractTextAfterLabel(block, /\bTIPO\s+DE\s+INFRACCION\b/i) ||
+    extractTextAfterLabel(block, /\bDESCRIPCION\s+INFRACCION\b/i) ||
+    extractTextAfterLabel(block, /\bINFRACCION\b/i)
   );
+}
+
+function collectTextAfterLabels(
+  text: string,
+  finderRegex: RegExp,
+  labelRegex: RegExp
+): (string | null)[] {
+  const s = searchable(text);
+  const positions = findLabelPositions(s, finderRegex);
+
+  return positions
+    .map((pos) => extractTextAfterLabel(s.slice(pos, pos + 420), labelRegex))
+    .filter((value) => value !== null);
+}
+
+function collectTribunals(text: string): (string | null)[] {
+  return collectTextAfterLabels(
+    text,
+    /\b(?:TRIBUNAL|JUZGADO(?:\s+DE\s+POLICIA\s+LOCAL)?)\b/gi,
+    /\b(?:TRIBUNAL|JUZGADO(?:\s+DE\s+POLICIA\s+LOCAL)?)\b/i
+  );
+}
+
+function collectRolesCausa(text: string): (string | null)[] {
+  return collectTextAfterLabels(
+    text,
+    /\b(?:ROL\s+CAUSA|ROL|CAUSA)\b/gi,
+    /\b(?:ROL\s+CAUSA|ROL|CAUSA)\b/i
+  );
+}
+
+function collectTiposInfraccion(text: string): (string | null)[] {
+  return collectTextAfterLabels(
+    text,
+    /\b(?:TIPO\s+INFRACCION|TIPO\s+DE\s+INFRACCION|DESCRIPCION\s+INFRACCION|INFRACCION)\b/gi,
+    /\b(?:TIPO\s+INFRACCION|TIPO\s+DE\s+INFRACCION|DESCRIPCION\s+INFRACCION|INFRACCION)\b/i
+  );
+}
+
+function pickParallelText(
+  values: (string | null)[],
+  index: number
+): string | null {
+  return values[index] ?? (values.length === 1 ? values[0] : null);
 }
 
 function splitFineBlocks(text: string): string[] {
@@ -324,9 +363,7 @@ function splitFineBlocks(text: string): string[] {
     const end = i + 1 < positions.length ? positions[i + 1] : s.length;
     const block = s.slice(start, end).trim();
 
-    if (block) {
-      blocks.push(block);
-    }
+    if (block) blocks.push(block);
   }
 
   return blocks;
@@ -360,18 +397,10 @@ function buildFineLogFromValues(args: {
 
   let estado: FineStatus = "REVISION_MANUAL";
 
-  if (prescripcionPorFecha === true) {
-    estado = "POTENCIALMENTE_PRESCRITA";
-  }
+  if (prescripcionPorFecha === true) estado = "POTENCIALMENTE_PRESCRITA";
+  if (prescripcionPorFecha === false) estado = "VIGENTE";
 
-  if (prescripcionPorFecha === false) {
-    estado = "VIGENTE";
-  }
-
-  if (!args.idMulta) {
-    observaciones.push("No se pudo extraer ID MULTA.");
-  }
-
+  if (!args.idMulta) observaciones.push("No se pudo extraer ID MULTA.");
   if (!fechaIngresoRmnp) {
     observaciones.push("No se pudo extraer FECHA INGRESO RMNP/RMTNP.");
     estado = "REVISION_MANUAL";
@@ -389,6 +418,10 @@ function buildFineLogFromValues(args: {
       "La fecha sugiere prescripción, pero falta monto UTM. Requiere revisión manual."
     );
   }
+
+  if (!args.tribunal) observaciones.push("No se pudo extraer tribunal/juzgado.");
+  if (!args.rolCausa) observaciones.push("No se pudo extraer rol de causa.");
+  if (!args.tipoInfraccion) observaciones.push("No se pudo extraer tipo de infracción.");
 
   const montoPesos =
     prescripcionPorFecha === true && args.montoUtm !== null
@@ -435,7 +468,7 @@ function collectIds(text: string): (string | null)[] {
   const s = searchable(text);
   const positions = findLabelPositions(s, /\bID\s+MULTA\b/gi);
 
-  return positions.map((pos) => extractIdMultaFromSlice(s.slice(pos, pos + 120)));
+  return positions.map((pos) => extractIdMultaFromSlice(s.slice(pos, pos + 140)));
 }
 
 function collectDates(text: string): (string | null)[] {
@@ -446,7 +479,7 @@ function collectDates(text: string): (string | null)[] {
   );
 
   return positions.map((pos) =>
-    extractFechaIngresoFromSlice(s.slice(pos, pos + 180))
+    extractFechaIngresoFromSlice(s.slice(pos, pos + 200))
   );
 }
 
@@ -454,53 +487,9 @@ function collectAmounts(text: string): (number | null)[] {
   const s = searchable(text);
   const positions = findLabelPositions(s, /\bMONTO\s+MULTA\s*[-]?\s*MONEDA\b/gi);
 
-  return positions.map((pos) => extractMontoUtmFromSlice(s.slice(pos, pos + 180)));
+  return positions.map((pos) => extractMontoUtmFromSlice(s.slice(pos, pos + 200)));
 }
 
-
-function collectTextAfterLabels(
-  text: string,
-  finderRegex: RegExp,
-  labelRegex: RegExp
-): (string | null)[] {
-  const s = searchable(text);
-  const positions = findLabelPositions(s, finderRegex);
-
-  return positions
-    .map((pos) => extractTextAfterLabel(s.slice(pos, pos + 360), labelRegex))
-    .filter((value) => value !== null);
-}
-
-function collectTribunals(text: string): (string | null)[] {
-  return collectTextAfterLabels(
-    text,
-    /\b(?:TRIBUNAL|JUZGADO)\b/gi,
-    /\b(?:TRIBUNAL|JUZGADO)\b/i
-  );
-}
-
-function collectRolesCausa(text: string): (string | null)[] {
-  return collectTextAfterLabels(
-    text,
-    /\b(?:ROL\s+CAUSA|ROL|CAUSA)\b/gi,
-    /\b(?:ROL\s+CAUSA|ROL|CAUSA)\b/i
-  );
-}
-
-function collectTiposInfraccion(text: string): (string | null)[] {
-  return collectTextAfterLabels(
-    text,
-    /\b(?:TIPO\s+INFRACCION|TIPO\s+DE\s+INFRACCION|DESCRIPCION\s+INFRACCION|INFRACCION)\b/gi,
-    /\b(?:TIPO\s+INFRACCION|TIPO\s+DE\s+INFRACCION|DESCRIPCION\s+INFRACCION|INFRACCION)\b/i
-  );
-}
-
-function pickParallelText(
-  values: (string | null)[],
-  index: number
-): string | null {
-  return values[index] ?? (values.length === 1 ? values[0] : null);
-}
 function buildLogsFromParallelFields(
   text: string,
   options: {
@@ -540,6 +529,7 @@ function buildLogsFromParallelFields(
 
   return logs;
 }
+
 function parserScore(logs: FineLog[]): number {
   return logs.reduce((score, fine) => {
     let value = score;
@@ -555,13 +545,13 @@ function parserScore(logs: FineLog[]): number {
     return value;
   }, 0);
 }
+
 async function extractPdfText(buffer: Buffer): Promise<string> {
   try {
     const data = await pdfParse(buffer);
     return data?.text || "";
   } catch (error) {
     console.error("PDF_PARSE_ERROR", error);
-
     throw new Error(
       "No se pudo leer el PDF. Si el certificado viene escaneado como imagen, requiere OCR."
     );
@@ -580,15 +570,12 @@ function buildResponse(logs: FineLog[], debug: Record<string, unknown>) {
   );
 
   const multasTotalesDetectadas = logs.length;
-
   const multasPotencialmentePrescritas = logs.filter(
     (fine) => fine.prescripcionPorFecha === true
   );
-
   const multasPrescritasConMonto = logs.filter(
     (fine) => fine.prescripcionPorFecha === true && fine.montoUtm !== null
   );
-
   const multasPrescritasRevisionManual = logs.filter(
     (fine) => fine.prescripcionPorFecha === true && fine.montoUtm === null
   );
@@ -676,17 +663,13 @@ function buildResponse(logs: FineLog[], debug: Record<string, unknown>) {
   return {
     ok: true,
     success: true,
-
     resumen,
-
     result: frontendResult,
     analysis: frontendResult,
     analysisResult: frontendResult,
     preliminaryResult: frontendResult,
     data: frontendResult,
-
     ...frontendResult,
-
     debug: {
       ...debug,
       ignoraArancel: true,
@@ -720,7 +703,6 @@ export async function POST(request: NextRequest) {
     }
 
     const file = uploadedFile as File;
-
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
@@ -772,9 +754,7 @@ export async function POST(request: NextRequest) {
     const logs = useParallelParser ? parallelLogs : blockLogs;
 
     const analysisResponse = buildResponse(logs, {
-      parserUsado: useParallelParser
-        ? "parallel-fields"
-        : "blocks-by-id-multa",
+      parserUsado: useParallelParser ? "parallel-fields" : "blocks-by-id-multa",
       bloquesDetectados: fineBlocks.length,
       blockScore,
       parallelScore,
