@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { assertPaidAccess } from "@/lib/paywall/paid-access";
 
 type AnyRecord = Record<string, any>;
 
@@ -31,6 +32,30 @@ function jsonError(message: string, status = 400, extra: AnyRecord = {}) {
   );
 }
 
+function lockedResponse(
+  requestId: string,
+  access: {
+    ok: false;
+    status: number;
+    error: string;
+    paymentStatus?: string | null;
+    purchaseStatus?: string | null;
+  }
+) {
+  return NextResponse.json(
+    {
+      ok: false,
+      locked: true,
+      checkoutRequired: true,
+      requestId,
+      error: access.error,
+      paymentStatus: access.paymentStatus,
+      purchaseStatus: access.purchaseStatus,
+    },
+    { status: access.status }
+  );
+}
+
 function isMissingTableError(error: unknown): boolean {
   const message = cleanText((error as AnyRecord)?.message).toLowerCase();
 
@@ -41,55 +66,8 @@ function isMissingTableError(error: unknown): boolean {
   );
 }
 
-function isPaidPayment(row: AnyRecord | null | undefined): boolean {
-  if (!row) return false;
-
-  const status = cleanText(
-    row.status ??
-      row.payment_status ??
-      row.raw_status ??
-      row.rawStatus ??
-      row.purchase_status ??
-      row.purchaseStatus
-  ).toLowerCase();
-
-  const purchaseStatus = cleanText(
-    row.purchase_status ??
-      row.purchaseStatus
-  ).toLowerCase();
-
-  return (
-    status === "approved" ||
-    status === "paid" ||
-    status === "accredited" ||
-    purchaseStatus === "paid" ||
-    purchaseStatus === "approved"
-  );
-}
-
 function getClient() {
-  const supabase = getSupabaseAdmin() as AnyRecord;
-  return supabase;
-}
-
-async function findPaymentRecord(supabase: AnyRecord, requestId: string) {
-  const byRequestId = await supabase
-    .from("ptm_payments")
-    .select("*")
-    .eq("request_id", requestId)
-    .maybeSingle();
-
-  if (byRequestId?.data) return byRequestId.data;
-
-  const byExternalReference = await supabase
-    .from("ptm_payments")
-    .select("*")
-    .eq("external_reference", requestId)
-    .maybeSingle();
-
-  if (byExternalReference?.data) return byExternalReference.data;
-
-  return null;
+  return getSupabaseAdmin() as AnyRecord;
 }
 
 async function findAnalysisRecord(supabase: AnyRecord, requestId: string) {
@@ -119,6 +97,13 @@ export async function GET(_request: Request, context: RouteContext) {
 
     if (!safeRequestId) {
       return jsonError("Falta requestId.", 400);
+    }
+
+    // PAYWALL V0.6-C4: GET client-data bloqueado sin pago aprobado.
+    const paidAccess = await assertPaidAccess(safeRequestId);
+
+    if (!paidAccess.ok) {
+      return lockedResponse(safeRequestId, paidAccess);
     }
 
     const supabase = getClient();
@@ -159,6 +144,13 @@ export async function POST(request: Request, context: RouteContext) {
       return jsonError("Falta requestId.", 400);
     }
 
+    // PAYWALL V0.6-C4: POST client-data bloqueado sin pago aprobado.
+    const paidAccess = await assertPaidAccess(safeRequestId);
+
+    if (!paidAccess.ok) {
+      return lockedResponse(safeRequestId, paidAccess);
+    }
+
     const body = await request.json().catch(() => ({}));
 
     const rutSolicitante = normalizeRut(body.rutSolicitante ?? body.rut_solicitante ?? body.rut);
@@ -181,20 +173,8 @@ export async function POST(request: Request, context: RouteContext) {
     }
 
     const supabase = getClient();
-
-    const payment = await findPaymentRecord(supabase, safeRequestId);
+    const payment = paidAccess.payment;
     const analysis = await findAnalysisRecord(supabase, safeRequestId);
-
-    if (!payment && !analysis) {
-      return jsonError("No existe solicitud asociada.", 404);
-    }
-
-    if (payment && !isPaidPayment(payment)) {
-      return jsonError("La solicitud aun no tiene pago aprobado.", 402, {
-        paymentStatus: payment.status ?? payment.payment_status ?? null,
-        purchaseStatus: payment.purchase_status ?? payment.purchaseStatus ?? null,
-      });
-    }
 
     const customerEmail = cleanText(
       payment?.customer_email ??

@@ -207,7 +207,10 @@ function ResultadosContent() {
   const [loading, setLoading] = useState(true);
   const [refreshCount, setRefreshCount] = useState(0);
 
-  const loadPaymentStatus = useCallback(async () => {
+  
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+const loadPaymentStatus = useCallback(async () => {
     if (!requestId) {
       setData({
         ok: false,
@@ -349,6 +352,138 @@ function ResultadosContent() {
   const supportHref = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(
     `Soporte compra PTM ${requestId || "sin codigo"}`
   )}`;
+  // PAYWALL V0.7-B RESULTADOS: si no hay pago aprobado, no se muestra vista útil.
+  const isApprovedAccess =
+    status === "approved" &&
+    hasConfirmedRecord &&
+    isPaidPurchaseStatus(purchaseStatus);
+
+  const startCheckout = useCallback(async () => {
+    if (!requestId) {
+      setCheckoutError("No se encontró el código de solicitud.");
+      return;
+    }
+
+    if (!email) {
+      setCheckoutError("Falta el correo asociado a esta solicitud. Vuelve al inicio y repite el análisis.");
+      return;
+    }
+
+    try {
+      setCheckoutLoading(true);
+      setCheckoutError(null);
+
+      const response = await fetch("/api/payment/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          requestId,
+          email,
+          customerEmail: email,
+          product: "informe-completo-prescripcion",
+        }),
+      });
+
+      const json = await response.json().catch(() => null);
+      const checkoutUrl =
+        json?.checkoutUrl ||
+        json?.init_point ||
+        json?.initPoint ||
+        json?.url ||
+        json?.preference?.init_point ||
+        json?.preference?.sandbox_init_point ||
+        null;
+
+      if (!response.ok || !checkoutUrl) {
+        throw new Error(
+          json?.error ||
+            json?.message ||
+            "No se pudo crear el checkout de pago."
+        );
+      }
+
+      window.location.href = checkoutUrl;
+    } catch (error) {
+      setCheckoutError(
+        error instanceof Error ? error.message : "No se pudo iniciar el pago."
+      );
+    } finally {
+      setCheckoutLoading(false);
+    }
+  }, [email, requestId]);
+
+  if (!loading && !isApprovedAccess) {
+    return (
+      <main className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-slate-100 px-4 py-10 text-slate-950 sm:px-6 lg:px-8">
+        <section className="mx-auto max-w-3xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-xl shadow-slate-200/60">
+          <div className="border-b border-slate-200 bg-slate-950 p-6 text-white sm:p-8">
+            <p className="text-xs font-black uppercase tracking-[0.25em] text-teal-300">
+              Resultado protegido
+            </p>
+            <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">
+              Desbloquea tu resultado completo
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300">
+              El análisis existe, pero el detalle útil queda disponible solo con pago aprobado.
+            </p>
+          </div>
+
+          <div className="space-y-6 p-6 sm:p-8">
+            <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-amber-950">
+              <p className="text-sm font-black uppercase tracking-[0.18em] text-amber-700">
+                Paywall activo
+              </p>
+              <p className="mt-3 text-lg font-black">
+                Para ver multas revisables, montos referenciales y documentos editables, desbloquea el informe.
+              </p>
+              <p className="mt-3 text-sm leading-6 text-amber-900">
+                Antes del pago no se muestra el resultado completo ni se habilitan descargas.
+              </p>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <DetailRow label="Solicitud" value={requestId || "No registrada"} />
+              <DetailRow label="Estado de pago" value={copy.badge} />
+            </div>
+
+            <button
+              type="button"
+              onClick={startCheckout}
+              disabled={checkoutLoading || !requestId}
+              className="w-full rounded-2xl bg-slate-950 px-5 py-4 text-sm font-black uppercase tracking-[0.18em] text-white shadow-lg shadow-slate-300 transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {checkoutLoading ? "Generando pago..." : "Desbloquear resultado completo — $9.990"}
+            </button>
+
+            {checkoutError ? (
+              <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-900">
+                {checkoutError}
+              </div>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={() => setRefreshCount((value) => value + 1)}
+              className="w-full rounded-2xl border border-slate-300 bg-white px-5 py-3 text-sm font-black uppercase tracking-[0.16em] text-slate-800 transition hover:border-teal-400 hover:text-teal-800"
+            >
+              Actualizar estado de pago
+            </button>
+
+            <a
+              href={supportHref}
+              className="block text-center text-sm font-black text-teal-700 underline"
+            >
+              Contactar soporte
+            </a>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-slate-100 px-4 py-10 text-slate-950 sm:px-6 lg:px-8">

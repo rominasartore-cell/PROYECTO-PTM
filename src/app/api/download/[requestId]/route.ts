@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { assertPaidAccess } from "@/lib/paywall/paid-access";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import pdfParse from "pdf-parse";
 
@@ -651,6 +652,29 @@ function buildResponse(logs: FineLog[], debug: Record<string, unknown>) {
 }
 
 export async function POST(request: NextRequest) {
+
+  // PAYWALL V0.7-B DOWNLOAD: bloqueo server-side antes de generar documentos.
+  const downloadPathParts = new URL(request.url).pathname.split("/").filter(Boolean);
+  const safeRequestId = decodeURIComponent(downloadPathParts[downloadPathParts.length - 1] || "").trim();
+
+  const paidAccess = await assertPaidAccess(safeRequestId);
+
+  if (!paidAccess.ok) {
+    return NextResponse.json(
+      {
+        ok: false,
+        locked: true,
+        checkoutRequired: true,
+        requestId: safeRequestId,
+        error: paidAccess.error,
+        paymentStatus: paidAccess.paymentStatus,
+        purchaseStatus: paidAccess.purchaseStatus,
+      },
+      { status: paidAccess.status }
+    );
+  }
+
+
   try {
     const formData = await request.formData();
 
