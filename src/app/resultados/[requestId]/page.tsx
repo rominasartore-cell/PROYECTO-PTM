@@ -276,7 +276,8 @@ const loadPaymentStatus = useCallback(async () => {
   const email = String(data?.payment?.customerEmail || queryEmail || "").trim();
   const amount = data?.payment?.amount ?? null;
   const product = String(data?.payment?.product || "").trim();
-  const analyticsValue = Number(amount || 0);
+    const productLower = product.toLowerCase();
+const analyticsValue = Number(amount || 0);
   const analyticsProduct =
     product ||
     (analyticsValue === 5990
@@ -352,13 +353,20 @@ const loadPaymentStatus = useCallback(async () => {
   const supportHref = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(
     `Soporte compra PTM ${requestId || "sin codigo"}`
   )}`;
-  // PAYWALL V0.7-B RESULTADOS: si no hay pago aprobado, no se muestra vista útil.
-  const isApprovedAccess =
+  // PAYWALL V1.5-B4 RESULTADOS ESCALONADOS
+  const paidConfirmed =
     status === "approved" &&
     hasConfirmedRecord &&
     isPaidPurchaseStatus(purchaseStatus);
 
-  const startCheckout = useCallback(async () => {
+  const isPreliminaryAccess =
+    paidConfirmed && productLower === "analisis-preliminar-detallado";
+
+  // Full access solo para producto completo o pagos legacy que no sean preliminares.
+  const isApprovedAccess =
+    paidConfirmed && productLower !== "analisis-preliminar-detallado";
+
+  const startCheckout = useCallback(async (targetProduct = "informe-completo-prescripcion") => {
     if (!requestId) {
       setCheckoutError("No se encontró el código de solicitud.");
       return;
@@ -382,7 +390,7 @@ const loadPaymentStatus = useCallback(async () => {
           requestId,
           email,
           customerEmail: email,
-          product: "informe-completo-prescripcion",
+          product: targetProduct,
         }),
       });
 
@@ -413,6 +421,120 @@ const loadPaymentStatus = useCallback(async () => {
       setCheckoutLoading(false);
     }
   }, [email, requestId]);
+  if (!loading && isPreliminaryAccess) {
+    const paymentAny = (data?.payment || {}) as Record<string, unknown>;
+    const metadataAny = (paymentAny.metadata || {}) as Record<string, unknown>;
+
+    const pickNumber = (...values: unknown[]) => {
+      for (const value of values) {
+        const n = Number(value || 0);
+        if (Number.isFinite(n) && n > 0) return n;
+      }
+      return 0;
+    };
+
+    const totalMultas = pickNumber(
+      paymentAny.totalMultas,
+      metadataAny.totalMultas,
+      metadataAny.total_multas
+    );
+
+    const multasSusceptibles = pickNumber(
+      paymentAny.prescribedCount,
+      paymentAny.potentiallyPrescribedCount,
+      metadataAny.multasSusceptibles,
+      metadataAny.multas_susceptibles,
+      metadataAny.potentiallyPrescribedCount
+    );
+
+    const montoReferencial = pickNumber(
+      paymentAny.potentialAmount,
+      paymentAny.totalPotentialAmount,
+      metadataAny.potentialAmount,
+      metadataAny.totalPotentialAmount,
+      metadataAny.montoPotencial,
+      metadataAny.monto_potencial
+    );
+
+    const moneyText = (value: number) =>
+      value > 0 ? money(value) : "No informado";
+
+    return (
+      <main className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-slate-100 px-4 py-10 text-slate-950 sm:px-6 lg:px-8">
+        <section className="mx-auto max-w-4xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-xl shadow-slate-200/60">
+          <div className="border-b border-slate-200 bg-slate-950 p-6 text-white sm:p-8">
+            <p className="text-xs font-black uppercase tracking-[0.25em] text-teal-300">
+              Análisis preliminar desbloqueado
+            </p>
+            <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">
+              Resultado preliminar detallado
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300">
+              Este resumen muestra señales generales del certificado. Los documentos editables y la guía completa se desbloquean con el informe completo.
+            </p>
+          </div>
+
+          <div className="space-y-6 p-6 sm:p-8">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <DetailRow
+                label="Multas detectadas"
+                value={totalMultas > 0 ? String(totalMultas) : "No informado"}
+              />
+              <DetailRow
+                label="Potencialmente revisables"
+                value={multasSusceptibles > 0 ? String(multasSusceptibles) : "No informado"}
+              />
+              <DetailRow
+                label="Monto referencial"
+                value={moneyText(montoReferencial)}
+              />
+            </div>
+
+            <div className="rounded-3xl border border-teal-200 bg-teal-50 p-5 text-sm leading-7 text-teal-950">
+              <p className="font-black">Conclusión preliminar</p>
+              <p className="mt-2">
+                El sistema detectó antecedentes que justifican una revisión documental. Para recibir el informe completo, solicitudes editables y guía de tramitación, desbloquea el paquete completo.
+              </p>
+            </div>
+
+            <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm leading-7 text-amber-950">
+              <p className="font-black">Importante</p>
+              <p className="mt-2">
+                Este análisis preliminar no constituye eliminación automática de multas, representación judicial ni garantía de resultado. La decisión corresponde al tribunal competente.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => startCheckout("informe-completo-prescripcion")}
+              disabled={checkoutLoading || !requestId}
+              className="w-full rounded-2xl bg-slate-950 px-5 py-4 text-sm font-black uppercase tracking-[0.18em] text-white shadow-lg shadow-slate-300 transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {checkoutLoading
+                ? "Generando pago..."
+                : "Comprar informe completo — $9.990"}
+            </button>
+
+            {checkoutError ? (
+              <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-900">
+                {checkoutError}
+              </div>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={() => setRefreshCount((value) => value + 1)}
+              className="w-full rounded-2xl border border-slate-300 bg-white px-5 py-3 text-sm font-black uppercase tracking-[0.16em] text-slate-800 transition hover:border-teal-400 hover:text-teal-800"
+            >
+              Actualizar estado de pago
+            </button>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+
 
   if (!loading && !isApprovedAccess) {
     return (
@@ -423,7 +545,7 @@ const loadPaymentStatus = useCallback(async () => {
               Resultado protegido
             </p>
             <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">
-              Desbloquea tu resultado completo
+              Ver análisis preliminar detallado
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300">
               El análisis existe, pero el detalle útil queda disponible solo con pago aprobado.
@@ -436,10 +558,10 @@ const loadPaymentStatus = useCallback(async () => {
                 Paywall activo
               </p>
               <p className="mt-3 text-lg font-black">
-                Para ver multas revisables, montos referenciales y documentos editables, desbloquea el informe.
+                Para ver el análisis preliminar detallado, monto referencial y señales generales del certificado, desbloquea esta revisión inicial.
               </p>
               <p className="mt-3 text-sm leading-6 text-amber-900">
-                Antes del pago no se muestra el resultado completo ni se habilitan descargas.
+                Antes del pago no se muestran datos útiles del análisis ni se habilitan descargas.
               </p>
             </div>
 
@@ -450,11 +572,11 @@ const loadPaymentStatus = useCallback(async () => {
 
             <button
               type="button"
-              onClick={startCheckout}
+              onClick={() => startCheckout("analisis-preliminar-detallado")}
               disabled={checkoutLoading || !requestId}
               className="w-full rounded-2xl bg-slate-950 px-5 py-4 text-sm font-black uppercase tracking-[0.18em] text-white shadow-lg shadow-slate-300 transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {checkoutLoading ? "Generando pago..." : "Desbloquear resultado completo — $9.990"}
+              {checkoutLoading ? "Generando pago..." : "Ver análisis preliminar detallado — $2.990"}
             </button>
 
             {checkoutError ? (
