@@ -5,7 +5,8 @@ import { trackPaymentRedirect, trackPurchaseClicked } from "@/lib/analytics";
 
 type ProductKind =
   | "informe-completo-prescripcion"
-  | "informe-simple-revision";
+  | "informe-simple-revision"
+  | "analisis-preliminar-detallado";
 
 type ProductDetailModalProps = {
   open: boolean;
@@ -31,11 +32,37 @@ const PRODUCT_CONFIG: Record<
     legalNote: string;
   }
 > = {
+  "analisis-preliminar-detallado": {
+    id: "analisis-preliminar-detallado",
+    price: 2990,
+    eyebrow: "Precio lanzamiento · Ahorras $5.000",
+    title: "Análisis preliminar detallado",
+    description: "Revisa multas detectadas, posibles multas prescritas, monto referencial estimado y recomendación inicial.",
+    priceNote: "Precio lanzamiento. Precio normal $14.990.",
+    buttonLabel: "Conocer detalle del análisis",
+    includedItems: [
+      "Informe completo de análisis del certificado.",
+      "Detalle de multas detectadas y estado estimado.",
+      "Identificación de multas potencialmente prescritas.",
+      "Solicitudes editables de prescripción, una por multa cuando corresponda.",
+      "Guía de tramitación personal paso a paso.",
+    ],
+    excludedItems: [
+      "No incluye representación judicial ni patrocinio profesional.",
+      "No incluye presentación de escritos ante tribunales.",
+      "No incluye seguimiento del expediente.",
+      "No garantiza resolución favorable ni eliminación de multas.",
+      "El tribunal puede exigir antecedentes o formalidades adicionales.",
+    ],
+    legalNote:
+      "Servicio documental automatizado. No constituye representación judicial ni garantiza la eliminación de multas.",
+  },
+
   "informe-completo-prescripcion": {
     id: "informe-completo-prescripcion",
     price: 9990,
     eyebrow: "Precio lanzamiento · Ahorras $5.000",
-    title: "Informe completo de prescripción + solicitudes editables",
+    title: "Informe completo de prescripción + documentos editables",
     description:
       "Para certificados con multas potencialmente prescritas. Incluye informe completo, solicitudes editables y guía de tramitación personal.",
     priceNote: "Precio lanzamiento. Precio normal $14.990.",
@@ -155,6 +182,7 @@ function getPaymentUrl(data: any): string {
 }
 
 function normalizeProduct(product: unknown): ProductKind {
+  if (product === "analisis-preliminar-detallado") return "analisis-preliminar-detallado";
   return product === "informe-simple-revision"
     ? "informe-simple-revision"
     : "informe-completo-prescripcion";

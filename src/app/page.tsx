@@ -407,7 +407,7 @@ function HowItWorks() {
     {
       n: "3",
       title: "Obtén tu resultado preliminar",
-      text: "Luego puedes comprar el informe completo con solicitudes editables.",
+      text: "Primero puedes desbloquear el detalle preliminar por $2.990. Luego, si conviene avanzar, puedes optar por el informe completo con documentos editables.",
       color: "bg-teal-700",
     },
   ];
@@ -591,7 +591,7 @@ function AnalysisForm({
             Análisis preliminar
           </div>
           <h2 className="text-2xl font-black tracking-tight text-slate-950">
-            Analiza gratis tu certificado
+            Revisa tu certificado y conoce si hay multas que podrían prescribir
           </h2>
           <p className="mt-2 text-sm leading-relaxed text-slate-500">
             Carga el certificado y revisa si existen multas respecto de las cuales podrías solicitar prescripción.
@@ -815,11 +815,11 @@ function ReportIncludes() {
               </span>
 
               <p className="mt-3 text-sm font-bold text-slate-700">
-                Informe simple
+                Análisis preliminar
               </p>
 
               <span className="mt-1 block text-5xl font-black tracking-tight text-slate-950">
-                $5.990 <span className="align-middle text-base font-black text-slate-500">CLP</span>
+                $2.990 <span className="align-middle text-base font-black text-slate-500">CLP</span>
               </span>
 
               <p className="mt-2 text-xs font-bold text-slate-500">
@@ -849,7 +849,7 @@ function ReportIncludes() {
 
           <div>
             <h3 className="text-xl font-black text-slate-950">
-              Informe simple
+              Análisis preliminar
             </h3>
 
             <div className="mt-4 grid gap-4 sm:grid-cols-2">

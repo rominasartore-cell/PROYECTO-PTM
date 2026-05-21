@@ -5,7 +5,8 @@ import ProductDetailModal from "./ProductDetailModal";
 
 type ProductKind =
   | "informe-completo-prescripcion"
-  | "informe-simple-revision";
+  | "informe-simple-revision"
+  | "analisis-preliminar-detallado";
 
 type PreliminaryResultCardProps = {
   analysis?: any;
@@ -296,10 +297,10 @@ export default function PreliminaryResultCard({
             {canPurchaseFull ? (
               <button
                 type="button"
-                onClick={() => openProduct("informe-completo-prescripcion")}
+                onClick={() => openProduct("analisis-preliminar-detallado")}
                 className="w-full rounded-2xl bg-emerald-700 px-6 py-5 text-xl font-black text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-emerald-800 active:translate-y-0"
               >
-                Comprar informe completo →
+                Conocer detalle del análisis — $2.990
               </button>
             ) : null}
 
@@ -310,11 +311,11 @@ export default function PreliminaryResultCard({
                 </p>
 
                 <h3 className="mt-2 text-xl font-black leading-tight text-slate-950">
-                  Informe simple de revisión
+                  Análisis preliminar de revisión
                 </h3>
 
                 <p className="mt-3 text-sm font-semibold leading-6 text-slate-700">
-                  Puedes comprar un informe simple con el resumen del certificado, el resultado del análisis y fechas estimadas de prescripción, según los datos visibles.
+                  Puedes comprar un análisis preliminar con el resumen del certificado, el resultado del análisis y fechas estimadas de prescripción, según los datos visibles.
                 </p>
 
                 <p className="mt-3 text-xs font-bold leading-5 text-amber-800">
@@ -323,10 +324,10 @@ export default function PreliminaryResultCard({
 
                 <button
                   type="button"
-                  onClick={() => openProduct("informe-simple-revision")}
+                  onClick={() => openProduct("informe-completo-prescripcion")}
                   className="mt-4 w-full rounded-2xl bg-slate-950 px-6 py-4 text-base font-black text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-slate-800 active:translate-y-0"
                 >
-                  Comprar informe simple - $5.990 →
+                  Informe completo con documentos — $9.990
                 </button>
               </section>
             ) : null}
