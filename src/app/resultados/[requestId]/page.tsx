@@ -542,26 +542,26 @@ const analyticsValue = Number(amount || 0);
         <section className="mx-auto max-w-3xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-xl shadow-slate-200/60">
           <div className="border-b border-slate-200 bg-slate-950 p-6 text-white sm:p-8">
             <p className="text-xs font-black uppercase tracking-[0.25em] text-teal-300">
-              Resultado protegido
+              Certificado revisado
             </p>
             <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">
-              Ver análisis preliminar detallado
+              Tu certificado fue revisado correctamente
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300">
-              El análisis existe, pero el detalle útil queda disponible solo con pago aprobado.
+              Detectamos multas que podrían prescribir.
             </p>
           </div>
 
           <div className="space-y-6 p-6 sm:p-8">
             <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-amber-950">
               <p className="text-sm font-black uppercase tracking-[0.18em] text-amber-700">
-                Paywall activo
+                Conoce el detalle de tu análisis preliminar
               </p>
               <p className="mt-3 text-lg font-black">
-                Para ver el análisis preliminar detallado, monto referencial y señales generales del certificado, desbloquea esta revisión inicial.
+                Por $2.990 podrás ver multas detectadas, posibles multas prescritas, monto referencial estimado y recomendación inicial.
               </p>
               <p className="mt-3 text-sm leading-6 text-amber-900">
-                Antes del pago no se muestran datos útiles del análisis ni se habilitan descargas.
+                Luego, puedes optar por un informe completo con documentos editables.
               </p>
             </div>
 
@@ -576,7 +576,7 @@ const analyticsValue = Number(amount || 0);
               disabled={checkoutLoading || !requestId}
               className="w-full rounded-2xl bg-slate-950 px-5 py-4 text-sm font-black uppercase tracking-[0.18em] text-white shadow-lg shadow-slate-300 transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {checkoutLoading ? "Generando pago..." : "Ver análisis preliminar detallado — $2.990"}
+              {checkoutLoading ? "Generando pago..." : "Conocer detalle del análisis — $2.990"}
             </button>
 
             {checkoutError ? (
