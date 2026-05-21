@@ -278,10 +278,13 @@ export default function PreliminaryResultCard({
           <section>
             <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5 text-center">
               <p className="text-sm font-black uppercase tracking-widest text-emerald-700">
-                Potencialmente prescritas
+                Resultado preliminar
               </p>
-              <p className="mt-3 text-3xl font-black text-emerald-700">
-                {normalized.prescribedCount}
+              <p className="mt-3 text-2xl font-black leading-tight text-emerald-800">
+                Se detectaron multas potencialmente prescritas.
+              </p>
+              <p className="mx-auto mt-3 max-w-md text-sm font-semibold leading-6 text-emerald-950">
+                Para ver cantidades, monto referencial y recomendación inicial, desbloquea el detalle del análisis.
               </p>
             </div>
           </section>
