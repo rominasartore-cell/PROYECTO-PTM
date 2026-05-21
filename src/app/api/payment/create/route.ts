@@ -6,7 +6,8 @@ export const dynamic = "force-dynamic";
 
 type ProductKind =
   | "informe-completo-prescripcion"
-  | "informe-simple-revision";
+  | "informe-simple-revision"
+  | "analisis-preliminar-detallado";
 
 type PaymentBody = {
   requestId?: string;
@@ -62,12 +63,20 @@ const PRODUCT_CONFIG: Record<
     description: (plate) =>
       `Informe simple de revision y fechas estimadas para patente ${plate}`,
   },
+  "analisis-preliminar-detallado": {
+    id: "analisis-preliminar-detallado",
+    price: 2990,
+    itemId: "analisis-preliminar-detallado",
+    title: "Análisis preliminar detallado",
+    description: (plate: string) =>
+      `Desbloqueo del análisis preliminar detallado para la patente ${plate || "consultada"}.`,
+  },
 };
 
 function normalizeProduct(value: unknown): ProductKind {
-  return value === "informe-simple-revision"
-    ? "informe-simple-revision"
-    : "informe-completo-prescripcion";
+  if (value === "informe-simple-revision") return "informe-simple-revision";
+  if (value === "analisis-preliminar-detallado") return "analisis-preliminar-detallado";
+  return "informe-completo-prescripcion";
 }
 
 function getSiteUrl(request: Request): string {

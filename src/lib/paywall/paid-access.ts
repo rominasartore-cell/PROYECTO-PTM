@@ -2,6 +2,57 @@ import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 type AnyRecord = Record<string, any>;
 
+export type PaidAccessLevel = "none" | "preliminary_paid" | "full_paid";
+
+function getProduct(row: AnyRecord | null | undefined): string {
+  if (!row) return "";
+
+  return cleanText(
+    row.product ??
+      row.metadata?.product ??
+      row.mercadoPago?.metadata?.product ??
+      row.mercado_pago?.metadata?.product
+  ).toLowerCase();
+}
+
+export function getAccessLevelFromPayment(
+  row: AnyRecord | null | undefined
+): PaidAccessLevel {
+  if (!isPaidPayment(row)) return "none";
+
+  const product = getProduct(row);
+
+  if (product === "analisis-preliminar-detallado") {
+    return "preliminary_paid";
+  }
+
+  return "full_paid";
+}
+
+export async function getPaidAccessLevel(requestId: string): Promise<{
+  requestId: string;
+  level: PaidAccessLevel;
+  payment: AnyRecord | null;
+}> {
+  const safeId = safeRequestId(requestId);
+
+  if (!safeId) {
+    return {
+      requestId: "",
+      level: "none",
+      payment: null,
+    };
+  }
+
+  const payment = await findPaymentRecord(safeId);
+
+  return {
+    requestId: safeId,
+    level: getAccessLevelFromPayment(payment),
+    payment,
+  };
+}
+
 export type PaidAccessResult =
   | {
       ok: true;
