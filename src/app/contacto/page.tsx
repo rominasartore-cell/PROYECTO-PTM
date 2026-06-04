@@ -27,14 +27,14 @@ export default function ContactPage() {
           <div>
             <p className="text-sm font-black uppercase tracking-widest text-emerald-700">Contacto</p>
             <h1 className="mt-3 text-4xl font-black tracking-tight text-slate-950 sm:text-6xl">
-              Contáctanos por WhatsApp
+              Contacto directo por WhatsApp
             </h1>
             <p className="mt-5 max-w-2xl text-base font-semibold leading-8 text-slate-600 sm:text-lg">
-              Para revisar multas de tránsito, prescripciones, regularizaciones, certificados o anotaciones asociadas, escríbenos directamente por WhatsApp.
+              Para revisar multas de tránsito, prescripciones, regularizaciones, certificados, pagos pendientes de actualización o anotaciones asociadas, escríbenos directamente por WhatsApp.
             </p>
 
             <div className="mt-8">
-              <WhatsAppButton label="Hablar con Lex por WhatsApp" />
+              <WhatsAppButton label="Iniciar revisión por WhatsApp" />
             </div>
 
             <div className="mt-8 rounded-3xl border border-teal-100 bg-teal-50 p-5 text-sm leading-7 text-teal-950">
@@ -54,12 +54,12 @@ export default function ContactPage() {
               className="h-72 w-full object-cover"
             />
             <div className="p-6">
-              <h2 className="text-2xl font-black text-slate-950">Inicio rápido</h2>
+              <h2 className="text-2xl font-black text-slate-950">Revisión ordenada</h2>
               <p className="mt-3 text-sm font-semibold leading-7 text-slate-600">
-                Cuéntanos brevemente tu situación y, si puedes, envía tu certificado o antecedentes disponibles para coordinar la revisión.
+                Cuéntanos brevemente tu situación y envía los antecedentes disponibles. Antes de iniciar cualquier revisión se informa el valor, alcance y documentos necesarios.
               </p>
               <div className="mt-6">
-                <WhatsAppButton label="Enviar mensaje ahora" />
+                <WhatsAppButton label="Escribir por WhatsApp" />
               </div>
             </div>
           </div>
@@ -68,3 +68,4 @@ export default function ContactPage() {
     </main>
   );
 }
+
