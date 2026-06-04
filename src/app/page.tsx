@@ -30,6 +30,64 @@ function WhatsAppButton({ label = "Contactar por WhatsApp" }: { label?: string }
   );
 }
 
+
+function VisualCards() {
+  return (
+    <section className="bg-white py-8 sm:py-10">
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="grid gap-5 md:grid-cols-3">
+          <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+            <Image
+              src="/certificado-multas.svg"
+              alt="Certificado de multas"
+              width={800}
+              height={600}
+              className="h-56 w-full object-cover"
+            />
+            <div className="p-5">
+              <h3 className="text-lg font-black text-slate-950">Certificados y antecedentes</h3>
+              <p className="mt-2 text-sm font-semibold leading-7 text-slate-600">
+                Revisión de Certificado de Multas No Pagadas y otros antecedentes relevantes.
+              </p>
+            </div>
+          </div>
+
+          <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+            <Image
+              src="/registro-conductores.svg"
+              alt="Registro Nacional de Conductores"
+              width={800}
+              height={600}
+              className="h-56 w-full object-cover"
+            />
+            <div className="p-5">
+              <h3 className="text-lg font-black text-slate-950">Registro de Conductores</h3>
+              <p className="mt-2 text-sm font-semibold leading-7 text-slate-600">
+                Revisión de anotaciones y situaciones asociadas al Registro Nacional de Conductores.
+              </p>
+            </div>
+          </div>
+
+          <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+            <Image
+              src="/hero-multas.svg"
+              alt="Multas de tránsito"
+              width={1200}
+              height={900}
+              className="h-56 w-full object-cover"
+            />
+            <div className="p-5">
+              <h3 className="text-lg font-black text-slate-950">Prescripción y regularización</h3>
+              <p className="mt-2 text-sm font-semibold leading-7 text-slate-600">
+                Orientación práctica para revisar y gestionar multas de tránsito en general.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
 function Header() {
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200/70 bg-white/95 backdrop-blur">
@@ -111,7 +169,15 @@ export default function Page() {
             </p>
           </div>
 
-          <div className="rounded-[2rem] border border-emerald-200 bg-white p-6 shadow-2xl shadow-emerald-950/15 ring-1 ring-emerald-100">
+          <div className="overflow-hidden rounded-[2rem] border border-emerald-200 bg-white shadow-2xl shadow-emerald-950/15 ring-1 ring-emerald-100">
+            <Image
+              src="/hero-multas.svg"
+              alt="Ilustración de multas de tránsito"
+              width={1200}
+              height={900}
+              className="h-56 w-full object-cover"
+            />
+            <div className="p-6">
             <p className="text-sm font-black uppercase tracking-widest text-emerald-700">
               Inicio directo
             </p>
@@ -134,9 +200,12 @@ export default function Page() {
             <div className="mt-6">
               <WhatsAppButton label="Escribir a Lex" />
             </div>
+            </div>
           </div>
         </div>
       </section>
+
+      <VisualCards />
 
       <section id="servicio" className="bg-white py-16 sm:py-20">
         <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.8fr_1.2fr] lg:px-8">
@@ -268,6 +337,7 @@ export default function Page() {
     </main>
   );
 }
+
 
 
 

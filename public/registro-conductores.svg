@@ -1,0 +1,15 @@
+﻿<svg width="800" height="600" viewBox="0 0 800 600" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="800" height="600" rx="36" fill="#F8FAFC"/>
+<rect x="130" y="150" width="520" height="300" rx="28" fill="white" stroke="#CBD5E1" stroke-width="8"/>
+<rect x="180" y="210" width="150" height="150" rx="20" fill="#CCFBF1"/>
+<circle cx="255" cy="255" r="34" fill="#0F766E"/>
+<path d="M205 340C215 308 245 295 255 295C265 295 295 308 305 340" stroke="#0F766E" stroke-width="16" stroke-linecap="round"/>
+<rect x="370" y="215" width="190" height="20" rx="10" fill="#0F172A"/>
+<rect x="370" y="260" width="150" height="16" rx="8" fill="#94A3B8"/>
+<rect x="370" y="300" width="180" height="16" rx="8" fill="#CBD5E1"/>
+<rect x="370" y="340" width="130" height="16" rx="8" fill="#CBD5E1"/>
+<circle cx="610" cy="180" r="54" fill="#F59E0B"/>
+<path d="M610 155V185" stroke="white" stroke-width="14" stroke-linecap="round"/>
+<circle cx="610" cy="205" r="8" fill="white"/>
+<text x="130" y="525" fill="#0F172A" font-family="Arial, sans-serif" font-size="32" font-weight="700">Registro Nacional de Conductores</text>
+</svg>
