@@ -2,12 +2,14 @@
 
 const WHATSAPP_NUMBER = "56968506777";
 const WHATSAPP_TEXT =
-  "Hola, quiero contactar a Lex por multas de tránsito. Tengo certificado de multas y necesito revisión.";
+  "Hola, quiero contactar a Lex por multas de tránsito, certificado de multas no pagadas o anotaciones en el Registro Nacional de Conductores. Necesito revisión.";
 const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_TEXT)}`;
 const REGISTRO_CIVIL_URL = "https://www.registrocivil.cl/";
 
 const items = [
-  "Revisión de certificado de multas.",
+  "Revisión de multas de tránsito en general.",
+  "Revisión del Certificado de Multas de Tránsito No Pagadas.",
+  "Revisión de anotaciones vigentes en el Registro Nacional de Conductores.",
   "Orientación sobre multas antiguas.",
   "Regularización de multas pagadas que siguen figurando.",
   "Revisión de convenios municipales.",
@@ -85,11 +87,11 @@ export default function Page() {
             </div>
 
             <h1 className="mt-7 max-w-5xl text-4xl font-black leading-[0.98] tracking-tight text-slate-950 sm:text-5xl lg:text-7xl">
-              Contacta a Lex para revisar tus multas de tránsito
+              Contacta a Lex para revisar multas de tránsito, certificados y anotaciones
             </h1>
 
             <p className="mt-6 max-w-3xl text-lg font-semibold leading-8 text-slate-700 sm:text-xl">
-              Si tienes multas antiguas, multas pagadas que siguen apareciendo o problemas con tu certificado, escríbenos por WhatsApp para coordinar la revisión de antecedentes.
+              Si tienes multas de tránsito en general, multas antiguas, multas pagadas que siguen apareciendo, problemas con el Certificado de Multas No Pagadas o anotaciones en el Registro Nacional de Conductores, escríbenos por WhatsApp para coordinar la revisión de antecedentes.
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -119,13 +121,13 @@ export default function Page() {
             </h2>
 
             <p className="mt-4 text-sm font-semibold leading-7 text-slate-600">
-              Para revisar tu situación necesitamos el Certificado de Multas de Tránsito No Pagadas y los antecedentes que tengas disponibles.
+              Para revisar tu situación necesitamos el Certificado de Multas de Tránsito No Pagadas, antecedentes sobre multas de tránsito y, si corresponde, información sobre anotaciones en el Registro Nacional de Conductores.
             </p>
 
             <div className="mt-6 rounded-3xl border border-teal-100 bg-teal-50 p-5 text-sm leading-7 text-teal-950">
               <p className="font-black">Mensaje sugerido</p>
               <p className="mt-2 font-semibold">
-                “Hola, quiero contactar a Lex por multas de tránsito. Tengo certificado de multas y necesito revisión.”
+                “Hola, quiero contactar a Lex por multas de tránsito, certificado de multas no pagadas o anotaciones en el Registro Nacional de Conductores. Necesito revisión.”
               </p>
             </div>
 
@@ -144,7 +146,7 @@ export default function Page() {
             </p>
 
             <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-5xl">
-              Revisión y gestión de multas
+              Revisión y gestión de multas de tránsito
             </h2>
 
             <p className="mt-5 text-base font-semibold leading-8 text-slate-600">
@@ -241,7 +243,7 @@ export default function Page() {
             <div>
               <p className="text-lg font-black text-slate-950">Prescribe tu Multa</p>
               <p className="mt-3 max-w-2xl text-sm font-semibold leading-7 text-slate-500">
-                Servicio de revisión y gestión documental para multas de tránsito. Contacto directo por WhatsApp de Lex.
+                Servicio de revisión y gestión documental para multas de tránsito, Certificado de Multas No Pagadas y anotaciones en el Registro Nacional de Conductores. Contacto directo por WhatsApp de Lex.
               </p>
             </div>
 
@@ -269,3 +271,4 @@ export default function Page() {
     </main>
   );
 }
+
