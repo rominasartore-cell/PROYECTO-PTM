@@ -87,11 +87,11 @@ export default function Page() {
             </div>
 
             <h1 className="mt-7 max-w-5xl text-4xl font-black leading-[0.98] tracking-tight text-slate-950 sm:text-5xl lg:text-7xl">
-              Contacta a Lex para revisar multas de tránsito, certificados y anotaciones
+              ¿Multas de tránsito pendientes, pagadas o prescritas?
             </h1>
 
             <p className="mt-6 max-w-3xl text-lg font-semibold leading-8 text-slate-700 sm:text-xl">
-              Si tienes multas de tránsito en general, multas antiguas, multas pagadas que siguen apareciendo, problemas con el Certificado de Multas No Pagadas o anotaciones en el Registro Nacional de Conductores, escríbenos por WhatsApp para coordinar la revisión de antecedentes.
+              Revisamos tu caso y te orientamos para tramitar la prescripción, regularización o actualización que corresponda. Atendemos multas de tránsito en general, certificados, convenios, pagos que siguen figurando y anotaciones asociadas.
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -268,6 +268,7 @@ export default function Page() {
     </main>
   );
 }
+
 
 
 
