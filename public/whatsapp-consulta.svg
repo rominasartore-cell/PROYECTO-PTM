@@ -1,0 +1,9 @@
+﻿<svg width="800" height="600" viewBox="0 0 800 600" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="800" height="600" rx="36" fill="#F8FAFC"/>
+<circle cx="180" cy="170" r="90" fill="#CCFBF1"/>
+<circle cx="620" cy="410" r="90" fill="#D1FAE5"/>
+<rect x="235" y="150" width="330" height="280" rx="32" fill="#25D366"/>
+<path d="M320 237C320 193 355 160 401 160C447 160 482 193 482 237C482 281 447 314 401 314H392L360 345L368 307C339 294 320 267 320 237Z" fill="white" fill-opacity="0.95"/>
+<path d="M382 221C387 214 394 212 399 214C403 216 406 225 409 230C412 235 415 239 414 243C413 247 406 252 404 253C402 255 399 255 396 254C387 251 378 244 369 235C360 226 354 216 351 207C350 204 350 201 352 199C353 197 359 190 362 189C365 188 368 189 370 191C372 193 377 202 382 221Z" fill="#25D366"/>
+<text x="240" y="520" fill="#0F172A" font-family="Arial, sans-serif" font-size="34" font-weight="700">Atención por WhatsApp</text>
+</svg>

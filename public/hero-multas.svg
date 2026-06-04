@@ -1,20 +1,18 @@
 ﻿<svg width="1200" height="900" viewBox="0 0 1200 900" fill="none" xmlns="http://www.w3.org/2000/svg">
 <rect width="1200" height="900" rx="40" fill="#F8FAFC"/>
-<circle cx="950" cy="170" r="120" fill="#D1FAE5"/>
-<circle cx="180" cy="720" r="140" fill="#CCFBF1"/>
-<rect x="180" y="170" width="520" height="380" rx="28" fill="white" stroke="#CBD5E1" stroke-width="10"/>
-<rect x="230" y="240" width="320" height="26" rx="13" fill="#0F172A"/>
-<rect x="230" y="295" width="240" height="20" rx="10" fill="#94A3B8"/>
-<rect x="230" y="340" width="400" height="20" rx="10" fill="#CBD5E1"/>
-<rect x="230" y="385" width="360" height="20" rx="10" fill="#CBD5E1"/>
-<rect x="230" y="430" width="220" height="20" rx="10" fill="#CBD5E1"/>
-<circle cx="610" cy="480" r="62" fill="#047857"/>
-<path d="M580 480L600 500L642 458" stroke="white" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
-<rect x="600" y="520" width="340" height="170" rx="32" fill="#0F172A"/>
-<rect x="655" y="555" width="170" height="52" rx="20" fill="#10B981"/>
-<circle cx="690" cy="695" r="34" fill="#334155"/>
-<circle cx="855" cy="695" r="34" fill="#334155"/>
-<path d="M645 625H875L845 575H700L665 585L645 625Z" fill="#E2E8F0"/>
-<path d="M225 635C225 608.49 246.49 587 273 587H507C533.51 587 555 608.49 555 635V670H225V635Z" fill="#14B8A6"/>
-<text x="225" y="780" fill="#0F172A" font-family="Arial, sans-serif" font-size="42" font-weight="700">Multas de tránsito</text>
+<circle cx="960" cy="160" r="120" fill="#D1FAE5"/>
+<circle cx="180" cy="730" r="150" fill="#CCFBF1"/>
+<rect x="170" y="160" width="520" height="390" rx="28" fill="white" stroke="#CBD5E1" stroke-width="10"/>
+<rect x="220" y="235" width="310" height="26" rx="13" fill="#0F172A"/>
+<rect x="220" y="290" width="240" height="20" rx="10" fill="#94A3B8"/>
+<rect x="220" y="340" width="400" height="20" rx="10" fill="#CBD5E1"/>
+<rect x="220" y="385" width="360" height="20" rx="10" fill="#CBD5E1"/>
+<rect x="220" y="430" width="220" height="20" rx="10" fill="#CBD5E1"/>
+<circle cx="605" cy="480" r="60" fill="#047857"/>
+<path d="M575 480L595 500L637 458" stroke="white" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="610" y="520" width="340" height="165" rx="32" fill="#0F172A"/>
+<path d="M655 610H885L850 565H710L680 575L655 610Z" fill="#E2E8F0"/>
+<circle cx="705" cy="690" r="34" fill="#334155"/>
+<circle cx="855" cy="690" r="34" fill="#334155"/>
+<text x="170" y="790" fill="#0F172A" font-family="Arial, sans-serif" font-size="42" font-weight="700">Multas de tránsito</text>
 </svg>

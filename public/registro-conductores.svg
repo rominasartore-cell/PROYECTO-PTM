@@ -11,5 +11,5 @@
 <circle cx="610" cy="180" r="54" fill="#F59E0B"/>
 <path d="M610 155V185" stroke="white" stroke-width="14" stroke-linecap="round"/>
 <circle cx="610" cy="205" r="8" fill="white"/>
-<text x="130" y="525" fill="#0F172A" font-family="Arial, sans-serif" font-size="32" font-weight="700">Registro Nacional de Conductores</text>
+<text x="130" y="525" fill="#0F172A" font-family="Arial, sans-serif" font-size="32" font-weight="700">Registro de Conductores</text>
 </svg>

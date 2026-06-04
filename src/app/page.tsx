@@ -2,19 +2,52 @@
 
 const WHATSAPP_NUMBER = "56968506777";
 const WHATSAPP_TEXT =
-  "Hola, quiero contactar a Lex por multas de tránsito, certificado de multas no pagadas o anotaciones en el Registro Nacional de Conductores. Necesito revisión.";
+  "Hola, quiero contactar a Lex por multas de tránsito. Necesito revisar prescripción, regularización, certificado de multas o anotaciones en el Registro Nacional de Conductores.";
 const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_TEXT)}`;
 const REGISTRO_CIVIL_URL = "https://www.registrocivil.cl/";
 
-const items = [
+const services = [
   "Revisión de multas de tránsito en general.",
-  "Revisión del Certificado de Multas de Tránsito No Pagadas.",
-  "Revisión de anotaciones vigentes en el Registro Nacional de Conductores.",
-  "Orientación sobre multas antiguas.",
+  "Orientación sobre prescripción de multas antiguas o pendientes.",
+  "Revisión del Certificado de Multas de Tránsito No Pagadas, cuando corresponda.",
+  "Revisión de anotaciones asociadas al Registro Nacional de Conductores.",
   "Regularización de multas pagadas que siguen figurando.",
   "Revisión de convenios municipales.",
   "Preparación de solicitudes simples, si corresponde.",
   "Instrucciones para continuar la gestión ante el organismo correspondiente.",
+];
+
+const cards = [
+  {
+    title: "Certificados y antecedentes",
+    text: "Revisión de Certificado de Multas No Pagadas y otros antecedentes relevantes.",
+    image: "/certificado-multas.svg",
+  },
+  {
+    title: "Registro de Conductores",
+    text: "Revisión de anotaciones y situaciones asociadas al Registro Nacional de Conductores.",
+    image: "/registro-conductores.svg",
+  },
+  {
+    title: "Prescripción",
+    text: "Orientación para revisar si corresponde solicitar prescripción de multas antiguas.",
+    image: "/prescripcion.svg",
+  },
+  {
+    title: "Regularización",
+    text: "Apoyo para ordenar pagos, registros y situaciones que siguen figurando.",
+    image: "/regularizacion.svg",
+  },
+  {
+    title: "Multas de tránsito",
+    text: "Enfoque general sobre multas de tránsito, certificados, convenios y actualizaciones.",
+    image: "/hero-multas.svg",
+  },
+  {
+    title: "Atención directa",
+    text: "Inicio simple por WhatsApp para coordinar revisión y alcance del servicio.",
+    image: "/whatsapp-consulta.svg",
+  },
 ];
 
 function WhatsAppButton({ label = "Contactar por WhatsApp" }: { label?: string }) {
@@ -30,64 +63,6 @@ function WhatsAppButton({ label = "Contactar por WhatsApp" }: { label?: string }
   );
 }
 
-
-function VisualCards() {
-  return (
-    <section className="bg-white py-8 sm:py-10">
-      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid gap-5 md:grid-cols-3">
-          <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
-            <Image
-              src="/certificado-multas.svg"
-              alt="Certificado de multas"
-              width={800}
-              height={600}
-              className="h-56 w-full object-cover"
-            />
-            <div className="p-5">
-              <h3 className="text-lg font-black text-slate-950">Certificados y antecedentes</h3>
-              <p className="mt-2 text-sm font-semibold leading-7 text-slate-600">
-                Revisión de Certificado de Multas No Pagadas y otros antecedentes relevantes.
-              </p>
-            </div>
-          </div>
-
-          <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
-            <Image
-              src="/registro-conductores.svg"
-              alt="Registro Nacional de Conductores"
-              width={800}
-              height={600}
-              className="h-56 w-full object-cover"
-            />
-            <div className="p-5">
-              <h3 className="text-lg font-black text-slate-950">Registro de Conductores</h3>
-              <p className="mt-2 text-sm font-semibold leading-7 text-slate-600">
-                Revisión de anotaciones y situaciones asociadas al Registro Nacional de Conductores.
-              </p>
-            </div>
-          </div>
-
-          <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
-            <Image
-              src="/hero-multas.svg"
-              alt="Multas de tránsito"
-              width={1200}
-              height={900}
-              className="h-56 w-full object-cover"
-            />
-            <div className="p-5">
-              <h3 className="text-lg font-black text-slate-950">Prescripción y regularización</h3>
-              <p className="mt-2 text-sm font-semibold leading-7 text-slate-600">
-                Orientación práctica para revisar y gestionar multas de tránsito en general.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
 function Header() {
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200/70 bg-white/95 backdrop-blur">
@@ -106,6 +81,9 @@ function Header() {
         <nav className="hidden items-center gap-8 lg:flex">
           <a href="#servicio" className="text-sm font-black text-slate-700 transition hover:text-emerald-700">
             Servicio
+          </a>
+          <a href="#galeria" className="text-sm font-black text-slate-700 transition hover:text-emerald-700">
+            Información
           </a>
           <a href="#funciona" className="text-sm font-black text-slate-700 transition hover:text-emerald-700">
             Cómo funciona
@@ -128,6 +106,42 @@ function Header() {
   );
 }
 
+function VisualGallery() {
+  return (
+    <section id="galeria" className="bg-white py-10 sm:py-14">
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="max-w-3xl">
+          <p className="text-sm font-black uppercase tracking-widest text-emerald-700">Información útil</p>
+          <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-5xl">
+            Una página más clara, visual y fácil de entender
+          </h2>
+          <p className="mt-4 text-base font-semibold leading-8 text-slate-600">
+            Revisamos prescripción y regularización de multas de tránsito en general, no solo lo que aparece en un solo certificado.
+          </p>
+        </div>
+
+        <div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {cards.map((card) => (
+            <div key={card.title} className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
+              <Image
+                src={card.image}
+                alt={card.title}
+                width={1200}
+                height={900}
+                className="h-56 w-full object-cover"
+              />
+              <div className="p-5">
+                <h3 className="text-lg font-black text-slate-950">{card.title}</h3>
+                <p className="mt-2 text-sm font-semibold leading-7 text-slate-600">{card.text}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function Page() {
   return (
     <main className="min-h-screen bg-white text-slate-950">
@@ -137,7 +151,7 @@ export default function Page() {
         <div className="absolute inset-0 bg-gradient-to-br from-emerald-50 via-white to-teal-50" />
         <div className="absolute right-[-12rem] top-[-10rem] hidden h-[32rem] w-[32rem] rounded-full bg-emerald-200/30 blur-3xl lg:block" />
 
-        <div className="relative mx-auto grid w-full max-w-7xl items-center gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:px-8 lg:py-20">
+        <div className="relative mx-auto grid w-full max-w-7xl items-center gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[1.02fr_0.98fr] lg:px-8 lg:py-20">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-white/90 px-4 py-2 text-xs font-black text-slate-700 shadow-sm">
               <span className="text-emerald-700">⚖</span>
@@ -175,39 +189,39 @@ export default function Page() {
               alt="Ilustración de multas de tránsito"
               width={1200}
               height={900}
-              className="h-56 w-full object-cover"
+              className="h-64 w-full object-cover sm:h-72"
             />
             <div className="p-6">
-            <p className="text-sm font-black uppercase tracking-widest text-emerald-700">
-              Inicio directo
-            </p>
-
-            <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950">
-              Envía tu certificado por WhatsApp
-            </h2>
-
-            <p className="mt-4 text-sm font-semibold leading-7 text-slate-600">
-              Para revisar tu situación necesitamos el Certificado de Multas de Tránsito No Pagadas, antecedentes sobre multas de tránsito y, si corresponde, información sobre anotaciones en el Registro Nacional de Conductores.
-            </p>
-
-            <div className="mt-6 rounded-3xl border border-teal-100 bg-teal-50 p-5 text-sm leading-7 text-teal-950">
-              <p className="font-black">Mensaje sugerido</p>
-              <p className="mt-2 font-semibold">
-                “Hola, quiero contactar a Lex por multas de tránsito, certificado de multas no pagadas o anotaciones en el Registro Nacional de Conductores. Necesito revisión.”
+              <p className="text-sm font-black uppercase tracking-widest text-emerald-700">
+                Inicio directo
               </p>
-            </div>
 
-            <div className="mt-6">
-              <WhatsAppButton label="Escribir a Lex" />
-            </div>
+              <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950">
+                Envía tus antecedentes por WhatsApp
+              </h2>
+
+              <p className="mt-4 text-sm font-semibold leading-7 text-slate-600">
+                Para revisar tu situación podemos necesitar el Certificado de Multas de Tránsito No Pagadas, antecedentes de la causa, comprobantes de pago, convenios municipales, certificados o información relacionada con anotaciones en el Registro Nacional de Conductores.
+              </p>
+
+              <div className="mt-6 rounded-3xl border border-teal-100 bg-teal-50 p-5 text-sm leading-7 text-teal-950">
+                <p className="font-black">Mensaje sugerido</p>
+                <p className="mt-2 font-semibold">
+                  “Hola, quiero contactar a Lex por multas de tránsito. Necesito revisar prescripción, regularización, certificado de multas o anotaciones en el Registro Nacional de Conductores.”
+                </p>
+              </div>
+
+              <div className="mt-6">
+                <WhatsAppButton label="Escribir a Lex" />
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <VisualCards />
+      <VisualGallery />
 
-      <section id="servicio" className="bg-white py-16 sm:py-20">
+      <section id="servicio" className="bg-slate-50 py-16 sm:py-20">
         <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.8fr_1.2fr] lg:px-8">
           <div>
             <p className="text-sm font-black uppercase tracking-widest text-emerald-700">
@@ -224,7 +238,7 @@ export default function Page() {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            {items.map((item) => (
+            {services.map((item) => (
               <div key={item} className="flex gap-3 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-700 text-sm font-black text-white">
                   ✓
@@ -236,18 +250,18 @@ export default function Page() {
         </div>
       </section>
 
-      <section id="funciona" className="bg-slate-50 py-16 sm:py-20">
+      <section id="funciona" className="bg-white py-16 sm:py-20">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
           <p className="text-sm font-black uppercase tracking-widest text-emerald-700">
             Cómo funciona
           </p>
 
           <h2 className="mt-3 max-w-4xl text-3xl font-black tracking-tight text-slate-950 sm:text-5xl">
-            Contacto directo, certificado y revisión previa
+            Contacto directo, revisión previa y orientación clara
           </h2>
 
           <div className="mt-10 grid gap-5 md:grid-cols-3">
-            <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="rounded-[2rem] border border-slate-200 bg-slate-50 p-6 shadow-sm">
               <span className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-950 text-sm font-black text-white">
                 1
               </span>
@@ -255,11 +269,11 @@ export default function Page() {
                 Escribe por WhatsApp
               </h3>
               <p className="mt-3 text-sm font-semibold leading-7 text-slate-600">
-                Inicia el contacto directo con Lex.
+                Inicia el contacto directo con Lex y cuéntanos brevemente qué necesitas revisar.
               </p>
             </div>
 
-            <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="rounded-[2rem] border border-slate-200 bg-slate-50 p-6 shadow-sm">
               <span className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-950 text-sm font-black text-white">
                 2
               </span>
@@ -267,11 +281,11 @@ export default function Page() {
                 Envía antecedentes
               </h3>
               <p className="mt-3 text-sm font-semibold leading-7 text-slate-600">
-                Comparte tu certificado y documentos relacionados.
+                Comparte tu certificado, comprobantes, convenios o antecedentes disponibles.
               </p>
             </div>
 
-            <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="rounded-[2rem] border border-slate-200 bg-slate-50 p-6 shadow-sm">
               <span className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-950 text-sm font-black text-white">
                 3
               </span>
@@ -279,7 +293,7 @@ export default function Page() {
                 Recibe indicación de alcance
               </h3>
               <p className="mt-3 text-sm font-semibold leading-7 text-slate-600">
-                Antes de revisar se informa valor, alcance y documentos necesarios.
+                Antes de revisar se informa valor, alcance del servicio y documentos necesarios.
               </p>
             </div>
           </div>
@@ -294,11 +308,11 @@ export default function Page() {
             </p>
 
             <h2 className="mt-3 max-w-3xl text-3xl font-black tracking-tight sm:text-5xl">
-              ¿Tienes multas antiguas o problemas de actualización?
+              ¿Quieres revisar tu situación?
             </h2>
 
             <p className="mt-4 max-w-2xl text-base font-semibold leading-8 text-slate-300">
-              Escríbenos por WhatsApp y coordina la revisión de tu certificado.
+              Escríbenos por WhatsApp y coordinamos la revisión de tus antecedentes.
             </p>
           </div>
 
@@ -337,10 +351,3 @@ export default function Page() {
     </main>
   );
 }
-
-
-
-
-
-
-
