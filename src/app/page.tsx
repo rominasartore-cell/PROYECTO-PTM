@@ -243,7 +243,7 @@ export default function Page() {
             <div>
               <p className="text-lg font-black text-slate-950">Prescribe tu Multa</p>
               <p className="mt-3 max-w-2xl text-sm font-semibold leading-7 text-slate-500">
-                Servicio de revisión y gestión documental para multas de tránsito, Certificado de Multas No Pagadas y anotaciones en el Registro Nacional de Conductores. Contacto directo por WhatsApp de Lex.
+                Servicio de orientación y gestión para multas de tránsito, prescripciones, regularizaciones, certificados y anotaciones asociadas. Atención directa por WhatsApp de Lex.
               </p>
             </div>
 
@@ -253,9 +253,6 @@ export default function Page() {
               </a>
               <a href="/politica-de-privacidad" className="hover:text-emerald-700">
                 Privacidad
-              </a>
-              <a href="/politica-de-reembolso" className="hover:text-emerald-700">
-                Reembolso
               </a>
               <a href="/contacto" className="hover:text-emerald-700">
                 Contacto
@@ -271,5 +268,6 @@ export default function Page() {
     </main>
   );
 }
+
 
 
